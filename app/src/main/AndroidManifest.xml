@@ -24,6 +24,6 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".OverlayService" android:exported="true"/>
+        <service android:name=".OverlayService" android:exported="true" android:stopWithTask="false"/>
     </application>
 </manifest>

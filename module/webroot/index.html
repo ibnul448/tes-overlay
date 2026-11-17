@@ -542,7 +542,7 @@ function parse(t){
     else if(a[0]==='SPOOFAPPS')s.spoofApps=(a[1]||'').split(';').filter(Boolean).map(e=>{const f=e.split('~');return{pkg:f[0],key:f[1],man:f[2],mod:f[3],on:f[4]!=='0',full:f[5]==='1',hw:f[6]||'',board:f[7]||'',sm:f[8]||'',smd:f[9]||''};});
     else if(a[0]==='COOL')s.cool=+a[1]||0;
     else if(a[0]==='IOS')s.ios={cur:a[1]||'',list:(a[2]||'').split(',').filter(Boolean)};
-    else if(a[0]==='OVL')s.ovl={on:a[1]==='on',app:a[2]==='1',net:a[3]!=='off'};
+    else if(a[0]==='OVL')s.ovl={on:a[1]==='on',app:a[2]==='1',net:a[3]!=='off',auto:a[4]!=='off',res:a[5]||'720',br:a[6]||'auto',fps:a[7]||'60'};
     else if(a[0]==='REND')s.rend=a[1]||'default';
     else if(a[0]==='GED')s.ged=a[1]==='yes'?{ok:true,lv:a[2]||'',cur:+a[3]||0}:{ok:false};
     else if(a[0]==='DRAM')s.dram=a[1]==='yes'?{ok:true,freqs:(a[2]||'').split(' ').filter(Boolean).map(Number),cur:+a[3]||0,min:+a[4]||0,max:+a[5]||0,lock:+a[6]||0,ram:+a[7]||0}:{ok:false};
@@ -1157,7 +1157,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.37.1';
+const VER='2.39.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1270,13 +1270,22 @@ const thermalSub=s=>`<div class="card">${rowsById(['nothermal'])}</div>
 const utilSub=s=>`<div class="fnote"><b>Optimasi latar belakang &amp; baterai.</b> Fitur lanjutan untuk mengurangi standby drain. Keduanya mati secara bawaan dan bisa menunda notifikasi bila aktif.</div>
  <div class="msec g">Konsumsi Daya &amp; Standby</div><div class="card">${rowsById(['aggrdoze','gmslimit','doze','datasaver'])}</div>`;
 async function ovToggle(on){toast('Menerapkan…');const r=await run('overlay '+(on?'on':'off'));await load();toast(on?'Overlay aktif · buka game untuk melihat FPS':'Overlay dimatikan');}
+async function ovAuto(on){await run('ovauto '+(on?'on':'off'));await load();toast(on?'Overlay muncul saat game dibuka':'Overlay selalu tampil');}
+async function recSet(k,v){const r=await run('ovrec set '+k+' '+v);await load();toast((r.out||'').indexOf('OK|')===0?'Tersimpan':'Gagal menyimpan');}
 async function ovNet(on){await run('ovnet '+(on?'on':'off'));await load();}
 async function ovTest(){toast('Mengambil data…');const r=await run('ostat1');const a=(r.out||'').trim().split('|');if(a[0]!=='OV'){toast('Tidak ada data');return;}
  const e=document.getElementById('ovtest');if(e)e.textContent='FPS '+(a[1]||'--')+' • CPU '+a[2]+'% • GPU '+(a[3]||'n/a')+'% • Bat '+a[4]+'% '+a[5]+'° • RAM '+a[6]+'% • '+a[7]+'/'+(a[8]||'-')+' MHz • ping '+(a[9]||'-')+' • '+(a[10]||'-');toast('Data terbaca');}
-const ovlSub=s=>{const o=s.ovl||{on:false,app:false,net:true};
- return `<div class="fnote"><b>Overlay in-game.</b> Pil FPS melayang di atas game; ketuk untuk membuka panel Dashboard (FPS, CPU, GPU, latensi, baterai, RAM, Record), Widgets (mode, Hz, bersihkan RAM, FPSGO) dan Apps. Butuh aplikasi Comatoze versi baru (build GitHub).${o.app?'':' <b>Aplikasi Comatoze belum terpasang.</b>'}</div>
+const ovlSub=s=>{const o=s.ovl||{on:false,app:false,net:true,auto:true,res:'720',br:'auto',fps:'60'};
+ const seg=(k,cur,opts)=>`<div class="seg3 tn-teal">${opts.map(([v,n])=>`<button class="chip ${String(cur)===v?'on':''}" onclick="recSet('${k}','${v}')">${n}</button>`).join('')}</div>`;
+ return `<div class="fnote"><b>Overlay in-game.</b> Kotak FPS melayang di atas game; ketuk untuk membuka panel Dashboard (FPS, CPU, GPU, latensi, baterai, RAM, Record), Widgets (mode, Hz, bersihkan RAM, FPSGO) dan Apps. Tetap berjalan di latar walau aplikasi Comatoze ditutup.${o.app?'':' <b>Aplikasi Comatoze belum terpasang.</b>'}</div>
  <div class="card"><div style="display:flex;align-items:center;gap:12px;margin:0 0 10px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Aktifkan overlay</b><span style="font-size:12px;opacity:.65">Otomatis hidup lagi setelah reboot</span></div><label class="sw"><input type="checkbox" ${o.on?'checked':''} onchange="ovToggle(this.checked)"><i></i></label></div>
+ <div style="display:flex;align-items:center;gap:12px;margin:0 0 10px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Hanya saat game dibuka</b><span style="font-size:12px;opacity:.65">Muncul otomatis di game daftar Aplikasi, hilang saat keluar</span></div><label class="sw"><input type="checkbox" ${o.auto?'checked':''} onchange="ovAuto(this.checked)"><i></i></label></div>
  <div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Ukur latensi (ping)</b><span style="font-size:12px;opacity:.65">ping 1.1.1.1 tiap 5 detik</span></div><label class="sw"><input type="checkbox" ${o.net?'checked':''} onchange="ovNet(this.checked)"><i></i></label></div></div>
+ <div class="msec g">Rekam Layar (tombol REC di overlay)</div><div class="card">
+  <div class="lbl">Resolusi</div>${seg('res',o.res,[['native','Asli'],['1080','1080p'],['720','720p']])}
+  <div class="lbl" style="margin-top:12px">Bitrate</div>${seg('br',o.br,[['auto','Auto'],['8','8 Mbps'],['16','16 Mbps'],['24','24 Mbps']])}
+  <div class="lbl" style="margin-top:12px">Frame rate</div>${seg('fps',o.fps,[['30','30'],['60','60'],['90','90'],['120','120']])}
+  <div class="fnote" style="margin-top:12px">Pengaturan langsung dipakai tombol REC di overlay. Hasil: <b>Movies/Comatoze_*.mp4</b> (dipotong tiap 3 menit otomatis). Batas frame rate hanya berlaku bila ROM mendukung <code>--max-fps</code> pada screenrecord; selain itu mengikuti refresh rate layar.</div></div>
  <div class="card"><button class="btn tonal" onclick="ovTest()">Uji data overlay</button><div id="ovtest" style="font-size:12px;opacity:.8;margin-top:8px;word-break:break-word"></div></div>`;};
 const SUBS={
  hz:{t:'Refresh Rate',f:hzSub},

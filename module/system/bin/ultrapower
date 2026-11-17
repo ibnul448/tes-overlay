@@ -1689,6 +1689,7 @@ game_wd(){
         [ "$(getcfg F_gameclean)" = on ] && gclean $cur &
         [ "$(getcfg F_preload)" = on ] && preload $cur &
         lastg=$cur; glog "masuk $cur"
+        [ "$(getcfg OV_ON)" = on ] && ov_auto && ov_svc &
         [ "$(getcfg F_gameprofile)" = on ] && gp_enter $cur
         [ "$(getcfg F_gamethermal)" = on ] && gth_on
         if [ "$(getcfg F_gamednd)" = on ]; then cmd notification set_dnd priority; dset=1; fi
@@ -1700,6 +1701,7 @@ game_wd(){
       away=$((away+1))
       if [ $away -ge 2 ]; then   # keluar game bila 2x cek berturut-turut (anti-flicker shade/dialog)
         ing=0; rm -f $DIR/ingame; gp_leave; gth_off; glog "keluar ${lastg}"
+        [ "$(getcfg OV_ON)" = on ] && ov_auto && am stopservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1 &
         [ "$dset" = 1 ] && { cmd notification set_dnd off; dset=0; }
       fi
     fi
@@ -1708,6 +1710,7 @@ game_wd(){
 }
 game_sync(){
   on=0; for f in preload gamednd gameprofile gameclean gamebypass gamethermal fpsgooff; do [ "$(getcfg F_$f)" = on ] && on=1; done
+  [ "$(getcfg OV_ON)" = on ] && ov_auto && on=1   # overlay otomatis butuh pemantau game
   alive=0; [ -f $DIR/game.pid ] && kill -0 $(cat $DIR/game.pid) 2>/dev/null && alive=1
   if [ $on = 1 ] && [ $alive = 0 ]; then bg game_wd
   elif [ $on = 0 ] && [ $alive = 1 ]; then kill $(cat $DIR/game.pid); rm -f $DIR/game.pid; gp_leave; gth_off; fi
@@ -2166,18 +2169,33 @@ EOT
   [ -n "$_ok" ] || return 1
   [ $_n -gt 240 ] && _n=240
   OVFPS=$_n; return 0; }
-ov_best(){ # <paket> -> _lay = layer dengan FPS tertinggi, OVFPS = FPS-nya
-  ov_layers "$1"; _lay=; _bn=-1
+ov_scan(){ # pindai daftar layer di $OVLS (maks 15) -> _lay/OVFPS terbaik
+  _lay=; _bn=-1; _c=0
   while IFS= read -r l; do
     [ -n "$l" ] || continue
+    _c=$((_c+1)); [ $_c -gt 15 ] && break
     ov_fps "$l" && [ "$OVFPS" -gt "$_bn" ] && { _bn=$OVFPS; _lay=$l; }
   done <<EOT
 $OVLS
 EOT
   [ -n "$_lay" ] && OVFPS=$_bn; [ -n "$_lay" ]; }
+ov_layers_all(){ # semua layer kecuali bagian UI sistem / manager sendiri
+  OVLS=
+  while IFS= read -r l; do
+    case $l in ''|*StatusBar*|*NavigationBar*|*ScreenDecor*|*InputMethod*|*Wallpaper*|*com.comatoze*|*systemui*|*Background*|*Dim*|*Splash*|*Letterbox*|*Bounds*|*ImeContainer*|*Task=*|*Magnification*|*Pointer*|*Cursor*) ;; *) OVLS="$OVLS$l
+";; esac
+  done <<EOT
+$(dumpsys SurfaceFlinger --list 2>/dev/null)
+EOT
+}
+ov_best(){ # <paket> -> layer paket dengan FPS tertinggi; bila nama layer tak cocok, pindai semua layer non-sistem
+  ov_layers "$1"; ov_scan && return 0
+  ov_layers_all; ov_scan; }
 ostat(){
   _CC=0; _CT=0; i=0; _pkg=; _lay=; _ping=; _NETC=$(getcfg OV_NET); OVFPS=
   ov_gpu_find; ov_gfreq_find
+  _cmax=0; for p in /sys/devices/system/cpu/cpufreq/policy*/cpuinfo_max_freq; do ov_num $p && [ "$OVN" -gt "$_cmax" ] && _cmax=$OVN; done; _cmax=$((_cmax/1000))
+  _gmax=; for f in /sys/class/devfreq/*mali*/max_freq /sys/class/devfreq/*gpu*/max_freq; do ov_num $f && { _gmax=$((OVN/1000000)); break; }; done
   while :; do
     # CPU %
     read -r _x u n s id io ir so st _r < /proc/stat
@@ -2210,7 +2228,7 @@ ostat(){
       if [ -z "$_lay" ] || { [ "${OVFPS:-0}" -lt 20 ] && [ $((i%5)) -eq 0 ]; }; then ov_best "$_pkg"; fi
       [ -n "$_lay" ] && fps=$OVFPS
     fi
-    echo "OV|$fps|$cpu|$gpu|$bat|$bt|$ram|$cmhz|$gmhz|$_ping|$_pkg|$ct"
+    echo "OV|$fps|$cpu|$gpu|$bat|$bt|$ram|$cmhz|$gmhz|$_ping|$_pkg|$ct|$_cmax|$_gmax"
     i=$((i+1)); [ -n "$OVONCE" ] && [ $i -ge 2 ] && return 0; sleep 1
   done
 }
@@ -2219,10 +2237,48 @@ ov_perm(){ # beri izin overlay + notifikasi ke aplikasi Comatoze tanpa dialog (r
   pm grant com.comatoze android.permission.POST_NOTIFICATIONS >/dev/null 2>&1
   appops set com.comatoze RUN_IN_BACKGROUND allow >/dev/null 2>&1
   cmd deviceidle whitelist +com.comatoze >/dev/null 2>&1; }
-ov_boot(){ sleep 30; overlay on >/dev/null 2>&1; }
-ovstate(){ # status ringan untuk panel overlay: OVS|mode|hz|fpsgooff|nothermal|touchboost|gamednd|gamebypass|perfx|gmslimit|gameclean|gameprofile|aggrdoze
+ov_auto(){ [ "$(getcfg OV_AUTO)" != off ]; }   # bawaan: overlay hanya muncul saat game dari daftar dibuka
+ov_svc(){ am start-foreground-service --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1 || am startservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; }
+ov_boot(){ sleep 30; ov_perm; if ov_auto; then game_sync; else ov_svc; fi; }
+# ---------- REKAM LAYAR (dipakai tombol REC overlay; pengaturan di WebUI: resolusi / bitrate / fps) ----------
+# Resolusi: native | 1080 | 720 (sisi pendek). Bitrate: auto(=16) | 8 | 16 | 24 Mbps. FPS: dipakai bila screenrecord mendukung --max-fps.
+# Rekaman dipotong per 180 dtk (batas screenrecord) dan disambung otomatis sampai tombol Stop ditekan.
+ovrec_size(){ # <sisi pendek target> -> OVSZ "WxH" sesuai orientasi layar saat ini (kosong = pakai ukuran asli)
+  OVSZ=; _s=$(wm size 2>/dev/null | tail -n 1); _s=${_s##* }
+  case $_s in *x*) ;; *) return 1;; esac
+  _w=${_s%x*}; _h=${_s#*x}
+  case $_w$_h in *[!0-9]*|'') return 1;; esac
+  if [ $_w -lt $_h ]; then _sh=$_w; _lo=$_h; else _sh=$_h; _lo=$_w; fi
+  [ "$1" -lt "$_sh" ] || return 1
+  _nl=$(( (_lo*$1/_sh)/2*2 ))
+  _r=$(dumpsys window displays 2>/dev/null | grep -m1 -o 'mCurrentRotation=ROTATION_[0-9]*')
+  case $_r in *_90|*_270) OVSZ=${_nl}x$1;; *) OVSZ=$1x${_nl};; esac; }
+ovrec(){ case $1 in
+  set) case $2 in
+    res) case $3 in native|720|1080) setcfg REC_RES $3; echo "OK|resolusi $3";; *) echo "ERR|nilai tidak valid";; esac;;
+    br)  case $3 in auto|8|16|24) setcfg REC_BR $3; echo "OK|bitrate $3";; *) echo "ERR|nilai tidak valid";; esac;;
+    fps) case $3 in 30|60|90|120) setcfg REC_FPS $3; echo "OK|fps $3";; *) echo "ERR|nilai tidak valid";; esac;;
+    *) echo "ERR|kunci tidak dikenal";; esac;;
+  start)
+    cfgv REC_RES; _res=${CV:-720}; cfgv REC_BR; _br=${CV:-auto}; cfgv REC_FPS; _fp=${CV:-60}
+    [ "$_br" = auto ] && _br=16
+    _args="--bit-rate $((_br*1000000))"
+    [ "$_res" != native ] && ovrec_size $_res && _args="$_args --size $OVSZ"
+    screenrecord --help 2>&1 | grep -q -- '--max-fps' && _args="$_args --max-fps $_fp"
+    mkdir -p /sdcard/Movies; rm -f $DIR/recstop; _base=/sdcard/Movies/Comatoze_$(date +%Y%m%d_%H%M%S); _n=1; _first=
+    while [ ! -f $DIR/recstop ]; do
+      if [ $_n -eq 1 ]; then _f=$_base.mp4; else _f=${_base}_$_n.mp4; fi
+      [ -n "$_first" ] || _first=$_f
+      screenrecord $_args --time-limit 180 "$_f" >/dev/null 2>&1 || { [ -f "$_f" ] || { echo "ERR|screenrecord gagal"; return 1; }; }
+      _n=$((_n+1))
+    done
+    rm -f $DIR/recstop; echo "OK|$_first";;
+  stop) touch $DIR/recstop; pkill -2 screenrecord; echo "OK|stop";;
+  *) echo "REC|$(getcfg REC_RES)|$(getcfg REC_BR)|$(getcfg REC_FPS)";;
+esac; }
+ovstate(){ # status ringan untuk panel overlay: OVS|mode|hz|fpsgooff|nothermal|touchboost|gamednd|gamebypass|perfx|gmslimit|gameclean|gameprofile|aggrdoze|dnd
   cfgv MODE; _m=$CV; cfgv RHZ; _h=$CV; _o="OVS|$_m|$_h"
-  for _k in fpsgooff nothermal touchboost gamednd gamebypass perfx gmslimit gameclean gameprofile aggrdoze; do _o="$_o|$(fstate $_k)"; done
+  for _k in fpsgooff nothermal touchboost gamednd gamebypass perfx gmslimit gameclean gameprofile aggrdoze dnd; do _o="$_o|$(fstate $_k)"; done
   echo "$_o"; }
 ovact(){ case $1 in
   clean) am kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; echo "OK|RAM dibersihkan";;
@@ -2243,8 +2299,11 @@ EOT
   echo "== contoh --latency layer pertama:"; l=$(echo "$OVLS" | head -n 1); dumpsys SurfaceFlinger --latency "$l" 2>&1 | head -n 6; }
 ovnet(){ setcfg OV_NET "$1"; echo "OK|ping $1"; }
 overlay(){ case $1 in
-  on)  ov_perm; am start-foreground-service --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1 || am startservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; setcfg OV_ON on; echo "OK|overlay aktif";;
-  off) am stopservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; setcfg OV_ON off; echo "OK|overlay mati";;
+  on)  ov_perm; setcfg OV_ON on; game_sync
+       if ov_auto; then [ -f $DIR/ingame ] && ov_svc; echo "OK|overlay aktif (muncul saat game dibuka)"; else ov_svc; echo "OK|overlay aktif"; fi;;
+  off) setcfg OV_ON off; am stopservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; game_sync; echo "OK|overlay mati";;
+  close) am stopservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; echo "OK|ditutup";;
+  auto) setcfg OV_AUTO "$2"; game_sync; if [ "$2" = off ]; then [ "$(getcfg OV_ON)" = on ] && ov_svc; else [ -f $DIR/ingame ] || am stopservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; fi; echo "OK|auto $2";;
   perm) ov_perm; echo "OK|izin diberikan";;
   *) echo "OV_ON|$(getcfg OV_ON)|$(pm path com.comatoze 2>/dev/null | head -n 1)";;
 esac; }
@@ -2254,7 +2313,7 @@ status(){
   echo "MODE|$(getcfg MODE)"
   echo "BAT|$(rd $BAT/capacity)|$(rd $BAT/status)|$(rd $BAT/current_now)|$(rd $BAT/temp)|$(rd $BAT/voltage_now)|$(chg_ready && grep -c . $DIR/chgn)|$(getcfg CUT)"
   echo "CHGM|$(cut -d'|' -f1 $DIR/chgm 2>/dev/null | sed 's#.*/\([^/]*/[^/]*\)$#\1#' | tr '\n' ',')|$(cat $DIR/chgheld 2>/dev/null)|$(cat $DIR/chgfail 2>/dev/null)|$(cat $DIR/chgq 2>/dev/null | tr '|' ':')"
-  echo "OVL|$(getcfg OV_ON)|$([ -d /data/data/com.comatoze ] && echo 1 || echo 0)|$(getcfg OV_NET)"
+  echo "OVL|$(getcfg OV_ON)|$([ -d /data/data/com.comatoze ] && echo 1 || echo 0)|$(getcfg OV_NET)|$(getcfg OV_AUTO)|$(getcfg REC_RES)|$(getcfg REC_BR)|$(getcfg REC_FPS)"
   echo "PROF|$([ -f $DIR/prof_on ] && echo on || echo off)"
   echo "RATES|$(rates)"
   echo "GPCFG|$(getcfg GP_MODE)|$(getcfg GP_HZ)"
@@ -2393,6 +2452,8 @@ case "$1" in
   overlay) overlay $2;;
   ov_boot) ov_boot;;
   ovnet) ovnet $2;;
+  ovauto) overlay auto $2;;
+  ovrec) ovrec $2 $3 $4;;
   ovstate) ovstate;;
   ovact) ovact $2;;
   ovdiag) ovdiag 2>&1 | tee $DIR/ovdiag.txt;;
