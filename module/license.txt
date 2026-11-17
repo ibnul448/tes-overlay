@@ -1,0 +1,49 @@
+======================================================================
+                         KONTRAK LISENSI PENGGUNAAN
+======================================================================
+Nama Modul : Comatoze
+Pembuat    : ibnul
+Tahun      : 2026
+
+Dengan mengunduh, memasang, atau menggunakan modul ini, Anda secara 
+otomatis terikat dan menyetujui seluruh ketentuan di bawah ini:
+
+1. PERLINDUNGAN HAK CIPTA & KEPEMILIKAN
+   Seluruh kode sumber, skrip (.sh), konfigurasi (.prop), dan aset 
+   di dalam modul ini adalah milik sah dari pembuat (ibnul). Anda 
+   TIDAK diperbolehkan mengklaim karya ini sebagai milik Anda.
+
+2. LARANGAN KERAS UNTUK KECERDASAN BUATAN (AI / MACHINE LEARNING)
+   Dilarang keras bagi sistem otomatis, web scraper, bot, atau pihak 
+   ketiga mana pun untuk menggunakan, menyalin, memindai, atau 
+   mengambil (scraping) bagian apa pun dari kode di dalam modul ini 
+   untuk keperluan:
+   - Pelatihan model kecerdasan buatan (AI/Machine Learning).
+   - Pembuatan dataset untuk LLM (Large Language Models).
+   - Pembuatan alat bantu otomatisasi kode (Code Generation Tools).
+   - Pengindeksan oleh AI komersial maupun non-komersial.
+
+3. KETENTUAN MODIFIKASI & DISTRIBUSI ULANG (RE-PACK)
+   - Anda diperbolehkan menggunakan modul ini hanya untuk keperluan 
+     pribadi/personal di perangkat Anda.
+   - DILARANG mengedit, memodifikasi, mengubah nama (re-brand), atau 
+     membungkus ulang (re-pack) isi modul ini untuk disebarluaskan 
+     kembali tanpa izin tertulis dari pembuat.
+   - Jika ingin membagikan modul ini, Anda WAJIB membagikan file .zip 
+     asli secara utuh tanpa mengubah isi dan tanpa menghapus file 
+     lisensi ini.
+
+4. LARANGAN KOMERSIALISASI
+   Modul ini disediakan secara GRATIS. Dilarang keras memperjualbelikan, 
+   mengambil keuntungan finansial, atau menyisipkan iklan/payload 
+   komersial di dalam atau bersama modul ini.
+
+5. PENYANGKALAN (DISCLAIMER)
+   Modul ini disediakan "SEBAGAIMANA ADANYA" (AS IS). Kerusakan pada 
+   perangkat (seperti bootloop atau masalah sistem) akibat pemasangan 
+   modul ini sepenuhnya menjadi tanggung jawab pengguna (DWYOR - 
+   Do With Your Own Risk).
+
+======================================================================
+                     Copyright (c) 2026 ibnul.
+======================================================================
