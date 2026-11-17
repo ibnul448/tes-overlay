@@ -2130,39 +2130,53 @@ chipz_line(){ echo "CHIPZ|$(grep -qa SOC_MODEL $MODD/zygisk/arm64-v8a.so 2>/dev/
 # `ostat` mencetak satu baris per detik: OV|fps|cpu%|gpu%|baterai%|suhuBat|ram%|cpuMHz|gpuMHz|ping|paket|suhuCPU
 # Hampir semuanya builtin shell (read/case/aritmetika); fork hanya: sleep, dan (tiap 5 dtk) dumpsys/ping bila fitur dipakai.
 ov_num(){ OVN=; [ -r "$1" ] || return 1; read -r _t 2>/dev/null < "$1" || return 1; _t=${_t#"${_t%%[0-9]*}"}; OVN=${_t%%[!0-9]*}; [ -n "$OVN" ]; }
-ov_gpu_find(){ _OVG=
-  for f in /sys/kernel/ged/hal/gpu_utilization /sys/module/ged/parameters/gpu_loading /proc/mali/utilization /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage /sys/kernel/gpu/gpu_busy /sys/class/devfreq/*mali*/load /sys/class/devfreq/*gpu*/load; do
-    [ -r "$f" ] && ov_num "$f" && { _OVG=$f; return 0; }
-  done; return 1; }
+ov_gpu_find(){ _OVGL=
+  for f in /sys/kernel/ged/hal/gpu_utilization /sys/module/ged/parameters/gpu_loading /sys/kernel/ged/hal/current_loading /proc/mali/utilization /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage /sys/kernel/gpu/gpu_busy /sys/class/devfreq/*mali*/load /sys/class/devfreq/*gpu*/load; do
+    [ -r "$f" ] && ov_num "$f" && _OVGL="$_OVGL $f"
+  done; [ -n "$_OVGL" ]; }
+ov_gpu_read(){ OVGV=; for f in $_OVGL; do ov_num "$f" || continue; OVGV=$OVN; [ "$OVN" -gt 0 ] && break; done; [ -n "$OVGV" ]; }
 ov_gfreq_find(){ _OVF=; _OVD=1000000
   for f in /sys/class/devfreq/*mali*/cur_freq /sys/class/devfreq/*gpu*/cur_freq /sys/class/kgsl/kgsl-3d0/gpuclk; do
     [ -r "$f" ] && { _OVF=$f; return 0; }
   done; return 1; }
-ov_layer(){ # <paket> -> layer SurfaceFlinger milik paket (SurfaceView lebih diutamakan)
-  _L=; _B=
+ov_layers(){ # <paket> -> OVLS: semua layer SurfaceFlinger milik paket (satu per baris)
+  OVLS=
   while IFS= read -r l; do
-    case $l in *"$1"*) case $l in *SurfaceView*|*BLAST*) _B=$l; break;; esac; [ -n "$_L" ] || _L=$l;; esac
+    case $l in *"$1"*) OVLS="$OVLS$l
+";; esac
   done <<EOT
 $(dumpsys SurfaceFlinger --list 2>/dev/null)
 EOT
-  OVL=${_B:-$_L}; }
-ov_fps(){ # <layer> -> FPS 1 detik terakhir (OVFPS kosong bila tak terbaca)
-  OVFPS=; _n=0; _mx=0; _ts=
+}
+ov_cnt(){ OVC=0; _m=0; for t in $1; do [ "$t" -gt "$_m" ] && _m=$t; done; [ "$_m" -gt 0 ] || return 1
+  _lo=$((_m-1000000000)); for t in $1; do [ "$t" -gt "$_lo" ] && OVC=$((OVC+1)); done; return 0; }
+ov_fps(){ # <layer> -> OVFPS = frame dalam 1 detik terakhir layer itu (kolom desired/present/ready, ambil yang terbanyak)
+  OVFPS=; _t1=; _t2=; _t3=
   while read -r a b c; do
-    case $b in ''|*[!0-9]*) continue;; esac
-    [ ${#b} -gt 18 ] && continue
-    [ "$b" -gt 0 ] || continue
-    _ts="$_ts $b"; [ "$b" -gt "$_mx" ] && _mx=$b
+    case $a in ''|*[!0-9]*) ;; *) [ ${#a} -le 18 ] && [ "$a" -gt 0 ] && _t1="$_t1 $a";; esac
+    case $b in ''|*[!0-9]*) ;; *) [ ${#b} -le 18 ] && [ "$b" -gt 0 ] && _t2="$_t2 $b";; esac
+    case $c in ''|*[!0-9]*) ;; *) [ ${#c} -le 18 ] && [ "$c" -gt 0 ] && _t3="$_t3 $c";; esac
   done <<EOT
 $(dumpsys SurfaceFlinger --latency "$1" 2>/dev/null | tail -n +2)
 EOT
-  [ "$_mx" -gt 0 ] || return 1
-  _lo=$((_mx-1000000000))
-  for t in $_ts; do [ "$t" -gt "$_lo" ] && _n=$((_n+1)); done
+  _n=0; _ok=
+  ov_cnt "$_t2" && { _ok=1; _n=$OVC; }
+  ov_cnt "$_t3" && { _ok=1; [ $OVC -gt $_n ] && _n=$OVC; }
+  ov_cnt "$_t1" && { _ok=1; [ $OVC -gt $_n ] && _n=$OVC; }
+  [ -n "$_ok" ] || return 1
   [ $_n -gt 240 ] && _n=240
-  OVFPS=$_n; }
+  OVFPS=$_n; return 0; }
+ov_best(){ # <paket> -> _lay = layer dengan FPS tertinggi, OVFPS = FPS-nya
+  ov_layers "$1"; _lay=; _bn=-1
+  while IFS= read -r l; do
+    [ -n "$l" ] || continue
+    ov_fps "$l" && [ "$OVFPS" -gt "$_bn" ] && { _bn=$OVFPS; _lay=$l; }
+  done <<EOT
+$OVLS
+EOT
+  [ -n "$_lay" ] && OVFPS=$_bn; [ -n "$_lay" ]; }
 ostat(){
-  _CC=0; _CT=0; i=0; _pkg=; _lay=; _ping=; _NETC=$(getcfg OV_NET); _gl=; _fl=
+  _CC=0; _CT=0; i=0; _pkg=; _lay=; _ping=; _NETC=$(getcfg OV_NET); OVFPS=
   ov_gpu_find; ov_gfreq_find
   while :; do
     # CPU %
@@ -2173,7 +2187,7 @@ ostat(){
     # CPU MHz (tertinggi antar policy)
     mx=0; for p in /sys/devices/system/cpu/cpufreq/policy*/scaling_cur_freq; do ov_num $p && [ "$OVN" -gt "$mx" ] && mx=$OVN; done; cmhz=$((mx/1000))
     # GPU
-    gpu=; [ -n "$_OVG" ] && ov_num "$_OVG" && gpu=$OVN; [ -n "$gpu" ] && [ "$gpu" -gt 100 ] && gpu=100
+    gpu=; ov_gpu_read && gpu=$OVGV; [ -n "$gpu" ] && [ "$gpu" -gt 100 ] && gpu=100
     gmhz=; [ -n "$_OVF" ] && ov_num "$_OVF" && gmhz=$((OVN/_OVD))
     # baterai, suhu, RAM
     ov_num $BAT/capacity && bat=$OVN; ov_num $BAT/temp && bt=$((OVN/10))
@@ -2187,10 +2201,15 @@ ostat(){
         _np=$(dumpsys window 2>/dev/null | grep -m1 mCurrentFocus); _np=${_np##* }; _np=${_np%%/*}; _np=${_np%\}}
       fi
       [ "$_np" != "$_pkg" ] && { _pkg=$_np; _lay=; }
-      [ -n "$_pkg" ] && [ -z "$_lay" ] && { ov_layer "$_pkg"; _lay=$OVL; }
       if [ "$_NETC" != off ]; then _ping=; _p=$(ping -c1 -W1 1.1.1.1 2>/dev/null); case $_p in *time=*) _p=${_p#*time=}; _p=${_p%% *}; _ping=${_p%%.*};; esac; fi
     fi
-    fps=; if [ -n "$_lay" ]; then ov_fps "$_lay" && fps=$OVFPS || _lay=; fi
+    fps=
+    if [ -n "$_pkg" ]; then
+      if [ -n "$_lay" ] && ov_fps "$_lay"; then :; else _lay=; OVFPS=; fi
+      # layer belum ketemu / FPS rendah (mungkin layer salah): pindai ulang semua layer paket tiap 5 dtk
+      if [ -z "$_lay" ] || { [ "${OVFPS:-0}" -lt 20 ] && [ $((i%5)) -eq 0 ]; }; then ov_best "$_pkg"; fi
+      [ -n "$_lay" ] && fps=$OVFPS
+    fi
     echo "OV|$fps|$cpu|$gpu|$bat|$bt|$ram|$cmhz|$gmhz|$_ping|$_pkg|$ct"
     i=$((i+1)); [ -n "$OVONCE" ] && [ $i -ge 2 ] && return 0; sleep 1
   done
@@ -2201,6 +2220,27 @@ ov_perm(){ # beri izin overlay + notifikasi ke aplikasi Comatoze tanpa dialog (r
   appops set com.comatoze RUN_IN_BACKGROUND allow >/dev/null 2>&1
   cmd deviceidle whitelist +com.comatoze >/dev/null 2>&1; }
 ov_boot(){ sleep 30; overlay on >/dev/null 2>&1; }
+ovstate(){ # status ringan untuk panel overlay: OVS|mode|hz|fpsgooff|nothermal|touchboost|gamednd|gamebypass|perfx|gmslimit|gameclean|gameprofile|aggrdoze
+  cfgv MODE; _m=$CV; cfgv RHZ; _h=$CV; _o="OVS|$_m|$_h"
+  for _k in fpsgooff nothermal touchboost gamednd gamebypass perfx gmslimit gameclean gameprofile aggrdoze; do _o="$_o|$(fstate $_k)"; done
+  echo "$_o"; }
+ovact(){ case $1 in
+  clean) am kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; echo "OK|RAM dibersihkan";;
+  trim) pm trim-caches 8G >/dev/null 2>&1; echo "OK|cache dipangkas";;
+  killbg) gclean "$(game_fg)"; echo "OK|aplikasi latar dihentikan";;
+  shot) f=/sdcard/Pictures/Comatoze_$(date +%Y%m%d_%H%M%S).png; mkdir -p /sdcard/Pictures; screencap -p $f && echo "OK|tersimpan $f" || echo "ERR|gagal";;
+  *) echo "ERR|aksi tidak dikenal";;
+esac; }
+ovdiag(){ # laporan untuk debugging overlay: kirim hasilnya bila FPS/GPU tidak terbaca
+  echo "== node GPU"; ov_gpu_find; for f in $_OVGL; do echo "$f = $(head -c 120 $f 2>/dev/null | tr '\n' ' ')"; done; [ -n "$_OVGL" ] || ls /sys/kernel/ged/hal /sys/class/devfreq 2>&1 | head -30
+  set -- $(game_fgp); p=$1
+  if [ -z "$p" ]; then p=$(dumpsys window 2>/dev/null | grep -m1 mCurrentFocus); p=${p##* }; p=${p%%/*}; p=${p%\}}; fi
+  echo "== paket depan: $p"; ov_layers "$p"; echo "== layer:"; echo "$OVLS"
+  echo "== hasil FPS per layer:"
+  while IFS= read -r l; do [ -n "$l" ] || continue; ov_fps "$l" && echo "fps=$OVFPS  <- $l" || echo "kosong <- $l"; done <<EOT
+$OVLS
+EOT
+  echo "== contoh --latency layer pertama:"; l=$(echo "$OVLS" | head -n 1); dumpsys SurfaceFlinger --latency "$l" 2>&1 | head -n 6; }
 ovnet(){ setcfg OV_NET "$1"; echo "OK|ping $1"; }
 overlay(){ case $1 in
   on)  ov_perm; am start-foreground-service --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1 || am startservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; setcfg OV_ON on; echo "OK|overlay aktif";;
@@ -2353,6 +2393,9 @@ case "$1" in
   overlay) overlay $2;;
   ov_boot) ov_boot;;
   ovnet) ovnet $2;;
+  ovstate) ovstate;;
+  ovact) ovact $2;;
+  ovdiag) ovdiag 2>&1 | tee $DIR/ovdiag.txt;;
   dexopt) case $2 in start) dexopt_start $3;; stop) dexopt_stop;; *) echo "ERR|perintah dexopt tidak dikenal";; esac;;
   dexopt_run) dexopt_run $2;;
   adoze_wd) adoze_wd;;

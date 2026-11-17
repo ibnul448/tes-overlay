@@ -20,13 +20,17 @@ public final class Root {
         public String out() { return new String(raw, java.nio.charset.StandardCharsets.UTF_8); }
     }
 
-    public static Res exec(String cmd) {
+    /** Jalankan perintah root. stdin ditutup (supaya `cmd`/`settings` tidak menunggu input) dan ada batas waktu 25 dtk. */
+    public static Res exec(String cmd) { return exec(cmd, 25); }
+
+    public static Res exec(String cmd, int timeoutSec) {
         final Res r = new Res();
         try {
-            final Process p = new ProcessBuilder("su", "-c", cmd).start();
+            final Process p = new ProcessBuilder("su", "-c", "exec </dev/null; " + cmd).start();
             p.getOutputStream().close();
             final StringBuilder eb = new StringBuilder();
-            Thread t = new Thread(new Runnable() {
+            final ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            Thread te = new Thread(new Runnable() {
                 @Override public void run() {
                     try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getErrorStream()))) {
                         String l;
@@ -34,11 +38,25 @@ public final class Root {
                     } catch (IOException ignored) { }
                 }
             });
-            t.start();
-            r.raw = readAll(p.getInputStream());
-            r.code = p.waitFor();
-            t.join(500);
-            r.err = eb.toString();
+            Thread to = new Thread(new Runnable() {
+                @Override public void run() {
+                    try {
+                        InputStream in = p.getInputStream();
+                        byte[] buf = new byte[16384];
+                        int n;
+                        while ((n = in.read(buf)) > 0) { synchronized (bo) { bo.write(buf, 0, n); } }
+                    } catch (IOException ignored) { }
+                }
+            });
+            te.start();
+            to.start();
+            boolean done = p.waitFor(timeoutSec, java.util.concurrent.TimeUnit.SECONDS);
+            if (!done) { p.destroyForcibly(); r.code = 124; r.err = "timeout"; }
+            else r.code = p.exitValue();
+            to.join(400);
+            te.join(200);
+            synchronized (bo) { r.raw = bo.toByteArray(); }
+            if (done) r.err = eb.toString();
         } catch (Exception e) {
             r.code = -1;
             r.err = String.valueOf(e);
