@@ -1,0 +1,51 @@
+name: Build Comatoze v2.37
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cek sintaks skrip modul
+        run: |
+          sh -n module/system/bin/ultrapower
+          sh -n module/customize.sh
+          sh -n module/service.sh
+          sh -n module/post-fs-data.sh
+          sh -n module/uninstall.sh
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Bangun APK manager + overlay
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Masukkan APK ke modul
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+          echo "APK: $APK"
+          cp "$APK" module/apk/comatoze.apk
+          unzip -l module/apk/comatoze.apk | grep -E "classes.dex|AndroidManifest"
+          test -f module/zygisk/arm64-v8a.so
+
+      - name: Zip modul siap flash
+        run: |
+          cd module
+          zip -r9 ../Comatoze-v2_37_0-beta.zip . -x '*.git*'
+          cd ..
+          unzip -l Comatoze-v2_37_0-beta.zip | tail -n 3
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Comatoze-v2_37_0-beta
+          path: Comatoze-v2_37_0-beta.zip
+          if-no-files-found: error
