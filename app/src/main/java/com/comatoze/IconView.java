@@ -19,6 +19,7 @@ public class IconView extends View {
     private final RectF r = new RectF();
     private int type;
     private int color = 0xFFB8BEC9;
+    private boolean filled;
 
     public IconView(Context c, int type) {
         super(c);
@@ -29,6 +30,7 @@ public class IconView extends View {
 
     public void setType(int t) { type = t; invalidate(); }
     public void setColor(int c) { color = c; invalidate(); }
+    public void setFilled(boolean f) { filled = f; invalidate(); }
 
     private void stroke() { p.setStyle(Paint.Style.STROKE); }
     private void fill() { p.setStyle(Paint.Style.FILL); }
@@ -60,7 +62,8 @@ public class IconView extends View {
                 for (int i = 0; i < 2; i++) for (int j = 0; j < 2; j++) {
                     float x0 = cx - b + i * (b + g), y0 = cy - b + j * (b + g);
                     r.set(x0, y0, x0 + b - g, y0 + b - g);
-                    cv.drawRoundRect(r, s * 0.03f, s * 0.03f, p);
+                    if (filled) fill(); else stroke();
+                    cv.drawRoundRect(r, s * 0.06f, s * 0.06f, p);
                 }
                 break; }
             case PLUS:

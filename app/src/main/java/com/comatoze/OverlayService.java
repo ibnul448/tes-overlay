@@ -65,7 +65,10 @@ public class OverlayService extends Service {
     private static final int BAD = Color.parseColor("#F0524F");
     private static final int GOOD = Color.parseColor("#33D17A");
     private static final int TABS = 4;
-    private static final int RAIL_W = 62, BODY_W = 372, BODY_H = 300, HEAD_H = 26, APPS_H = 52;
+    private static final int ECO2_C = Color.parseColor("#B6F04A");
+    private static final int BAL2_C = Color.parseColor("#27D3F5");
+    private static final int PERF2_C = Color.parseColor("#FFC247");
+    private static final int RAIL_W = 80, BODY_W = 384, BODY_H = 330, HEAD_H = 34, APPS_H = 56;
     private static final int PANEL_W = 8 + BODY_W + 8, PANEL_H = 8 + HEAD_H + 4 + BODY_H + 8;
 
     private static final String[] OVS_ORDER = {"fpsgooff", "nothermal", "touchboost", "gamednd", "gamebypass", "perfx", "gmslimit", "gameclean", "gameprofile", "aggrdoze", "dnd", "wifilatency", "hzforce", "lessdbg", "datasaver", "def"};
@@ -87,7 +90,6 @@ public class OverlayService extends Service {
     private FrameLayout subPage;
     private GradientDrawable pillBg;
     private TextView pillNum, hdrClock, hdrBat, status, logo, fpsNum, infoTv, subTitle, hzLbl, recLbl;
-    private IconView logoIc;
     private LinearLayout rail;
     private final LinearLayout[] railItem = new LinearLayout[TABS];
     private final IconView[] railIc = new IconView[TABS];
@@ -103,7 +105,8 @@ public class OverlayService extends Service {
     private final HashMap<String, Boolean> tstate = new HashMap<String, Boolean>();
     private String curMode = "", curHz = "", curPkg = "";
     private boolean curDef, subOpen;
-    private int accent = BAL_C, curTab = 0;
+    private int accent = BAL_C, accent2 = BAL2_C, curTab = 0;
+    private LogoView logoView;
     private float sc = 1f, density = 1f;
     private int scrW, scrH;
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -121,6 +124,7 @@ public class OverlayService extends Service {
     private int dp(float v) { return (int) (v * density * sc + 0.5f); }
     private static int alpha(int c, int a) { return (a << 24) | (c & 0x00FFFFFF); }
     private static int accentFor(String m) { return "perf".equals(m) ? PERF_C : "eco".equals(m) ? ECO_C : BAL_C; }
+    private static int accent2For(int a) { return a == PERF_C ? PERF2_C : a == ECO_C ? ECO2_C : BAL2_C; }
 
     private TextView tv(String text, float size, int color, boolean bold) {
         TextView t = new TextView(this);
@@ -293,30 +297,38 @@ public class OverlayService extends Service {
 
     // ---------- header ----------
     private View buildHeader() {
+        FrameLayout wrap = new FrameLayout(this);
+        wrap.addView(new DecoView(this, 0), new FrameLayout.LayoutParams(-1, -1));
         LinearLayout h = new LinearLayout(this);
         h.setOrientation(LinearLayout.HORIZONTAL);
         h.setGravity(Gravity.CENTER_VERTICAL);
-        h.setPadding(dp(4), 0, 0, 0);
-        logoIc = new IconView(this, IconView.GAUGE);
-        h.addView(logoIc, new LinearLayout.LayoutParams(dp(22), dp(22)));
-        logo = tv("COMATOZE", 14, Color.WHITE, true);
+        h.setPadding(dp(12), 0, dp(6), 0);
+        logoView = new LogoView(this);
+        h.addView(logoView, new LinearLayout.LayoutParams(dp(26), dp(26)));
+        logo = tv("COMATOZE", 15, Color.WHITE, true);
         logo.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
-        logo.setLetterSpacing(0.1f);
-        h.addView(logo, new LinearLayout.LayoutParams(0, -2, 1f));
+        logo.setLetterSpacing(0.14f);
+        logo.getPaint().setShader(new android.graphics.LinearGradient(0, 0, dp(110), 0, Color.WHITE, Color.parseColor("#9FB4D6"), android.graphics.Shader.TileMode.CLAMP));
+        h.addView(logo, lpw(0, -2, 8, 0, 0, 0));
+        ((LinearLayout.LayoutParams) logo.getLayoutParams()).weight = 1f;
         IconView wf = new IconView(this, IconView.WIFI);
         wf.setColor(TXT);
-        h.addView(wf, lpw(dp(16), dp(16), 0, 0, 6, 0));
+        h.addView(wf, lpw(dp(16), dp(16), 0, 0, 8, 0));
+        IconView bt = new IconView(this, IconView.BATTERY);
+        bt.setColor(GOOD);
+        h.addView(bt, lpw(dp(18), dp(18), 0, 0, 1, 0));
         hdrBat = tv("--%", 9, TXT, true);
         h.addView(hdrBat, lpw(-2, -2, 0, 0, 8, 0));
-        hdrClock = tv("--:--", 11, TXT, true);
+        hdrClock = tv("--:--", 12, TXT, true);
         hdrClock.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
         h.addView(hdrClock, lpw(-2, -2, 0, 0, 8, 0));
         IconView mn = new IconView(this, IconView.MINUS);
         mn.setColor(MUTED);
         mn.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { setExpanded(false); } });
         h.addView(mn, new LinearLayout.LayoutParams(dp(24), dp(24)));
-        attachDrag(h, false);
-        return h;
+        wrap.addView(h, new FrameLayout.LayoutParams(-1, -1));
+        attachDrag(wrap, false);
+        return wrap;
     }
 
     // ---------- baris app jendela mengambang ----------
@@ -330,6 +342,7 @@ public class OverlayService extends Service {
         appsRow.setPadding(dp(4), 0, dp(4), 0);
         hs.addView(appsRow, new FrameLayout.LayoutParams(-2, -1));
         refreshApps();
+        seedApps();
         return hs;
     }
 
@@ -338,6 +351,26 @@ public class OverlayService extends Service {
         String s = prefs().getString("fl", "");
         for (String p : s.split(",")) if (p.matches("[A-Za-z0-9_.]+")) l.add(p);
         return l;
+    }
+
+    /** Pertama kali: isi baris app dengan game yang terdaftar di manager (maks 8). */
+    private void seedApps() {
+        if (prefs().contains("fl")) return;
+        new Thread(new Runnable() { @Override public void run() {
+            final String out = Root.sh("cat /data/adb/ultrapower/games.txt 2>/dev/null");
+            ui.post(new Runnable() { @Override public void run() {
+                if (root == null || prefs().contains("fl")) return;
+                ArrayList<String> l = new ArrayList<String>();
+                PackageManager pm = getPackageManager();
+                for (String p : out.split("\n")) {
+                    p = p.trim();
+                    if (!p.matches("[A-Za-z0-9_.]+") || l.size() >= 8) continue;
+                    try { pm.getApplicationInfo(p, 0); l.add(p); } catch (Exception ignored) { }
+                }
+                saveFloat(l);
+                refreshApps();
+            } });
+        } }).start();
     }
 
     private void saveFloat(ArrayList<String> l) { prefs().edit().putString("fl", TextUtils.join(",", l)).apply(); }
@@ -357,7 +390,9 @@ public class OverlayService extends Service {
                 refreshApps(); flash("APP DIHAPUS DARI BARIS INI", MUTED, 1800);
                 return true;
             } });
-            appsRow.addView(iv, lpw(dp(44), dp(44), 0, 0, 12, 0));
+            iv.setBackground(rounded(Color.TRANSPARENT, 12, 0, 0));
+            iv.setClipToOutline(true);
+            appsRow.addView(iv, lpw(dp(46), dp(46), 0, 0, 14, 0));
         }
         FrameLayout add = new FrameLayout(this);
         add.setPadding(dp(12), dp(12), dp(12), dp(12));
@@ -366,7 +401,7 @@ public class OverlayService extends Service {
         plus.setColor(TXT);
         add.addView(plus, new FrameLayout.LayoutParams(-1, -1));
         add.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { openSub("float"); } });
-        appsRow.addView(add, lpw(dp(44), dp(44), 0, 0, 4, 0));
+        appsRow.addView(add, lpw(dp(46), dp(46), 0, 0, 4, 0));
     }
 
     // ---------- rail menu (ikut bergeser saat daftar digulir) ----------
@@ -379,10 +414,10 @@ public class OverlayService extends Service {
             LinearLayout it = new LinearLayout(this);
             it.setOrientation(LinearLayout.VERTICAL);
             it.setGravity(Gravity.CENTER);
-            it.setPadding(dp(1), dp(8), dp(1), dp(8));
+            it.setPadding(dp(1), dp(10), dp(1), dp(10));
             railIc[i] = new IconView(this, TAB_ICONS[i]);
-            it.addView(railIc[i], new LinearLayout.LayoutParams(dp(26), dp(26)));
-            railTx[i] = tv(TAB_NAMES[i], 8, MUTED, false);
+            it.addView(railIc[i], new LinearLayout.LayoutParams(dp(30), dp(30)));
+            railTx[i] = tv(TAB_NAMES[i], 9.5f, MUTED, false);
             railTx[i].setGravity(Gravity.CENTER);
             it.addView(railTx[i], lpw(-2, -2, 0, 3, 0, 0));
             it.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { goSection(idx); } });
@@ -403,7 +438,7 @@ public class OverlayService extends Service {
     private void syncRail() {
         if (rail == null) return;
         int sy = scroll.getScrollY();
-        int appsBottom = dp(APPS_H + 8);
+        int appsBottom = dp(APPS_H + 14);
         rail.setTranslationY(Math.max(dp(4), appsBottom - sy));
         int cur = 0;
         int ref = sy + scroll.getHeight() / 3;
@@ -418,6 +453,7 @@ public class OverlayService extends Service {
             if (railItem[i] == null) continue;
             boolean sel = i == curTab;
             railIc[i].setColor(sel ? Color.WHITE : MUTED);
+            railIc[i].setFilled(sel);
             railTx[i].setTextColor(sel ? Color.WHITE : MUTED);
             railTx[i].setTypeface(Typeface.create("sans-serif-medium", sel ? Typeface.BOLD : Typeface.NORMAL));
         }
@@ -479,28 +515,34 @@ public class OverlayService extends Service {
     // ---------- Seksi 0: Fitur Dasar ----------
     private LinearLayout buildSec0() {
         LinearLayout c = section(0);
-        // dial CPU & GPU + FPS
-        FrameLayout dials = new FrameLayout(this);
+        // garis pemisah bertakik + FPS
+        FrameLayout notch = new FrameLayout(this);
+        notch.addView(new DecoView(this, 1), new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout fl = new LinearLayout(this);
+        fl.setOrientation(LinearLayout.HORIZONTAL);
+        fl.setGravity(Gravity.BOTTOM);
+        TextView ft = tv("FPS ", 10, MUTED, true);
+        ft.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
+        fl.addView(ft, lpw(-2, -2, 0, 0, 3, 3));
+        fpsNum = tv("--", 22, Color.WHITE, true);
+        fpsNum.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
+        fl.addView(fpsNum);
+        FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(-2, -2, Gravity.END | Gravity.BOTTOM);
+        fp.rightMargin = dp(8);
+        notch.addView(fl, fp);
+        c.addView(notch, lpw(-1, dp(30), 0, 0, 0, 0));
+
+        // dial CPU & GPU
         LinearLayout gr = new LinearLayout(this);
         gr.setOrientation(LinearLayout.HORIZONTAL);
         gr.setGravity(Gravity.CENTER);
         for (int i = 0; i < 2; i++) {
             gauge[i] = new RingGauge(this);
-            gr.addView(gauge[i], lpwt(1f, 0, 14, 0, 0));
-            gauge[i].getLayoutParams().height = dp(124);
+            gauge[i].setSide(i == 0 ? 1 : -1);
+            gr.addView(gauge[i], lpwt(1f, 0, 0, 0, 0));
+            gauge[i].getLayoutParams().height = dp(138);
         }
-        dials.addView(gr, new FrameLayout.LayoutParams(-1, -2));
-        LinearLayout fl = new LinearLayout(this);
-        fl.setOrientation(LinearLayout.HORIZONTAL);
-        fl.setGravity(Gravity.BOTTOM);
-        TextView ft = tv("FPS ", 9, MUTED, true);
-        ft.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
-        fl.addView(ft, lpw(-2, -2, 0, 0, 2, 2));
-        fpsNum = tv("--", 20, Color.WHITE, true);
-        fpsNum.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
-        fl.addView(fpsNum);
-        dials.addView(fl, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END));
-        c.addView(dials, lpw(-1, -2, 0, 0, 0, 0));
+        c.addView(gr, lpw(-1, -2, 0, 0, 0, 0));
         infoTv = tv("", 9, MUTED, false);
         infoTv.setGravity(Gravity.CENTER);
         c.addView(infoTv, lpw(-1, -2, 0, 2, 0, 0));
@@ -515,7 +557,7 @@ public class OverlayService extends Service {
             TextView t = tv(MODE_NAMES[i], 10.5f, MUTED, false);
             t.setGravity(Gravity.CENTER);
             t.setSingleLine(true);
-            t.setPadding(dp(2), dp(9), dp(2), dp(9));
+            t.setPadding(dp(2), dp(10), dp(2), dp(10));
             t.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { setMode(k, v); } });
             modeTx[i] = t;
             seg.addView(t, lpwt(1f, 0, 0, 0, 0));
@@ -533,12 +575,12 @@ public class OverlayService extends Service {
             cell.setOrientation(LinearLayout.VERTICAL);
             cell.setGravity(Gravity.CENTER_HORIZONTAL);
             FrameLayout b = new FrameLayout(this);
-            b.setPadding(dp(14), dp(14), dp(14), dp(14));
+            b.setPadding(dp(15), dp(15), dp(15), dp(15));
             quickIc[i] = new IconView(this, qi[i]);
             b.addView(quickIc[i], new FrameLayout.LayoutParams(-1, -1));
             b.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { quick(k, v); } });
             quickBtn[i] = b;
-            cell.addView(b, new LinearLayout.LayoutParams(dp(48), dp(48)));
+            cell.addView(b, new LinearLayout.LayoutParams(dp(52), dp(52)));
             TextView l = tv(ql[i], 8.5f, MUTED, false);
             l.setGravity(Gravity.CENTER);
             quickLbl[i] = l;
@@ -754,11 +796,13 @@ public class OverlayService extends Service {
 
 
     // ---------- tema ----------
-    private void applyAccent(int a) {
-        accent = a;
+    private void applyAccent(int a) { applyAccent(a, accent2For(a)); }
+
+    private void applyAccent(int a, int b) {
+        accent = a; accent2 = b;
         if (pillBg != null) pillBg.setStroke(Math.max(1, dp(1)), alpha(a, 150));
-        for (RingGauge g : gauge) if (g != null) g.setAccent(a);
-        if (logoIc != null) logoIc.setColor(a);
+        if (gauge[0] != null) { gauge[0].setAccent(a); gauge[1].setAccent(b); }
+        if (logoView != null) logoView.setColors(a, b);
         if (bright != null) {
             bright.setProgressTintList(ColorStateList.valueOf(Color.WHITE));
             bright.setThumbTintList(ColorStateList.valueOf(Color.WHITE));
@@ -768,14 +812,16 @@ public class OverlayService extends Service {
     }
 
     private void animateAccent(final int to) {
-        if (to == accent) return;
-        final int from = accent;
+        final int to2 = accent2For(to);
+        if (to == accent && to2 == accent2) return;
+        final int from = accent, from2 = accent2;
         final ArgbEvaluator ev = new ArgbEvaluator();
         ValueAnimator va = ValueAnimator.ofFloat(0f, 1f);
         va.setDuration(350);
         va.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
             @Override public void onAnimationUpdate(ValueAnimator an) {
-                applyAccent((Integer) ev.evaluate((Float) an.getAnimatedValue(), from, to));
+                float t = (Float) an.getAnimatedValue();
+                applyAccent((Integer) ev.evaluate(t, from, to), (Integer) ev.evaluate(t, from2, to2));
             }
         });
         va.start();
@@ -792,8 +838,8 @@ public class OverlayService extends Service {
         for (int i = 0; i < 4; i++) {
             boolean sel = i == 0 ? curDef : (!curDef && MODE_KEYS[i].equals(curMode));
             if (sel) {
-                modeTx[i].setBackground(rounded(alpha(accent, 40), 7, accent, 1.5f));
-                modeTx[i].setTextColor(accent);
+                modeTx[i].setBackground(rounded(alpha(accent, 38), 7, accent, 1.5f));
+                modeTx[i].setTextColor(accent2);
             } else {
                 modeTx[i].setBackground(null);
                 modeTx[i].setTextColor(MUTED);

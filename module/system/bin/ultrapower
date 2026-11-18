@@ -2176,6 +2176,16 @@ EOT
   [ -n "$_ok" ] || return 1
   [ $_n -gt 240 ] && _n=240
   OVFPS=$_n; return 0; }
+ov_gfx(){ # <paket> -> OVFPS dari gfxinfo framestats (app HWUI: manager, browser, dll). Cadangan bila layer SurfaceFlinger kosong
+  OVFPS=; _tg=; _in=0
+  while IFS= read -r l; do
+    case $l in ---PROFILEDATA---) _in=$((1-_in)); continue;; esac
+    [ $_in = 1 ] || continue
+    case $l in 0,*) _f=${l%,}; _f=${_f##*,}; case $_f in ''|*[!0-9]*) ;; *) [ ${#_f} -le 18 ] && _tg="$_tg $_f";; esac;; esac
+  done <<EOT
+$(dumpsys gfxinfo "$1" framestats 2>/dev/null)
+EOT
+  ov_cnt "$_tg" || return 1; OVFPS=$OVC; return 0; }
 ov_scan(){ # pindai daftar layer di $OVLS (maks 15) -> _lay/OVFPS terbaik
   _lay=; _bn=-1; _c=0
   while IFS= read -r l; do
@@ -2199,7 +2209,7 @@ ov_best(){ # <paket> -> layer paket dengan FPS tertinggi; bila nama layer tak co
   ov_layers "$1"; ov_scan && return 0
   ov_layers_all; ov_scan; }
 ostat(){
-  _CC=0; _CT=0; i=0; _pkg=; _lay=; _ping=; _NETC=$(getcfg OV_NET); OVFPS=
+  _CC=0; _CT=0; i=0; _pkg=; _lay=; _gf=; _ping=; _NETC=$(getcfg OV_NET); OVFPS=
   ov_gpu_find; ov_gfreq_find
   _cmax=0; for p in /sys/devices/system/cpu/cpufreq/policy*/cpuinfo_max_freq; do ov_num $p && [ "$OVN" -gt "$_cmax" ] && _cmax=$OVN; done; _cmax=$((_cmax/1000))
   _gmax=; for f in /sys/class/devfreq/*mali*/max_freq /sys/class/devfreq/*gpu*/max_freq; do ov_num $f && { _gmax=$((OVN/1000000)); break; }; done
@@ -2234,6 +2244,11 @@ ostat(){
       # layer belum ketemu / FPS rendah (mungkin layer salah): pindai ulang semua layer paket tiap 5 dtk
       if [ -z "$_lay" ] || { [ "${OVFPS:-0}" -lt 20 ] && [ $((i%5)) -eq 0 ]; }; then ov_best "$_pkg"; fi
       [ -n "$_lay" ] && fps=$OVFPS
+      # cadangan: layer SurfaceFlinger tak memberi data -> hitung dari gfxinfo (tiap 2 dtk, hasil dipakai ulang di antaranya)
+      if [ -z "$fps" ]; then
+        [ $((i%2)) -eq 0 ] && { ov_gfx "$_pkg" && _gf=$OVFPS || _gf=; }
+        fps=$_gf
+      fi
     fi
     echo "OV|$fps|$cpu|$gpu|$bat|$bt|$ram|$cmhz|$gmhz|$_ping|$_pkg|$ct|$_cmax|$_gmax"
     i=$((i+1)); [ -n "$OVONCE" ] && [ $i -ge 2 ] && return 0; sleep 1
@@ -2323,6 +2338,8 @@ ovdiag(){ # laporan untuk debugging overlay: kirim hasilnya bila FPS/GPU tidak t
   while IFS= read -r l; do [ -n "$l" ] || continue; ov_fps "$l" && echo "fps=$OVFPS  <- $l" || echo "kosong <- $l"; done <<EOT
 $OVLS
 EOT
+  echo "== gfxinfo framestats ($p):"; if ov_gfx "$p"; then echo "fps=$OVFPS"; else echo "kosong"; fi
+  echo "== fpsgo_status:"; head -n 12 /sys/kernel/fpsgo/fstb/fpsgo_status 2>&1
   echo "== contoh --latency layer pertama:"; l=$(echo "$OVLS" | head -n 1); dumpsys SurfaceFlinger --latency "$l" 2>&1 | head -n 6; }
 ovnet(){ setcfg OV_NET "$1"; echo "OK|ping $1"; }
 overlay(){ case $1 in
