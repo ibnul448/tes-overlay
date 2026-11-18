@@ -11,7 +11,7 @@ import android.view.View;
 public class IconView extends View {
     public static final int GAUGE = 0, SLIDERS = 1, GRID = 2, PLUS = 3, CLOSE = 4, MINUS = 5, LEAF = 6, EQ = 7, FLAME = 8,
             TRASH = 9, CHIP = 10, DND = 11, HZ = 12, REC = 13, PULSE = 14, THERMO = 15, TOUCH = 16, BOLT = 17, BATTERY = 18,
-            PAD = 19, CLOUD = 20, MOON = 21, TARGET = 22, RAM = 23, SHOT = 24;
+            PAD = 19, CLOUD = 20, MOON = 21, TARGET = 22, RAM = 23, SHOT = 24, SUN = 25, BACK = 26, CHEV = 27, WIFI = 28, WINDOW = 29;
 
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
@@ -223,6 +223,36 @@ public class IconView extends View {
                 cv.drawLine(cx - 0.3f * u, cy - 0.6f * u, cx - 0.15f * u, cy - 0.9f * u, p);
                 cv.drawLine(cx - 0.15f * u, cy - 0.9f * u, cx + 0.15f * u, cy - 0.9f * u, p);
                 cv.drawLine(cx + 0.15f * u, cy - 0.9f * u, cx + 0.3f * u, cy - 0.6f * u, p);
+                break;
+            case SUN:
+                cv.drawCircle(cx, cy, 0.42f * u, p);
+                for (int i = 0; i < 8; i++) {
+                    double a = i * Math.PI / 4;
+                    cv.drawLine(cx + (float) Math.cos(a) * 0.7f * u, cy + (float) Math.sin(a) * 0.7f * u,
+                            cx + (float) Math.cos(a) * 1.0f * u, cy + (float) Math.sin(a) * 1.0f * u, p);
+                }
+                break;
+            case BACK:
+                cv.drawLine(cx + 0.9f * u, cy, cx - 0.9f * u, cy, p);
+                cv.drawLine(cx - 0.9f * u, cy, cx - 0.2f * u, cy - 0.7f * u, p);
+                cv.drawLine(cx - 0.9f * u, cy, cx - 0.2f * u, cy + 0.7f * u, p);
+                break;
+            case CHEV:
+                cv.drawLine(cx - 0.35f * u, cy - 0.8f * u, cx + 0.45f * u, cy, p);
+                cv.drawLine(cx + 0.45f * u, cy, cx - 0.35f * u, cy + 0.8f * u, p);
+                break;
+            case WIFI:
+                for (int i = 1; i <= 3; i++) {
+                    float rr = 0.4f * u * i;
+                    r.set(cx - rr, cy + 0.7f * u - rr, cx + rr, cy + 0.7f * u + rr);
+                    cv.drawArc(r, 225f, 90f, false, p);
+                }
+                fill(); cv.drawCircle(cx, cy + 0.7f * u, s * 0.05f, p);
+                break;
+            case WINDOW:
+                r.set(cx - 0.95f * u, cy - 0.75f * u, cx + 0.95f * u, cy + 0.75f * u);
+                cv.drawRoundRect(r, s * 0.05f, s * 0.05f, p);
+                cv.drawLine(cx - 0.95f * u, cy - 0.3f * u, cx + 0.95f * u, cy - 0.3f * u, p);
                 break;
             default:
                 break;
