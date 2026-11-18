@@ -2276,10 +2276,30 @@ ovrec(){ case $1 in
   stop) touch $DIR/recstop; pkill -2 screenrecord; echo "OK|stop";;
   *) echo "REC|$(getcfg REC_RES)|$(getcfg REC_BR)|$(getcfg REC_FPS)";;
 esac; }
-ovstate(){ # status ringan untuk panel overlay: OVS|mode|hz|fpsgooff|nothermal|touchboost|gamednd|gamebypass|perfx|gmslimit|gameclean|gameprofile|aggrdoze|dnd
+ovstate(){ # status ringan untuk panel overlay: OVS|mode|hz|fpsgooff|nothermal|touchboost|gamednd|gamebypass|perfx|gmslimit|gameclean|gameprofile|aggrdoze|dnd|wifilatency|hzforce|lessdbg|datasaver|def
   cfgv MODE; _m=$CV; cfgv RHZ; _h=$CV; _o="OVS|$_m|$_h"
-  for _k in fpsgooff nothermal touchboost gamednd gamebypass perfx gmslimit gameclean gameprofile aggrdoze dnd; do _o="$_o|$(fstate $_k)"; done
+  for _k in fpsgooff nothermal touchboost gamednd gamebypass perfx gmslimit gameclean gameprofile aggrdoze dnd wifilatency hzforce lessdbg datasaver; do _o="$_o|$(fstate $_k)"; done
+  cfgv OV_DEF; [ "$CV" = on ] && _o="$_o|on" || _o="$_o|off"
   echo "$_o"; }
+# Mode overlay: "default" = ikut setelan manager (profil per-game GPM_/GPH_ lalu profil global GP_MODE/GP_HZ, Hz per mode dari manager)
+ovmode(){ case $1 in
+  default) set -- $(game_fgp); _p=$1; _m=; _h=
+    [ -n "$_p" ] && { cfgv "GPM_$_p"; _m=$CV; cfgv "GPH_$_p"; _h=$CV; }
+    [ -n "$_m" ] || { cfgv GP_MODE; _m=$CV; }; [ -n "$_h" ] || { cfgv GP_HZ; _h=$CV; }
+    case $_m in perf|balance|eco) ;; *) _m=balance;; esac
+    set_mode $_m; game_sync
+    case $_h in ""|*[!0-9]*) ;; *) refresh $_h q >/dev/null 2>&1;; esac
+    setcfg OV_DEF on; echo "OK|default -> $_m";;
+  eco|balance|perf) setcfg OV_DEF off; set_mode $1; game_sync; echo "OK|$1";;
+  *) echo "ERR|mode tidak dikenal";;
+esac; }
+# Jendela mengambang (freeform) untuk sebuah app. Bergantung ROM: butuh dukungan freeform window.
+ovfloat(){ case $1 in ""|*[!A-Za-z0-9_.]*) echo "ERR|nama paket tidak valid"; return 1;; esac
+  sput global enable_freeform_support 1; sput global force_resizable_activities 1; sput global enable_non_resizable_multi_window 1
+  _a=$(cmd package resolve-activity --brief -c android.intent.category.LAUNCHER "$1" 2>/dev/null | tail -n 1)
+  case $_a in */*) ;; *) echo "ERR|activity peluncur tidak ketemu"; return 1;; esac
+  am start --windowingMode 5 -n "$_a" >/dev/null 2>&1 || cmd activity start-activity --windowingMode 5 -n "$_a" >/dev/null 2>&1 || { echo "ERR|ROM menolak jendela mengambang"; return 1; }
+  echo "OK|jendela mengambang $1"; }
 ovact(){ case $1 in
   clean) am kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; echo "OK|RAM dibersihkan";;
   trim) pm trim-caches 8G >/dev/null 2>&1; echo "OK|cache dipangkas";;
@@ -2415,7 +2435,7 @@ case "$1" in
   *) rm -f $DIR/c.t.* 2>/dev/null;;
 esac
 case "$1" in
-  mode) set_mode $2; game_sync;;
+  mode) setcfg OV_DEF off; set_mode $2; game_sync;;
   thermal) thermal $2;;
   thermal_check) for a in $(thermal_svcs); do echo "$a $(getprop init.svc.$a)"; done;;
   feat) feat $2 $3;;
@@ -2456,6 +2476,8 @@ case "$1" in
   ovrec) ovrec $2 $3 $4;;
   ovstate) ovstate;;
   ovact) ovact $2;;
+  ovmode) ovmode $2;;
+  ovfloat) ovfloat $2;;
   ovdiag) ovdiag 2>&1 | tee $DIR/ovdiag.txt;;
   dexopt) case $2 in start) dexopt_start $3;; stop) dexopt_stop;; *) echo "ERR|perintah dexopt tidak dikenal";; esac;;
   dexopt_run) dexopt_run $2;;
