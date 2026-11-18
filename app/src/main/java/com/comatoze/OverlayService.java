@@ -45,44 +45,50 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Overlay in-game bergaya panel game: header (logo, FPS, jam, baterai), baris app jendela mengambang,
- * rail 4 tab di kiri (Fitur Dasar, Alat Cepat, Anti-ganggu, Gameplay), dial CPU/GPU, mode, dan daftar fitur
- * yang bisa dilipat (ketuk baris panah untuk masuk ke penyesuaian tweaks). Ikon vektor, tanpa emoji.
+ * Overlay in-game bergaya panel XBoost: header (logo, sinyal, baterai, jam), baris app jendela mengambang,
+ * rail 4 menu di kiri yang ikut berpindah saat daftar digulir (Fitur Dasar, Alat Cepat, Anti-ganggu, Gameplay),
+ * dial CPU/GPU bercahaya, mode, tombol bulat, kecerahan, dan saklar fitur. Baris berpanah membuka sub-halaman
+ * penyesuaian tweaks. Ikon vektor, tanpa emoji. Data: `ultrapower ostat`; status tombol: `ultrapower ovstate`.
  */
 public class OverlayService extends Service {
-    private static final int ECO_C = Color.parseColor("#4CC38A");
-    private static final int BAL_C = Color.parseColor("#4A90FF");
-    private static final int PERF_C = Color.parseColor("#F0524F");
-    private static final int PANEL = Color.parseColor("#F2121316");
-    private static final int CARD = Color.parseColor("#1D1F25");
-    private static final int CARD2 = Color.parseColor("#2A2D34");
-    private static final int RAIL = Color.parseColor("#0D0E11");
-    private static final int LINE = Color.parseColor("#33FFFFFF");
+    private static final int ECO_C = Color.parseColor("#33D17A");
+    private static final int BAL_C = Color.parseColor("#2F8CFF");
+    private static final int PERF_C = Color.parseColor("#FF6A3D");
+    private static final int PANEL = Color.parseColor("#F4121620");
+    private static final int PANEL2 = Color.parseColor("#F40A0C11");
+    private static final int CARD = Color.parseColor("#181B23");
+    private static final int CARD2 = Color.parseColor("#252932");
+    private static final int LINE = Color.parseColor("#2AFFFFFF");
     private static final int TXT = Color.parseColor("#ECEFF4");
-    private static final int MUTED = Color.parseColor("#8E95A3");
+    private static final int MUTED = Color.parseColor("#8A91A0");
     private static final int WARN = Color.parseColor("#F2B24C");
     private static final int BAD = Color.parseColor("#F0524F");
-    private static final int GOOD = Color.parseColor("#4CC38A");
-    private static final int TABS = 4, SUB = 4, NPAGES = 5;
-    private static final int RAIL_W = 58, MAIN_W = 296, CONTENT_H = 270;
-    private static final int PANEL_W = 8 + RAIL_W + 8 + MAIN_W + 8, PANEL_H = 8 + 24 + 4 + 40 + 4 + CONTENT_H + 8;
+    private static final int GOOD = Color.parseColor("#33D17A");
+    private static final int TABS = 4;
+    private static final int RAIL_W = 62, BODY_W = 372, BODY_H = 300, HEAD_H = 26, APPS_H = 52;
+    private static final int PANEL_W = 8 + BODY_W + 8, PANEL_H = 8 + HEAD_H + 4 + BODY_H + 8;
 
     private static final String[] OVS_ORDER = {"fpsgooff", "nothermal", "touchboost", "gamednd", "gamebypass", "perfx", "gmslimit", "gameclean", "gameprofile", "aggrdoze", "dnd", "wifilatency", "hzforce", "lessdbg", "datasaver", "def"};
     private static final String[] MODE_KEYS = {"default", "eco", "balance", "perf"};
     private static final String[] MODE_NAMES = {"Default", "Eco", "Balance", "Performa"};
-    private static final String[] TAB_NAMES = {"Fitur\nDasar", "Alat\nCepat", "Anti-\nganggu", "Gameplay"};
+    private static final String[] TAB_NAMES = {"Fitur\nDasar", "Alat Akses\nCepat", "Anti-\nganggu", "Gameplay\nTambahan"};
     private static final int[] TAB_ICONS = {IconView.GRID, IconView.SLIDERS, IconView.DND, IconView.PAD};
     private static final int[] HZ = {60, 90, 120};
 
-    private static final class Sw { String id; FrameLayout track; View knob; }
+    private static final class Sw { String id; SkewSwitch view; }
 
     private WindowManager wm;
     private WindowManager.LayoutParams lp;
-    private FrameLayout root, content;
-    private LinearLayout pill, panel, appsRow, subBox, subHead;
+    private FrameLayout root, body;
+    private LinearLayout pill, panel, appsRow, subBox;
+    private ScrollView scroll;
+    private LinearLayout scrollCol;
+    private final LinearLayout[] sec = new LinearLayout[TABS];
+    private FrameLayout subPage;
     private GradientDrawable pillBg;
-    private TextView pillNum, hdrFps, hdrClock, hdrBat, status, logo, badge, fpsSub, subTitle, hzLbl, recLbl;
-    private final View[] pages = new View[NPAGES];
+    private TextView pillNum, hdrClock, hdrBat, status, logo, fpsNum, infoTv, subTitle, hzLbl, recLbl;
+    private IconView logoIc;
+    private LinearLayout rail;
     private final LinearLayout[] railItem = new LinearLayout[TABS];
     private final IconView[] railIc = new IconView[TABS];
     private final TextView[] railTx = new TextView[TABS];
@@ -90,15 +96,14 @@ public class OverlayService extends Service {
     private final TextView[] modeTx = new TextView[4];
     private final FrameLayout[] quickBtn = new FrameLayout[4];
     private final IconView[] quickIc = new IconView[4];
-    private IconView sunIc;
+    private final TextView[] quickLbl = new TextView[4];
     private SeekBar bright;
     private final ArrayList<Sw> sws = new ArrayList<Sw>();
     private final ArrayList<Sw> subSws = new ArrayList<Sw>();
     private final HashMap<String, Boolean> tstate = new HashMap<String, Boolean>();
     private String curMode = "", curHz = "", curPkg = "";
-    private boolean curDef;
-    private int accent = BAL_C;
-    private int page = 0, lastTab = 0;
+    private boolean curDef, subOpen;
+    private int accent = BAL_C, curTab = 0;
     private float sc = 1f, density = 1f;
     private int scrW, scrH;
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -195,7 +200,7 @@ public class OverlayService extends Service {
         scrW = getResources().getDisplayMetrics().widthPixels;
         scrH = getResources().getDisplayMetrics().heightPixels;
         float wDp = scrW / density, hDp = scrH / density;
-        sc = Math.max(0.55f, Math.min(1f, Math.min((wDp - 16) / PANEL_W, (hDp - 24) / (PANEL_H + 8))));
+        sc = Math.max(0.55f, Math.min(1f, Math.min((wDp - 16) / PANEL_W, (hDp - 24) / (PANEL_H + 6))));
 
         root = new FrameLayout(this);
 
@@ -218,33 +223,51 @@ public class OverlayService extends Service {
         // panel
         panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setBackground(rounded(PANEL, 20, LINE, 1));
+        GradientDrawable pbg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{PANEL, PANEL2});
+        pbg.setCornerRadius(dp(18));
+        pbg.setStroke(Math.max(1, dp(1)), LINE);
+        panel.setBackground(pbg);
         panel.setPadding(dp(8), dp(8), dp(8), dp(8));
         panel.setVisibility(View.GONE);
-        panel.addView(buildHeader(), new LinearLayout.LayoutParams(-1, dp(24)));
-        panel.addView(buildAppsRow(), lpw(-1, dp(40), 0, 4, 0, 4));
+        panel.addView(buildHeader(), new LinearLayout.LayoutParams(-1, dp(HEAD_H)));
 
-        LinearLayout body = new LinearLayout(this);
-        body.setOrientation(LinearLayout.HORIZONTAL);
-        body.addView(buildRail(), new LinearLayout.LayoutParams(dp(RAIL_W), dp(CONTENT_H)));
-        content = new FrameLayout(this);
-        pages[0] = tabScroll(buildTab0());
-        pages[1] = tabScroll(buildTab1());
-        pages[2] = tabScroll(buildTab2());
-        pages[3] = tabScroll(buildTab3());
-        pages[SUB] = buildSubPage();
-        for (int i = 0; i < NPAGES; i++) content.addView(pages[i], new FrameLayout.LayoutParams(-1, -1));
+        body = new FrameLayout(this);
+        scroll = new ScrollView(this);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        scrollCol = new LinearLayout(this);
+        scrollCol.setOrientation(LinearLayout.VERTICAL);
+        scrollCol.setPadding(0, 0, 0, dp(20));
+        scrollCol.addView(buildAppsRow(), lpw(-1, dp(APPS_H), 0, 4, 0, 0));
+        sec[0] = buildSec0();
+        sec[1] = buildSec1();
+        sec[2] = buildSec2();
+        sec[3] = buildSec3();
+        for (int i = 0; i < TABS; i++) scrollCol.addView(sec[i], lpw(-1, -2, RAIL_W + 8, i == 0 ? 6 : 14, 0, 0));
+        scroll.addView(scrollCol, new FrameLayout.LayoutParams(-1, -2));
+        body.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
+        rail = buildRail();
+        body.addView(rail, new FrameLayout.LayoutParams(dp(RAIL_W), -2));
+        subPage = buildSubPage();
+        subPage.setVisibility(View.GONE);
+        FrameLayout.LayoutParams sbp = new FrameLayout.LayoutParams(-1, -1);
+        sbp.leftMargin = dp(RAIL_W + 8);
+        body.addView(subPage, sbp);
         status = tv("", 10, TXT, true);
         status.setGravity(Gravity.CENTER);
         status.setVisibility(View.GONE);
         FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         sp.bottomMargin = dp(6);
-        content.addView(status, sp);
-        body.addView(content, lpw(dp(MAIN_W), dp(CONTENT_H), 8, 0, 0, 0));
-        panel.addView(body, new LinearLayout.LayoutParams(-2, -2));
+        body.addView(status, sp);
+        panel.addView(body, lpw(dp(BODY_W), dp(BODY_H), 0, 4, 0, 0));
         root.addView(panel, new FrameLayout.LayoutParams(-2, -2));
 
-        showPage(0);
+        scroll.setOnScrollChangeListener(new View.OnScrollChangeListener() {
+            @Override public void onScrollChange(View v, int x, int y, int ox, int oy) { syncRail(); }
+        });
+        scrollCol.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override public void onGlobalLayout() { syncRail(); }
+        });
         applyAccent(accent);
         loadBrightness();
 
@@ -268,31 +291,25 @@ public class OverlayService extends Service {
         startStats();
     }
 
-    private View tabScroll(View inner) {
-        ScrollView sv = new ScrollView(this);
-        sv.setVerticalScrollBarEnabled(false);
-        sv.addView(inner, new FrameLayout.LayoutParams(-1, -2));
-        return sv;
-    }
-
     // ---------- header ----------
     private View buildHeader() {
         LinearLayout h = new LinearLayout(this);
         h.setOrientation(LinearLayout.HORIZONTAL);
         h.setGravity(Gravity.CENTER_VERTICAL);
         h.setPadding(dp(4), 0, 0, 0);
+        logoIc = new IconView(this, IconView.GAUGE);
+        h.addView(logoIc, new LinearLayout.LayoutParams(dp(22), dp(22)));
         logo = tv("COMATOZE", 14, Color.WHITE, true);
         logo.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
         logo.setLetterSpacing(0.1f);
         h.addView(logo, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView fl = tv("FPS", 8, MUTED, true);
-        h.addView(fl, lpw(-2, -2, 0, 4, 3, 0));
-        hdrFps = tv("--", 17, Color.WHITE, true);
-        hdrFps.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
-        h.addView(hdrFps, lpw(-2, -2, 0, 0, 10, 0));
+        IconView wf = new IconView(this, IconView.WIFI);
+        wf.setColor(TXT);
+        h.addView(wf, lpw(dp(16), dp(16), 0, 0, 6, 0));
         hdrBat = tv("--%", 9, TXT, true);
         h.addView(hdrBat, lpw(-2, -2, 0, 0, 8, 0));
-        hdrClock = tv("--:--", 10, TXT, true);
+        hdrClock = tv("--:--", 11, TXT, true);
+        hdrClock.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
         h.addView(hdrClock, lpw(-2, -2, 0, 0, 8, 0));
         IconView mn = new IconView(this, IconView.MINUS);
         mn.setColor(MUTED);
@@ -306,9 +323,11 @@ public class OverlayService extends Service {
     private View buildAppsRow() {
         HorizontalScrollView hs = new HorizontalScrollView(this);
         hs.setHorizontalScrollBarEnabled(false);
+        hs.setOverScrollMode(View.OVER_SCROLL_NEVER);
         appsRow = new LinearLayout(this);
         appsRow.setOrientation(LinearLayout.HORIZONTAL);
         appsRow.setGravity(Gravity.CENTER_VERTICAL);
+        appsRow.setPadding(dp(4), 0, dp(4), 0);
         hs.addView(appsRow, new FrameLayout.LayoutParams(-2, -1));
         refreshApps();
         return hs;
@@ -338,41 +357,70 @@ public class OverlayService extends Service {
                 refreshApps(); flash("APP DIHAPUS DARI BARIS INI", MUTED, 1800);
                 return true;
             } });
-            appsRow.addView(iv, lpw(dp(36), dp(36), 0, 2, 8, 2));
+            appsRow.addView(iv, lpw(dp(44), dp(44), 0, 0, 12, 0));
         }
         FrameLayout add = new FrameLayout(this);
-        add.setPadding(dp(8), dp(8), dp(8), dp(8));
-        add.setBackground(circle(CARD2, 0, 0));
+        add.setPadding(dp(12), dp(12), dp(12), dp(12));
+        add.setBackground(rounded(CARD2, 14, 0, 0));
         IconView plus = new IconView(this, IconView.PLUS);
         plus.setColor(TXT);
         add.addView(plus, new FrameLayout.LayoutParams(-1, -1));
         add.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { openSub("float"); } });
-        appsRow.addView(add, lpw(dp(36), dp(36), 0, 2, 4, 2));
+        appsRow.addView(add, lpw(dp(44), dp(44), 0, 0, 4, 0));
     }
 
-    // ---------- rail tab ----------
-    private View buildRail() {
-        LinearLayout rail = new LinearLayout(this);
-        rail.setOrientation(LinearLayout.VERTICAL);
-        rail.setGravity(Gravity.CENTER_HORIZONTAL);
-        rail.setPadding(dp(3), dp(6), dp(3), dp(6));
-        rail.setBackground(rounded(RAIL, 16, 0, 0));
+    // ---------- rail menu (ikut bergeser saat daftar digulir) ----------
+    private LinearLayout buildRail() {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.VERTICAL);
+        r.setGravity(Gravity.CENTER_HORIZONTAL);
         for (int i = 0; i < TABS; i++) {
             final int idx = i;
             LinearLayout it = new LinearLayout(this);
             it.setOrientation(LinearLayout.VERTICAL);
             it.setGravity(Gravity.CENTER);
-            it.setPadding(dp(2), dp(6), dp(2), dp(5));
+            it.setPadding(dp(1), dp(8), dp(1), dp(8));
             railIc[i] = new IconView(this, TAB_ICONS[i]);
-            it.addView(railIc[i], new LinearLayout.LayoutParams(dp(22), dp(22)));
-            railTx[i] = tv(TAB_NAMES[i], 7.5f, MUTED, false);
+            it.addView(railIc[i], new LinearLayout.LayoutParams(dp(26), dp(26)));
+            railTx[i] = tv(TAB_NAMES[i], 8, MUTED, false);
             railTx[i].setGravity(Gravity.CENTER);
             it.addView(railTx[i], lpw(-2, -2, 0, 3, 0, 0));
-            it.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showPage(idx); } });
+            it.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { goSection(idx); } });
             railItem[i] = it;
-            rail.addView(it, lpw(-1, -2, 0, 2, 0, 2));
+            r.addView(it, lpw(-1, -2, 0, 0, 0, 6));
         }
-        return rail;
+        return r;
+    }
+
+    private void goSection(int i) {
+        if (subOpen) closeSub();
+        int y = i == 0 ? 0 : Math.max(0, sec[i].getTop() - dp(6));
+        scroll.smoothScrollTo(0, y);
+        curTab = i;
+        paintRail();
+    }
+
+    private void syncRail() {
+        if (rail == null) return;
+        int sy = scroll.getScrollY();
+        int appsBottom = dp(APPS_H + 8);
+        rail.setTranslationY(Math.max(dp(4), appsBottom - sy));
+        int cur = 0;
+        int ref = sy + scroll.getHeight() / 3;
+        for (int i = 0; i < TABS; i++) if (sec[i].getTop() <= ref) cur = i;
+        View c = scroll.getChildAt(0);
+        if (c != null && c.getHeight() > 0 && sy + scroll.getHeight() >= c.getHeight() - dp(3)) cur = TABS - 1;
+        if (cur != curTab) { curTab = cur; paintRail(); }
+    }
+
+    private void paintRail() {
+        for (int i = 0; i < TABS; i++) {
+            if (railItem[i] == null) continue;
+            boolean sel = i == curTab;
+            railIc[i].setColor(sel ? Color.WHITE : MUTED);
+            railTx[i].setTextColor(sel ? Color.WHITE : MUTED);
+            railTx[i].setTypeface(Typeface.create("sans-serif-medium", sel ? Typeface.BOLD : Typeface.NORMAL));
+        }
     }
 
     // ---------- baris fitur ----------
@@ -380,103 +428,101 @@ public class OverlayService extends Service {
         LinearLayout r = new LinearLayout(this);
         r.setOrientation(LinearLayout.HORIZONTAL);
         r.setGravity(Gravity.CENTER_VERTICAL);
-        r.setPadding(dp(12), dp(11), dp(12), dp(11));
-        r.setBackground(rounded(CARD, 10, 0, 0));
+        r.setMinimumHeight(dp(44));
+        r.setPadding(dp(14), dp(10), dp(14), dp(10));
+        r.setBackground(rounded(CARD, 12, 0, 0));
         return r;
     }
 
     private void switchRow(LinearLayout parent, final String id, final String label, ArrayList<Sw> reg) {
         LinearLayout r = rowBase();
-        TextView t = tv(label, 12, TXT, false);
-        r.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+        r.addView(tv(label, 13, TXT, false), new LinearLayout.LayoutParams(0, -2, 1f));
         final Sw sw = new Sw();
         sw.id = id;
-        sw.track = new FrameLayout(this);
-        sw.knob = new View(this);
-        FrameLayout.LayoutParams kp = new FrameLayout.LayoutParams(dp(14), dp(14), Gravity.CENTER_VERTICAL | Gravity.START);
-        kp.setMargins(dp(3), 0, dp(3), 0);
-        sw.track.addView(sw.knob, kp);
-        r.addView(sw.track, new LinearLayout.LayoutParams(dp(38), dp(20)));
+        sw.view = new SkewSwitch(this);
+        r.addView(sw.view, lpw(dp(40), dp(16), 8, 0, 0, 0));
         reg.add(sw);
         r.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { pulse(v); toggleFeat(id, label); } });
-        parent.addView(r, lpw(-1, -2, 0, 0, 0, 6));
+        parent.addView(r, lpw(-1, -2, 0, 0, 0, 8));
         paintSw(sw);
     }
 
-    private void paintSw(Sw sw) {
-        boolean on = Boolean.TRUE.equals(tstate.get(sw.id));
-        sw.track.setBackground(rounded(on ? accent : Color.parseColor("#3A3D45"), 10, 0, 0));
-        sw.knob.setBackground(circle(Color.WHITE, 0, 0));
-        FrameLayout.LayoutParams kp = (FrameLayout.LayoutParams) sw.knob.getLayoutParams();
-        kp.gravity = Gravity.CENTER_VERTICAL | (on ? Gravity.END : Gravity.START);
-        sw.knob.setLayoutParams(kp);
-    }
+    private void paintSw(Sw sw) { sw.view.setState(Boolean.TRUE.equals(tstate.get(sw.id)), accent); }
 
     private void navRow(LinearLayout parent, final String label, final String key) {
         LinearLayout r = rowBase();
-        r.addView(tv(label, 12, TXT, false), new LinearLayout.LayoutParams(0, -2, 1f));
+        r.addView(tv(label, 13, TXT, false), new LinearLayout.LayoutParams(0, -2, 1f));
         IconView ch = new IconView(this, IconView.CHEV);
         ch.setColor(MUTED);
-        r.addView(ch, new LinearLayout.LayoutParams(dp(14), dp(14)));
+        r.addView(ch, new LinearLayout.LayoutParams(dp(16), dp(16)));
         r.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { pulse(v); openSub(key); } });
-        parent.addView(r, lpw(-1, -2, 0, 0, 0, 6));
+        parent.addView(r, lpw(-1, -2, 0, 0, 0, 8));
     }
 
     private void actionRow(LinearLayout parent, String label, final Runnable act) {
         LinearLayout r = rowBase();
-        r.addView(tv(label, 12, TXT, false), new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView go = tv("JALANKAN", 8.5f, accent, true);
-        go.setTag("accent");
-        r.addView(go);
+        r.addView(tv(label, 13, TXT, false), new LinearLayout.LayoutParams(0, -2, 1f));
+        IconView ch = new IconView(this, IconView.CHEV);
+        ch.setColor(MUTED);
+        r.addView(ch, new LinearLayout.LayoutParams(dp(16), dp(16)));
         r.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { pulse(v); act.run(); } });
-        parent.addView(r, lpw(-1, -2, 0, 0, 0, 6));
+        parent.addView(r, lpw(-1, -2, 0, 0, 0, 8));
     }
 
-    private LinearLayout col() {
+    private LinearLayout section(int minHeightDp) {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
-        c.setPadding(0, 0, dp(2), dp(4));
+        c.setMinimumHeight(dp(minHeightDp));
         return c;
     }
 
-    // ---------- Tab 0: Fitur Dasar ----------
-    private View buildTab0() {
-        LinearLayout c = col();
-        // dial CPU & GPU
+    // ---------- Seksi 0: Fitur Dasar ----------
+    private LinearLayout buildSec0() {
+        LinearLayout c = section(0);
+        // dial CPU & GPU + FPS
+        FrameLayout dials = new FrameLayout(this);
         LinearLayout gr = new LinearLayout(this);
         gr.setOrientation(LinearLayout.HORIZONTAL);
         gr.setGravity(Gravity.CENTER);
         for (int i = 0; i < 2; i++) {
             gauge[i] = new RingGauge(this);
-            LinearLayout.LayoutParams gp = lpw(0, dp(108), i == 0 ? 0 : 6, 0, i == 0 ? 6 : 0, 0);
-            gp.weight = 1f;
-            gr.addView(gauge[i], gp);
+            gr.addView(gauge[i], lpwt(1f, 0, 14, 0, 0));
+            gauge[i].getLayoutParams().height = dp(124);
         }
-        c.addView(gr, lpw(-1, -2, 0, 0, 0, 0));
-        fpsSub = tv("", 9, MUTED, false);
-        fpsSub.setGravity(Gravity.CENTER);
-        c.addView(fpsSub, lpw(-1, -2, 0, 4, 0, 0));
-        badge = tv("Balance", 9, Color.WHITE, true);
-        badge.setGravity(Gravity.CENTER);
+        dials.addView(gr, new FrameLayout.LayoutParams(-1, -2));
+        LinearLayout fl = new LinearLayout(this);
+        fl.setOrientation(LinearLayout.HORIZONTAL);
+        fl.setGravity(Gravity.BOTTOM);
+        TextView ft = tv("FPS ", 9, MUTED, true);
+        ft.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
+        fl.addView(ft, lpw(-2, -2, 0, 0, 2, 2));
+        fpsNum = tv("--", 20, Color.WHITE, true);
+        fpsNum.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
+        fl.addView(fpsNum);
+        dials.addView(fl, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END));
+        c.addView(dials, lpw(-1, -2, 0, 0, 0, 0));
+        infoTv = tv("", 9, MUTED, false);
+        infoTv.setGravity(Gravity.CENTER);
+        c.addView(infoTv, lpw(-1, -2, 0, 2, 0, 0));
 
-        // mode
+        // mode (kontrol segmen, garis tepi)
         LinearLayout seg = new LinearLayout(this);
         seg.setOrientation(LinearLayout.HORIZONTAL);
-        seg.setBackground(rounded(RAIL, 10, LINE, 1));
-        seg.setPadding(dp(3), dp(3), dp(3), dp(3));
+        seg.setBackground(rounded(Color.parseColor("#0D1015"), 8, LINE, 1));
+        seg.setPadding(dp(2), dp(2), dp(2), dp(2));
         for (int i = 0; i < 4; i++) {
             final int k = i;
-            TextView t = tv(MODE_NAMES[i], 9.5f, MUTED, true);
+            TextView t = tv(MODE_NAMES[i], 10.5f, MUTED, false);
             t.setGravity(Gravity.CENTER);
             t.setSingleLine(true);
-            t.setPadding(dp(2), dp(8), dp(2), dp(8));
+            t.setPadding(dp(2), dp(9), dp(2), dp(9));
             t.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { setMode(k, v); } });
             modeTx[i] = t;
-            seg.addView(t, lpwt(1f, i == 0 ? 0 : 2, 0, 0, 0));
+            seg.addView(t, lpwt(1f, 0, 0, 0, 0));
         }
-        c.addView(seg, lpw(-1, -2, 0, 8, 0, 0));
+        c.addView(seg, lpw(-1, -2, 0, 12, 0, 0));
 
-        // 4 tombol bulat: tangkapan layar, rekam, Hz, pembersih memori
+        // 4 tombol bulat
         LinearLayout qr = new LinearLayout(this);
         qr.setOrientation(LinearLayout.HORIZONTAL);
         int[] qi = {IconView.SHOT, IconView.REC, IconView.HZ, IconView.RAM};
@@ -487,27 +533,25 @@ public class OverlayService extends Service {
             cell.setOrientation(LinearLayout.VERTICAL);
             cell.setGravity(Gravity.CENTER_HORIZONTAL);
             FrameLayout b = new FrameLayout(this);
-            b.setPadding(dp(11), dp(11), dp(11), dp(11));
+            b.setPadding(dp(14), dp(14), dp(14), dp(14));
             quickIc[i] = new IconView(this, qi[i]);
             b.addView(quickIc[i], new FrameLayout.LayoutParams(-1, -1));
             b.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { quick(k, v); } });
             quickBtn[i] = b;
-            cell.addView(b, new LinearLayout.LayoutParams(dp(42), dp(42)));
-            TextView l = tv(ql[i], 8, MUTED, false);
+            cell.addView(b, new LinearLayout.LayoutParams(dp(48), dp(48)));
+            TextView l = tv(ql[i], 8.5f, MUTED, false);
             l.setGravity(Gravity.CENTER);
-            cell.addView(l, lpw(-2, -2, 0, 3, 0, 0));
+            quickLbl[i] = l;
+            cell.addView(l, lpw(-2, -2, 0, 4, 0, 0));
             if (i == 1) recLbl = l;
             if (i == 2) hzLbl = l;
             qr.addView(cell, new LinearLayout.LayoutParams(0, -2, 1f));
         }
-        c.addView(qr, lpw(-1, -2, 0, 10, 0, 6));
+        c.addView(qr, lpw(-1, -2, 0, 14, 0, 12));
 
         // kecerahan
         LinearLayout br = rowBase();
-        br.setPadding(dp(12), dp(8), dp(12), dp(8));
-        sunIc = new IconView(this, IconView.SUN);
-        sunIc.setColor(TXT);
-        br.addView(sunIc, new LinearLayout.LayoutParams(dp(20), dp(20)));
+        br.setPadding(dp(14), dp(10), dp(14), dp(10));
         bright = new SeekBar(this);
         bright.setMax(255);
         bright.setProgress(128);
@@ -521,20 +565,26 @@ public class OverlayService extends Service {
                 } }).start();
             }
         });
-        br.addView(bright, lpw(0, -2, 8, 0, 0, 0));
-        ((LinearLayout.LayoutParams) bright.getLayoutParams()).weight = 1f;
-        c.addView(br, lpw(-1, -2, 0, 0, 0, 6));
+        br.addView(bright, new LinearLayout.LayoutParams(0, -2, 1f));
+        IconView sun = new IconView(this, IconView.SUN);
+        sun.setColor(TXT);
+        br.addView(sun, lpw(dp(24), dp(24), 8, 0, 0, 0));
+        c.addView(br, lpw(-1, -2, 0, 0, 0, 10));
 
+        View line = new View(this);
+        line.setBackgroundColor(LINE);
+        c.addView(line, lpw(-1, Math.max(1, dp(1)), 0, 0, 0, 10));
+
+        navRow(c, "Optimalisasi Performa", "perf");
         switchRow(c, "perfx", "Tweak Ekstra Performa", sws);
         switchRow(c, "nothermal", "Matikan Thermal", sws);
-        navRow(c, "Optimalisasi Performa", "perf");
         navRow(c, "Peningkatan Jaringan", "net");
         return c;
     }
 
-    // ---------- Tab 1: Alat Cepat ----------
-    private View buildTab1() {
-        LinearLayout c = col();
+    // ---------- Seksi 1: Alat Akses Cepat ----------
+    private LinearLayout buildSec1() {
+        LinearLayout c = section(150);
         actionRow(c, "Tutup app di latar", new Runnable() { @Override public void run() { runCmd(Root.BIN + " ovact killbg", "APP LATAR DIHENTIKAN", null); } });
         actionRow(c, "Pangkas cache", new Runnable() { @Override public void run() { runCmd(Root.BIN + " ovact trim", "CACHE DIPANGKAS", null); } });
         actionRow(c, "Tangkapan layar", new Runnable() { @Override public void run() { shot(); } });
@@ -545,9 +595,9 @@ public class OverlayService extends Service {
         return c;
     }
 
-    // ---------- Tab 2: Anti-ganggu ----------
-    private View buildTab2() {
-        LinearLayout c = col();
+    // ---------- Seksi 2: Anti-ganggu ----------
+    private LinearLayout buildSec2() {
+        LinearLayout c = section(150);
         switchRow(c, "dnd", "Jangan Ganggu (DND)", sws);
         switchRow(c, "gamednd", "DND otomatis saat game", sws);
         switchRow(c, "gmslimit", "Batasi Google Play Services", sws);
@@ -555,9 +605,9 @@ public class OverlayService extends Service {
         return c;
     }
 
-    // ---------- Tab 3: Gameplay Tambahan ----------
-    private View buildTab3() {
-        LinearLayout c = col();
+    // ---------- Seksi 3: Gameplay Tambahan ----------
+    private LinearLayout buildSec3() {
+        LinearLayout c = section(150);
         switchRow(c, "gameclean", "Bersihkan RAM otomatis", sws);
         switchRow(c, "gameprofile", "Profil Game otomatis", sws);
         switchRow(c, "gamebypass", "Pengisian Daya Bypass", sws);
@@ -566,27 +616,31 @@ public class OverlayService extends Service {
     }
 
     // ---------- Sub halaman (lipatan fitur) ----------
-    private View buildSubPage() {
+    private FrameLayout buildSubPage() {
+        FrameLayout f = new FrameLayout(this);
+        f.setBackground(rounded(Color.parseColor("#F00E1015"), 12, 0, 0));
         LinearLayout v = new LinearLayout(this);
         v.setOrientation(LinearLayout.VERTICAL);
-        subHead = new LinearLayout(this);
-        subHead.setOrientation(LinearLayout.HORIZONTAL);
-        subHead.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
         IconView back = new IconView(this, IconView.BACK);
         back.setColor(TXT);
-        back.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View x) { showPage(lastTab); } });
-        subHead.addView(back, new LinearLayout.LayoutParams(dp(30), dp(30)));
-        subTitle = tv("", 13, Color.WHITE, true);
-        subHead.addView(subTitle, lpw(-2, -2, 6, 0, 0, 0));
-        v.addView(subHead, lpw(-1, -2, 0, 0, 0, 8));
+        back.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View x) { closeSub(); } });
+        head.addView(back, new LinearLayout.LayoutParams(dp(32), dp(32)));
+        subTitle = tv("", 14, Color.WHITE, true);
+        head.addView(subTitle, lpw(-2, -2, 8, 0, 0, 0));
+        v.addView(head, lpw(-1, -2, 0, 0, 0, 10));
         ScrollView sv = new ScrollView(this);
         sv.setVerticalScrollBarEnabled(false);
         subBox = new LinearLayout(this);
         subBox.setOrientation(LinearLayout.VERTICAL);
-        subBox.setPadding(0, 0, dp(2), dp(4));
+        subBox.setPadding(0, 0, 0, dp(12));
         sv.addView(subBox, new FrameLayout.LayoutParams(-1, -2));
         v.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1f));
-        return v;
+        f.addView(v, new FrameLayout.LayoutParams(-1, -1));
+        f.setPadding(dp(4), dp(4), dp(4), dp(4));
+        return f;
     }
 
     private void openSub(String key) {
@@ -609,8 +663,14 @@ public class OverlayService extends Service {
             subTitle.setText("Jendela Mengambang");
             loadPicker();
         }
-        if (page != SUB) lastTab = Math.min(page, TABS - 1);
-        showPage(SUB);
+        subOpen = true;
+        subPage.setVisibility(View.VISIBLE);
+        loadState();
+    }
+
+    private void closeSub() {
+        subOpen = false;
+        subPage.setVisibility(View.GONE);
     }
 
     private void loadPicker() {
@@ -691,16 +751,18 @@ public class OverlayService extends Service {
         } }).start();
     }
 
+
+
     // ---------- tema ----------
     private void applyAccent(int a) {
         accent = a;
         if (pillBg != null) pillBg.setStroke(Math.max(1, dp(1)), alpha(a, 150));
         for (RingGauge g : gauge) if (g != null) g.setAccent(a);
-        if (hdrFps != null) hdrFps.setTextColor(a);
+        if (logoIc != null) logoIc.setColor(a);
         if (bright != null) {
-            ColorStateList cs = ColorStateList.valueOf(a);
-            bright.setProgressTintList(cs);
-            bright.setThumbTintList(cs);
+            bright.setProgressTintList(ColorStateList.valueOf(Color.WHITE));
+            bright.setThumbTintList(ColorStateList.valueOf(Color.WHITE));
+            bright.setProgressBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#3A3E48")));
         }
         paintState();
     }
@@ -730,43 +792,27 @@ public class OverlayService extends Service {
         for (int i = 0; i < 4; i++) {
             boolean sel = i == 0 ? curDef : (!curDef && MODE_KEYS[i].equals(curMode));
             if (sel) {
-                modeTx[i].setBackground(rounded(alpha(accent, 50), 8, accent, 1.5f));
-                modeTx[i].setTextColor(Color.WHITE);
+                modeTx[i].setBackground(rounded(alpha(accent, 40), 7, accent, 1.5f));
+                modeTx[i].setTextColor(accent);
             } else {
                 modeTx[i].setBackground(null);
                 modeTx[i].setTextColor(MUTED);
             }
         }
+        int hz = 0;
+        try { hz = Integer.parseInt(curHz); } catch (Exception ignored) { }
         for (int i = 0; i < 4; i++) {
             if (quickBtn[i] == null) continue;
-            if (i == 1) {
-                quickBtn[i].setBackground(circle(recording ? BAD : CARD2, 0, 0));
-                quickIc[i].setColor(recording ? Color.WHITE : accent);
-            } else {
-                quickBtn[i].setBackground(circle(CARD2, 0, 0));
-                quickIc[i].setColor(accent);
-            }
+            boolean act = (i == 1 && recording) || (i == 2 && hz >= 90);
+            int fill = (i == 1 && recording) ? BAD : accent;
+            quickBtn[i].setBackground(act ? circle(fill, 0, 0) : circle(CARD2, LINE, 1));
+            quickIc[i].setColor(act ? Color.WHITE : Color.parseColor("#BFC6D3"));
+            quickLbl[i].setTextColor(act ? Color.WHITE : MUTED);
         }
         if (hzLbl != null) hzLbl.setText(curHz.isEmpty() ? "Hz" : curHz + " Hz");
         for (Sw s : sws) paintSw(s);
         for (Sw s : subSws) paintSw(s);
-        int cur = page == SUB ? lastTab : page;
-        for (int i = 0; i < TABS; i++) {
-            if (railItem[i] == null) continue;
-            boolean sel = i == cur;
-            railItem[i].setBackground(sel ? rounded(CARD2, 12, 0, 0) : null);
-            railIc[i].setColor(sel ? accent : MUTED);
-            railTx[i].setTextColor(sel ? Color.WHITE : MUTED);
-        }
-        tintAccent(panel);
-    }
-
-    private void tintAccent(View v) {
-        if ("accent".equals(v.getTag()) && v instanceof TextView) ((TextView) v).setTextColor(accent);
-        if (v instanceof LinearLayout || v instanceof FrameLayout || v instanceof ScrollView) {
-            android.view.ViewGroup g = (android.view.ViewGroup) v;
-            for (int i = 0; i < g.getChildCount(); i++) tintAccent(g.getChildAt(i));
-        }
+        paintRail();
     }
 
     // ---------- interaksi ----------
@@ -801,19 +847,11 @@ public class OverlayService extends Service {
         if (on) {   // jaga panel tetap di dalam layar
             lp.x = Math.max(0, Math.min(lp.x, scrW - dp(PANEL_W)));
             lp.y = Math.max(0, Math.min(lp.y, scrH - dp(PANEL_H)));
-        }
+        } else closeSub();
         panel.setVisibility(on ? View.VISIBLE : View.GONE);
         pill.setVisibility(on ? View.GONE : View.VISIBLE);
         try { wm.updateViewLayout(root, lp); } catch (Exception ignored) { }
         if (on) loadState();
-    }
-
-    private void showPage(int i) {
-        page = i;
-        if (i < TABS) lastTab = i;
-        for (int k = 0; k < NPAGES; k++) pages[k].setVisibility(k == i ? View.VISIBLE : View.GONE);
-        paintState();
-        if (i < TABS) loadState();
     }
 
     private void setMode(final int k, View v) {
@@ -968,14 +1006,17 @@ public class OverlayService extends Service {
         pillNum.setText(fps.isEmpty() ? "--" : fps);
         if (!expanded) return;
         tick++;
-        hdrFps.setText(fps.isEmpty() ? "--" : fps);
+        fpsNum.setText(fps.isEmpty() ? "--" : fps);
         hdrBat.setText(bat + "%");
         hdrClock.setText(clockFmt.format(new Date()));
         int tmp = ct.isEmpty() ? parse(bt) : parse(ct);
-        fpsSub.setText("RAM " + ram + "%   ·   " + tmp + "°C   ·   ping " + (ping.isEmpty() ? "--" : ping + "ms") + "   ·   " + (curHz.isEmpty() ? "--" : curHz) + " Hz");
         float cmv = parse(cm), gmv = parse(gm);
-        gauge[0].set(parse(cpu), cpu + "%", "CPU " + (cmv > 0 ? String.format(Locale.US, "%.2fG", cmv / 1000f) : "--"));
-        gauge[1].set(gpu.isEmpty() ? 0 : parse(gpu), gpu.isEmpty() ? "n/a" : gpu + "%", "GPU " + (gmv > 0 ? String.format(Locale.US, "%.2fG", gmv / 1000f) : "--"));
+        infoTv.setText("CPU " + (cmv > 0 ? String.format(Locale.US, "%.2f", cmv / 1000f) : "--") + "G  ·  GPU "
+                + (gmv > 0 ? String.format(Locale.US, "%.2f", gmv / 1000f) : "--") + "G  ·  RAM " + ram + "%  ·  " + tmp + "°C  ·  "
+                + (ping.isEmpty() ? "ping --" : ping + "ms") + "  ·  " + (curHz.isEmpty() ? "--" : curHz) + "Hz");
+        gauge[0].set(parse(cpu), String.valueOf(parse(cpu)), "%", "CPU");
+        if (gpu.isEmpty()) gauge[1].set(0, "n/a", "", "GPU");
+        else gauge[1].set(parse(gpu), String.valueOf(parse(gpu)), "%", "GPU");
         if (recording) {
             long s = (System.currentTimeMillis() - recStart) / 1000;
             recLbl.setText(String.format(Locale.US, "%02d:%02d", s / 60, s % 60));

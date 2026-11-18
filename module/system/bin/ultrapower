@@ -2134,7 +2134,7 @@ chipz_line(){ echo "CHIPZ|$(grep -qa SOC_MODEL $MODD/zygisk/arm64-v8a.so 2>/dev/
 # Hampir semuanya builtin shell (read/case/aritmetika); fork hanya: sleep, dan (tiap 5 dtk) dumpsys/ping bila fitur dipakai.
 ov_num(){ OVN=; [ -r "$1" ] || return 1; read -r _t 2>/dev/null < "$1" || return 1; _t=${_t#"${_t%%[0-9]*}"}; OVN=${_t%%[!0-9]*}; [ -n "$OVN" ]; }
 ov_gpu_find(){ _OVGL=
-  for f in /sys/kernel/ged/hal/gpu_utilization /sys/module/ged/parameters/gpu_loading /sys/kernel/ged/hal/current_loading /proc/mali/utilization /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage /sys/kernel/gpu/gpu_busy /sys/class/devfreq/*mali*/load /sys/class/devfreq/*gpu*/load; do
+  for f in /sys/kernel/ged/hal/gpu_utilization /sys/kernel/ged/hal/current_loading /proc/mali/utilization /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage /sys/kernel/gpu/gpu_busy /sys/class/devfreq/*mali*/load /sys/class/devfreq/*gpu*/load; do
     [ -r "$f" ] && ov_num "$f" && _OVGL="$_OVGL $f"
   done; [ -n "$_OVGL" ]; }
 ov_gpu_read(){ OVGV=; for f in $_OVGL; do ov_num "$f" || continue; OVGV=$OVN; [ "$OVN" -gt 0 ] && break; done; [ -n "$OVGV" ]; }
@@ -2142,14 +2142,21 @@ ov_gfreq_find(){ _OVF=; _OVD=1000000
   for f in /sys/class/devfreq/*mali*/cur_freq /sys/class/devfreq/*gpu*/cur_freq /sys/class/kgsl/kgsl-3d0/gpuclk; do
     [ -r "$f" ] && { _OVF=$f; return 0; }
   done; return 1; }
-ov_layers(){ # <paket> -> OVLS: semua layer SurfaceFlinger milik paket (satu per baris)
-  OVLS=
+ov_nm(){ # normalkan nama layer: Android 16 menulis "RequestedLayerState{hash NAMA parentId=..}", sedangkan --latency butuh NAMA saja
+  OVNM=$1
+  case $1 in "RequestedLayerState{"*) OVNM=${1#RequestedLayerState\{}; OVNM=${OVNM#* }; OVNM=${OVNM%% parentId=*}; OVNM=${OVNM%\}};; esac; }
+ov_layers(){ # <paket> -> OVLS: layer SurfaceFlinger milik paket (satu per baris); layer SurfaceView/BLAST (jalur render game) didahulukan
+  OVLS=; _lb=
   while IFS= read -r l; do
-    case $l in *"$1"*) OVLS="$OVLS$l
-";; esac
+    case $l in *"$1"*) case $l in *ActivityRecord*|*"Background for"*|*Bounds*|*InputSink*) continue;; esac
+      ov_nm "$l"
+      case $OVNM in *SurfaceView*|*BLAST*) OVLS="$OVLS$OVNM
+";; *) _lb="$_lb$OVNM
+";; esac;; esac
   done <<EOT
 $(dumpsys SurfaceFlinger --list 2>/dev/null)
 EOT
+  OVLS="$OVLS$_lb"
 }
 ov_cnt(){ OVC=0; _m=0; for t in $1; do [ "$t" -gt "$_m" ] && _m=$t; done; [ "$_m" -gt 0 ] || return 1
   _lo=$((_m-1000000000)); for t in $1; do [ "$t" -gt "$_lo" ] && OVC=$((OVC+1)); done; return 0; }
@@ -2182,7 +2189,7 @@ EOT
 ov_layers_all(){ # semua layer kecuali bagian UI sistem / manager sendiri
   OVLS=
   while IFS= read -r l; do
-    case $l in ''|*StatusBar*|*NavigationBar*|*ScreenDecor*|*InputMethod*|*Wallpaper*|*com.comatoze*|*systemui*|*Background*|*Dim*|*Splash*|*Letterbox*|*Bounds*|*ImeContainer*|*Task=*|*Magnification*|*Pointer*|*Cursor*) ;; *) OVLS="$OVLS$l
+    case $l in ''|*StatusBar*|*NavigationBar*|*ScreenDecor*|*InputMethod*|*Wallpaper*|*com.comatoze*|*systemui*|*Background*|*Dim*|*Splash*|*Letterbox*|*Bounds*|*ImeContainer*|*Task=*|*Magnification*|*Pointer*|*Cursor*|*ActivityRecord*|*InputSink*) ;; *) ov_nm "$l"; OVLS="$OVLS$OVNM
 ";; esac
   done <<EOT
 $(dumpsys SurfaceFlinger --list 2>/dev/null)
