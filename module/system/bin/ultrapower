@@ -253,7 +253,7 @@ px5(){ # node nilai: seperti px2 untuk node bergaya "[aktif] lain"; dilewati bil
   grep -q "^$1|" $PXV2 2>/dev/null || echo "$1|$(brk_cur "$1")" >> $PXV2
   w "$2" "$1"
 }
-# MediaTek tambahan Performa (jalur node dipetakan dari analisis statis LuminaTweaks; semua dicek & dipulihkan, tidak ada = dilewati):
+# MediaTek tambahan Performa (semua jalur node dicek & dipulihkan, tidak ada = dilewati):
 #  - devfreq DVFSRC governor=performance : DRAM/vcore tidak turun saat beban fluktuatif (frame time lebih stabil)
 #  - dvfsrc_force_vcore_dvfs_opp=0       : vcore dikunci OPP tertinggi (matikan dengan PERF_VCORE=off di config)
 #  - cpufreq_cci_mode=1 / syslimiter_force_disable=1 : interkoneksi cache cepat & pembatas sistem MediaTek mati
@@ -601,9 +601,9 @@ touch_on(){
   # sisi CPU: dilewati bila TOUCH_CPU=off atau mode Eco
   [ "$(getcfg TOUCH_CPU)" = off ] && return 0
   [ "$(getcfg MODE)" = eco ] && return 0
-  ib=400; hl=75; fq=; um=
+  ib=600; hl=60; fq=; um=
   if [ "$(getcfg TOUCH_CPU)" = max ]; then
-    ib=800; um=40.00; hl=50
+    ib=1000; um=50.00; hl=40
     for pl in $CPU/policy*; do
       c=$(rd $pl/related_cpus); c=${c%% *}; f=$(rd $pl/cpuinfo_max_freq)
       [ -n "$c" ] && [ -n "$f" ] && fq="$fq $c:$f"
@@ -1054,7 +1054,7 @@ com.ea.gp.fifamobile
 com.ea.gp.apexlegendsmobilefps
 com.firsttouchgames.dls7
 EOF
-  # + daftar game dari modul Encore Tweaks (Rem01Gaming, Apache-2.0), dibundel sebagai $MODD/gamelist.txt; baris tak valid dibuang
+  # + daftar game bawaan ($MODD/gamelist.txt); baris tak valid dibuang
   [ -f $MODD/gamelist.txt ] && grep -E '^[A-Za-z0-9_.]+$' $MODD/gamelist.txt
   return 0
 }
@@ -1087,7 +1087,7 @@ rend_apply(){
 rend_boot(){ v=$(getcfg RENDERER); [ -n "$v" ] && [ "$v" != default ] && rend_apply $v >/dev/null 2>&1; }
 # GMS limiter: RUN_IN_BACKGROUND & WAKE_LOCK Google Play Services -> ignore. Mati = kembali ke "default" (bukan "allow", supaya setelan bawaan ROM utuh).
 gms_limit(){
-  for op in RUN_IN_BACKGROUND WAKE_LOCK; do
+  for op in RUN_IN_BACKGROUND RUN_ANY_IN_BACKGROUND WAKE_LOCK; do
     if [ "$1" = on ]; then cmd appops set com.google.android.gms $op ignore >/dev/null 2>&1; else cmd appops set com.google.android.gms $op default >/dev/null 2>&1; fi
   done
 }
@@ -1136,9 +1136,9 @@ bkt_on(){
   bk_wr $K/sched_autogroup_enabled 1
   bk_wr $K/sched_child_runs_first 1
   bk_wr $K/sched_tunable_scaling 0
-  bk_wr $K/sched_latency_ns 4000000
+  bk_wr $K/sched_latency_ns 3000000
   bk_wr $K/sched_min_granularity_ns 100000
-  bk_wr $K/sched_wakeup_granularity_ns 2000000
+  bk_wr $K/sched_wakeup_granularity_ns 1500000
   bk_wr $K/sched_migration_cost_ns 5000000
   bk_wr $K/sched_nr_migrate 128
   bk_wr $K/sched_schedstats 0
@@ -1157,6 +1157,9 @@ bkt_on(){
   # jaringan: BBR bila kernel menyediakan, TCP fast open
   case " $(rd /proc/sys/net/ipv4/tcp_available_congestion_control) " in *" bbr "*) bk_wr /proc/sys/net/ipv4/tcp_congestion_control bbr;; esac
   bk_wr /proc/sys/net/ipv4/tcp_fastopen 3
+  bk_wr /proc/sys/net/ipv4/tcp_slow_start_after_idle 0
+  bk_wr /proc/sys/net/ipv4/tcp_low_latency 1
+  bk_wr /proc/sys/net/ipv4/tcp_no_metrics_save 1
 }
 bkt_off(){
   if [ -f $BK.nodes ]; then
@@ -1669,7 +1672,7 @@ preload(){ # apk/lib/oat/obb + aset non-media di Android/data/<pkg>/files -> pag
   rm -f $L
 }
 # Ide fitur game terinspirasi dari CMD-Tweaks (t.me/HoyoSlave); kode ditulis ulang.
-gclean(){ for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || cmd activity kill --user 0 $p >/dev/null 2>&1; done; }
+gclean(){ cmd activity kill-all >/dev/null 2>&1; for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || cmd activity kill --user 0 $p >/dev/null 2>&1; done; }
 mode_restore(){
   m=$(getcfg MODE); [ "$m" = auto ] && m=balance
   if [ "$m" = custom ]; then batsaver custom; while IFS='|' read -r k a; do [ -n "$a" ] && NOSAVE=1 sh $SELF $a; done < $CUS
@@ -2389,6 +2392,54 @@ EOT
   echo "== gfxinfo framestats ($p):"; if ov_gfx "$p"; then echo "fps=$OVFPS"; else echo "kosong"; fi
   echo "== fpsgo_status:"; head -n 12 /sys/kernel/fpsgo/fstb/fpsgo_status 2>&1
   echo "== contoh --latency layer pertama:"; l=$(echo "$OVLS" | head -n 1); dumpsys SurfaceFlinger --latency "$l" 2>&1 | head -n 6; }
+# ---------- IDLE RAM saat TIDAK ada game aktif, bila RAM bebas < batas -> padatkan memori + buang cache bersih ----------
+# Config: IDLE_RAM on|off, IDLE_MIN (MB, 128-8192, bawaan 1024), IDLE_INT (menit, 1-120, bawaan 15)
+idleram_run(){ echo $$ > $DIR/idleram.pid
+  while :; do
+    _i=$(getcfg IDLE_INT); case $_i in ""|*[!0-9]*) _i=15;; esac; [ "$_i" -lt 1 ] && _i=1; [ "$_i" -gt 120 ] && _i=120
+    sleep $((_i*60))
+    [ "$(getcfg IDLE_RAM)" = on ] || break
+    [ -f $DIR/ingame ] && continue
+    _m=$(getcfg IDLE_MIN); case $_m in ""|*[!0-9]*) _m=1024;; esac
+    _fa=$(meminfo_kb MemAvailable); _fa=$((_fa/1024))
+    if [ "$_fa" -lt "$_m" ]; then sync; w 1 /proc/sys/vm/compact_memory; w 1 /proc/sys/vm/drop_caches; echo "$(date +%H:%M:%S) bebas ${_fa}MB < ${_m}MB -> dibersihkan" > $DIR/idleram.last; fi
+  done
+  rm -f $DIR/idleram.pid; }
+idleram(){ case $1 in
+  on) setcfg IDLE_RAM on; [ -f $DIR/idleram.pid ] && kill -0 $(cat $DIR/idleram.pid) 2>/dev/null || bg idleram_run; echo "OK|Idle RAM aktif";;
+  off) setcfg IDLE_RAM off; [ -f $DIR/idleram.pid ] && kill $(cat $DIR/idleram.pid) 2>/dev/null; rm -f $DIR/idleram.pid; echo "OK|Idle RAM mati";;
+  set) case $2 in min) case $3 in ""|*[!0-9]*) echo "ERR|angka tidak valid"; return;; esac; [ "$3" -ge 128 ] && [ "$3" -le 8192 ] || { echo "ERR|128-8192 MB"; return; }; setcfg IDLE_MIN $3;;
+         int) case $3 in ""|*[!0-9]*) echo "ERR|angka tidak valid"; return;; esac; [ "$3" -ge 1 ] && [ "$3" -le 120 ] || { echo "ERR|1-120 menit"; return; }; setcfg IDLE_INT $3;;
+         *) echo "ERR|kunci tidak dikenal"; return;; esac; echo "OK|tersimpan";;
+  *) _r=stop; [ -f $DIR/idleram.pid ] && kill -0 $(cat $DIR/idleram.pid) 2>/dev/null && _r=run; echo "IDLERAM|$(getcfg IDLE_RAM)|$(getcfg IDLE_MIN)|$(getcfg IDLE_INT)|$_r|$(cat $DIR/idleram.last 2>/dev/null)";;
+esac; }
+# ---------- CROSSHAIR (overlay bidik tidak bisa disentuh). Aktif hanya sesi ini (reset tiap boot, anti burn-in) ----------
+# CH_STYLE: dot cross crossdot tcross x circle brackets chevron diamond pulse spin | CH_COLOR: hex 6 digit
+ch_svc(){ am start-foreground-service --user 0 -n com.comatoze/.CrosshairService "$@" >/dev/null 2>&1 || am startservice --user 0 -n com.comatoze/.CrosshairService "$@" >/dev/null 2>&1; }
+ch_get(){ _v=$(getcfg "$1"); echo "${_v:-$2}"; }
+crosshair(){ case $1 in
+  on) ov_perm; setcfg CH_ON on; ch_svc --ez reload true; echo "OK|crosshair aktif";;
+  off) setcfg CH_ON off; am stopservice --user 0 -n com.comatoze/.CrosshairService >/dev/null 2>&1; echo "OK|crosshair mati";;
+  next) case $2 in
+      style) _l="dot cross crossdot tcross x circle brackets chevron diamond pulse spin"; _k=CH_STYLE; _c=$(ch_get CH_STYLE cross);;
+      color) _l="FF3B30 FF9500 FFD60A 34C759 2EDCFF 3B9BFF AF52DE FFFFFF"; _k=CH_COLOR; _c=$(ch_get CH_COLOR FF3B30);;
+      *) echo "ERR|style atau color"; return;;
+    esac
+    _f=; _n=; _1=; for _i in $_l; do [ -n "$_1" ] || _1=$_i; if [ -n "$_f" ]; then _n=$_i; break; fi; [ "$_i" = "$_c" ] && _f=1; done
+    [ -n "$_n" ] || _n=$_1
+    setcfg $_k "$_n"; [ "$(getcfg CH_ON)" = on ] && ch_svc --ez reload true; echo "OK|$_n";;
+  reset) for _k in CH_STYLE CH_COLOR CH_SIZE CH_TH CH_GAP CH_OP CH_GLOW CH_SPD CH_OX CH_OY CH_OUT CH_DOT; do setcfg $_k ""; done; [ "$(getcfg CH_ON)" = on ] && ch_svc --ez reload true; echo "OK|bawaan dipulihkan";;
+  set) _k=$2; _v=$3
+    case $_k in
+      style) case $_v in dot|cross|crossdot|tcross|x|circle|brackets|chevron|diamond|pulse|spin) ;; *) echo "ERR|gaya tidak dikenal"; return;; esac;;
+      color) case $_v in [0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]) ;; *) echo "ERR|warna harus 6 digit hex"; return;; esac;;
+      size|th|gap|op|glow|spd|ox|oy) case $_v in ""|*[!0-9.-]*) echo "ERR|angka tidak valid"; return;; esac;;
+      out|dot) case $_v in 0|1) ;; *) echo "ERR|0 atau 1"; return;; esac;;
+      *) echo "ERR|kunci tidak dikenal"; return;;
+    esac
+    setcfg "CH_$(echo $_k | tr a-z A-Z)" "$_v"; [ "$(getcfg CH_ON)" = on ] && ch_svc --ez reload true; echo "OK|tersimpan";;
+  *) echo "CH|$(getcfg CH_ON)|$(ch_get CH_STYLE cross)|$(ch_get CH_COLOR FF3B30)|$(ch_get CH_SIZE 30)|$(ch_get CH_TH 2)|$(ch_get CH_GAP 6)|$(ch_get CH_OP 90)|$(ch_get CH_GLOW 50)|$(ch_get CH_SPD 1)|$(ch_get CH_OX 0)|$(ch_get CH_OY 0)|$(ch_get CH_OUT 1)|$(ch_get CH_DOT 0)";;
+esac; }
 ovnet(){ setcfg OV_NET "$1"; echo "OK|ping $1"; }
 overlay(){ case $1 in
   on)  ov_perm; setcfg OV_ON on; game_sync
@@ -2408,6 +2459,9 @@ status(){
   echo "OVL|$(getcfg OV_ON)|$([ -d /data/data/com.comatoze ] && echo 1 || echo 0)|$(getcfg OV_NET)|$(getcfg OV_AUTO)|$(getcfg REC_RES)|$(getcfg REC_BR)|$(getcfg REC_FPS)"
   echo "PROF|$([ -f $DIR/prof_on ] && echo on || echo off)"
   echo "UIRST|$(getcfg UI_RST)"
+  mt=0; ma=0; while IFS=' ' read -r _k _v _u; do case $_k in MemTotal:) mt=$_v;; MemAvailable:) ma=$_v; break;; esac; done < /proc/meminfo
+  echo "RAM|$([ $mt -gt 0 ] && echo $(( (100*(mt-ma))/mt )) || echo 0)|$((mt/1024))|$((ma/1024))"
+  idleram status; crosshair status
   echo "OVANIM|$(getcfg OV_ANIM)"
   echo "RATES|$(rates)"
   echo "GPCFG|$(getcfg GP_MODE)|$(getcfg GP_HZ)"
@@ -2487,6 +2541,8 @@ boot(){
   color_boot
   dk=$(getcfg DNS); [ -n "$dk" ] && dns_set "$dk" "$(getcfg DNS_H)" >/dev/null
   [ "$(getcfg OV_ON)" = on ] && bg ov_boot
+  setcfg CH_ON off   # crosshair selalu mati saat boot (anti burn-in)
+  [ "$(getcfg IDLE_RAM)" = on ] && bg idleram_run
   # Migrasi: fitur overlay FPS (aplikasi UltraFPS) sudah dihapus. Bersihkan sisa lama bila ada.
   [ -f $DIR/fps.pid ] && kill $(cat $DIR/fps.pid) 2>/dev/null; rm -f $DIR/fps.pid $DIR/layers
   [ -d /data/data/com.ultrapower.fps ] && pm uninstall com.ultrapower.fps >/dev/null 2>&1
@@ -2532,6 +2588,9 @@ case "$1" in
   angle_style) angle_style $2; ui_restart;;
   angle_app) angle_app $2 $3; ui_restart;;
   ovanim) ovanim $2;;
+  idleram) idleram $2 $3 $4;;
+  idleram_run) idleram_run;;
+  crosshair) crosshair $2 $3 $4;;
   uirst) case $2 in on|off) setcfg UI_RST $2; echo "OK|restart UI $2";; now) rm -f $DIR/uirst; setcfg UI_RST on; ui_restart; echo "OK|UI dimuat ulang";; *) echo "UIRST|$(getcfg UI_RST)";; esac;;
   cache) cache_clean;;
   trim) trim_run;;

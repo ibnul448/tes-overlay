@@ -31,6 +31,51 @@ svg.i{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke
 .ib svg{width:20px;height:20px}
 .ib.spin svg{animation:spin .55s cubic-bezier(.3,.9,.3,1)}
 
+/* ---------- Beranda ---------- */
+.rb-bar{display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--ln);border-radius:20px;padding:10px 14px;margin-bottom:12px}
+.rb-bar .br{font-weight:800;letter-spacing:.14em;font-size:12.5px;font-style:italic;background:linear-gradient(90deg,var(--ac),var(--t-teal));-webkit-background-clip:text;background-clip:text;color:transparent}
+.rb-bar .led{width:8px;height:8px;border-radius:50%;background:var(--ok,#2ecc71);box-shadow:0 0 8px var(--ok,#2ecc71);margin-left:2px}
+.rb-bar .on{font-size:11px;color:var(--mu);font-weight:600}
+.rb-bar .sp{flex:1}
+.rb-bar .met{display:flex;flex-direction:column;gap:3px;min-width:44px}
+.rb-bar .met small{font-size:9.5px;color:var(--mu);font-weight:700;letter-spacing:.06em;display:flex;justify-content:space-between}
+.rb-bar .met i{display:block;height:4px;border-radius:3px;background:var(--s2);overflow:hidden}.rb-bar .met i b{display:block;height:100%;border-radius:3px;background:var(--ok,#2ecc71)}
+.rb-bar .met.am i b{background:#f5a524}.rb-bar .met.rd i b{background:#f0483e}
+.rb-bar .clk{font-weight:700;font-size:13px;font-variant-numeric:tabular-nums}
+.rb-bar .bt{font-size:11.5px;color:var(--mu);font-weight:600;white-space:nowrap}
+.rail{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 12px;margin:0 -2px;scrollbar-width:none;scroll-snap-type:x proximity}
+.rail::-webkit-scrollbar{display:none}
+.rail button{flex:none;scroll-snap-align:start;width:60px;display:flex;flex-direction:column;align-items:center;gap:5px;border:0;background:transparent;opacity:.55;transform:scale(.88);transition:all .18s;padding:0}
+.rail button.on{opacity:1;transform:scale(1)}
+.rail .ai{width:56px;height:56px;border-radius:17px;border:2px solid transparent}
+.rail button.on .ai{border-color:var(--ac);box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 25%,transparent),0 6px 18px color-mix(in srgb,var(--ac) 35%,transparent)}
+.rail small{font-size:10.5px;font-weight:600;max-width:60px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--mu)}
+.rail .add .pl{width:56px;height:56px;border-radius:17px;border:2px dashed var(--ln);display:flex;align-items:center;justify-content:center;color:var(--mu)}
+.rhero{position:relative;overflow:hidden;border-radius:26px;border:1px solid var(--ln);background:var(--s1);padding:18px 16px 16px;margin-bottom:12px;isolation:isolate}
+.rhero .hbg{position:absolute;inset:-30%;width:160%;height:160%;object-fit:cover;filter:blur(34px) saturate(1.4);opacity:.5;z-index:-2}
+.rhero:after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,color-mix(in srgb,var(--s1) 55%,transparent),var(--s1) 92%)}
+.rhero .hn{font-size:23px;font-weight:800;letter-spacing:-.4px;line-height:1.15;margin:0 0 3px}
+.rhero .hp{font-size:12px;color:var(--mu);margin-bottom:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rhero .pills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.rhero .pill{font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:99px;background:color-mix(in srgb,var(--tone,var(--ac)) 16%,var(--s2));color:var(--tone,var(--ac));border:1px solid color-mix(in srgb,var(--tone,var(--ac)) 30%,transparent)}
+.rhero .acts{display:flex;gap:9px}
+.rhero .go{flex:1;height:50px;border:0;border-radius:16px;font-weight:800;font-size:15px;letter-spacing:.06em;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--on);background:linear-gradient(100deg,var(--ac),var(--t-teal));box-shadow:0 6px 20px color-mix(in srgb,var(--ac) 38%,transparent)}
+.rhero .go svg{width:20px;height:20px}.rhero .go:active{transform:scale(.97)}
+.rhero .sq{width:50px;height:50px;border-radius:16px;border:1px solid var(--ln);background:var(--s2);display:flex;align-items:center;justify-content:center;padding:0}
+.rhero .sq svg{width:21px;height:21px}
+.rhero.empty{text-align:center;padding:26px 16px}
+.tbank{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px}
+.tbank button{border:1px solid var(--ln);background:var(--s1);border-radius:18px;padding:13px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--tx)}
+.tbank button:active{transform:scale(.95)}
+.tbank .ti{width:38px;height:38px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--tone,var(--ac)) 18%,transparent);color:var(--tone,var(--ac))}
+.tbank .ti svg{width:20px;height:20px}
+.xh-prev{height:200px;border-radius:20px;background:repeating-conic-gradient(var(--s2) 0 25%,var(--s1) 0 50%) 0 0/24px 24px;display:flex;align-items:center;justify-content:center;border:1px solid var(--ln);overflow:hidden}
+.xh-prev svg{width:200px;height:200px}
+@keyframes xspin{to{transform:rotate(360deg)}}@keyframes xpulse{0%{transform:scale(.55);opacity:1}100%{transform:scale(1);opacity:0}}
+.xh-prev .spin{transform-origin:100px 100px;animation:xspin 1.8s linear infinite}.xh-prev .pls{transform-origin:100px 100px;animation:xpulse 1.8s ease-out infinite}
+.sw3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.sw3.c4{grid-template-columns:repeat(4,1fr)}
+.swat{display:flex;gap:9px;flex-wrap:wrap}.swat button{width:34px;height:34px;border-radius:50%;border:2px solid var(--ln);padding:0}.swat button.on{border-color:var(--tx);box-shadow:0 0 0 2px var(--s1) inset}
+.swat input[type=color]{width:34px;height:34px;border:0;border-radius:50%;padding:0;background:none}
 /* ---------- surfaces ---------- */
 .card{background:var(--s1);border:1px solid var(--ln);border-radius:24px;padding:16px;margin-bottom:12px}
 .sec{display:flex;justify-content:space-between;align-items:center;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--mu);font-weight:700;margin:20px 6px 10px}
@@ -544,6 +589,9 @@ function parse(t){
     else if(a[0]==='PROF')s.prof=a[1]==='on';
     else if(a[0]==='UIRST')s.uirst=a[1]!=='off';
     else if(a[0]==='OVANIM')s.ovanim=a[1]!=='off';
+    else if(a[0]==='RAM')s.ram={pct:+a[1]||0,tot:+a[2]||0,av:+a[3]||0};
+    else if(a[0]==='IDLERAM')s.idle={on:a[1]==='on',min:+a[2]||1024,int:+a[3]||15,run:a[4]==='run',last:a[5]||''};
+    else if(a[0]==='CH')s.ch={on:a[1]==='on',style:a[2]||'cross',color:a[3]||'FF3B30',size:+a[4],th:+a[5],gap:+a[6],op:+a[7],glow:+a[8],spd:+a[9],ox:+a[10],oy:+a[11],out:a[12]!=='0',dot:a[13]==='1'};
     else if(a[0]==='GWD')s.gwd={alive:a[1]==='1',ing:a[2]==='1',n:+a[3]||0,last:a[4]||''};
     else if(a[0]==='RATES')s.rates=list(a[1]).map(Number);
     else if(a[0]==='GPROF'){s.gprof={};(a[1]||'').split(',').filter(Boolean).forEach(e=>{const f=e.split('~');if(f[0])s.gprof[f[0]]={mode:f[1]||'',hz:f[2]||''};});}
@@ -599,7 +647,7 @@ const nearest=(arr,v)=>{v=+v;let b=0;arr.forEach((x,i)=>{if(Math.abs(x-v)<Math.a
 const row=(f,compact)=>{const tn=f.danger?'rose':(f.tn||'blue');const ok=f.ok?f.ok(S):true;
  const full=(ok?f.desc:(f.nope||f.desc))+(f.id==='nothermal'&&S.thermrun!=null?' · Service thermal berjalan: '+S.thermrun:'');
  return `<div class="tr tn-${tn} ${f.danger?'danger':''}">${ico(f.ic||'bolt',tn)}
-  <div class="tx" ${compact?'':'onclick="this.parentNode.classList.toggle(\'open\')"'}><b>${f.name}${f.danger?'<span class="tag">Berisiko</span>':''}</b>${compact?'':`${f.danger?`<div class="d">${f.short||full}</div>`:''}<div class="fd">${full}</div>`}</div>
+  <div class="tx" ${compact?'':'onclick="this.parentNode.classList.toggle(\'open\')"'}><b>${f.name}</b>${compact?'':`${f.danger?`<div class="d">${f.short||full}</div>`:''}<div class="fd">${full}</div>`}</div>
   <label class="sw"><input type="checkbox" ${S.feat[f.id]?'checked':''} ${ok?'':'disabled'} onchange="setFeat('${f.id}',this.checked)"><i></i></label></div>`;};
 const rows=g=>FEATURES.filter(f=>(f.group||'sys')===g&&!f.hide).map(row).join('');
 const rowsById=(ids,compact)=>ids.map(id=>FEATURES.find(f=>f.id===id)).filter(Boolean).map(f=>row(f,compact)).join('');
@@ -621,11 +669,39 @@ function activeChips(s){const f=s.feat||{},c=[],add=(t,tn)=>c.push(`<span class=
   if(f.datasaver)add('Data Saver','teal');
   if(s.prof)add('Profil Game aktif','amber');
   return c.length?`<div class="chips2">${c.join('')}</div>`:`<p class="mu" style="margin:0 6px 12px">Belum ada fitur tambahan yang aktif.</p>`;}
+let HSEL='';try{HSEL=localStorage.getItem('rb_sel')||'';}catch(e){}
+let TBOPEN=true;try{TBOPEN=localStorage.getItem('rb_tb')!=='0';}catch(e){}
+function homeSel(p){HSEL=p;try{localStorage.setItem('rb_sel',p);}catch(e){}render();}
+function tbToggle(){TBOPEN=!TBOPEN;try{localStorage.setItem('rb_tb',TBOPEN?'1':'0');}catch(e){}render();}
+function clockNow(){const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+setInterval(()=>{const e=document.getElementById('rbClk');if(e)e.textContent=clockNow();},20000);
+const meterCls=v=>v>=85?'rd':v>=65?'am':'';
+function rbBar(s){const b=s.bat||{},r=s.ram||{pct:0},lv=Math.max(0,Math.min(100,+b.lvl||0)),tp=b.temp?(b.temp/10).toFixed(0)+'°':'-';
+  return `<div class="rb-bar"><span class="br">COMATOZE</span><span class="led"></span><span class="on">Online</span><span class="sp"></span>
+   <div class="met ${meterCls(r.pct)}"><small><span>RAM</span><span>${r.pct}%</span></small><i><b style="width:${r.pct}%"></b></i></div>
+   <div class="met ${lv<=20&&b.st!=='Charging'?'rd':''}"><small><span>BAT</span><span>${lv}%</span></small><i><b style="width:${lv}%"></b></i></div>
+   <span class="bt">${b.st==='Charging'?'⚡ ':''}${tp}</span><span class="clk" id="rbClk">${clockNow()}</span></div>`;}
+function rbRail(g,sel){prefetchLabels(g);
+  return `<div class="rail">${g.map(p=>`<button class="${p===sel?'on':''}" onclick="homeSel('${esc(p)}')">${appIcon(p)}<small>${esc(labelOf(p))}</small></button>`).join('')}<button class="add" onclick="openPick()" aria-label="Tambah game"><span class="pl">${IC.plus}</span><small>Tambah</small></button></div>`;}
+function rbHero(s,sel){
+  if(!sel)return `<div class="rhero empty"><div class="hn">Belum ada game</div><div class="hp">Tambahkan game agar bisa dijalankan dan dioptimalkan dari sini.</div><button class="btn tonal" onclick="openPick()">${IC.plus} Tambah game</button></div>`;
+  const gp=(s.gprof||{})[sel]||{},m=gp.mode||'',mn={perf:'Performa',balance:'Balance',eco:'Eco'}[m]||'Ikut global',sc=(s.gfxApp||{})[sel],tn=m==='perf'?'rose':m==='eco'?'teal':'blue';
+  return `<div class="rhero tn-${tn}"><img class="hbg" src="ksu://icon/${esc(sel)}" alt="" onerror="this.style.display='none'">
+   <div class="hn">${esc(labelOf(sel))}</div><div class="hp">${esc(sel)}</div>
+   <div class="pills"><span class="pill">${mn}</span><span class="pill">${sc&&sc!==100?'Res '+sc+'%':'Res Default'}</span>${gp.hz?`<span class="pill">${gp.hz} Hz</span>`:''}</div>
+   <div class="acts"><button class="go" onclick="playGame('${esc(sel)}')">${IC.play} MULAI GAME</button>
+    <button class="sq" aria-label="Opsi game" onclick="openSub('app:${esc(sel)}')">${IC.layers}</button></div></div>`;}
+function rbTools(){const T=[['RAM','activity','teal',"cleanNow()"],['Memory','cpu','purple',"openSub('mem')"],['Crosshair','plus','rose',"openSub('xh')"],['Baterai','battery','amber',"openSub('chg')"],
+  ['Overlay','layers','blue',"openSub('ovl')"],['Refresh','display','teal',"openSub('hz')"],['Perawatan','refresh','purple',"openSub('care')"],['Tweaks','bolt','blue',"showTab('tweaks')"]];
+  return `<div class="sec">Alat cepat<button class="sech" onclick="tbToggle()" style="border:0;background:none;color:var(--mu);font-size:11px;font-weight:700">${TBOPEN?'Ciutkan':'Buka'}</button></div>${TBOPEN?`<div class="tbank">${T.map(([n,i,t,f])=>`<button class="tn-${t}" onclick="${f}"><span class="ti">${IC[i]||''}</span>${n}</button>`).join('')}</div>`:''}`;}
+async function cleanNow(){toast('Membersihkan RAM…');const r=await run('ovact clean');const o=((r&&r.out)||'').trim();toast(o.startsWith('OK')?'RAM dibersihkan':'Gagal membersihkan');load();}
 function pageHome(s){
-  const cur=MODES.find(x=>x[0]===s.mode),tn=cur?cur[3]:'blue';
-  return `<div class="hero2 tn-${tn}" id="hero2"><div class="ring"><div class="core">${IC[cur?cur[1]:'cpu']||''}</div></div>
-    <div class="ht"><b id="h2n">${cur?cur[2]:'Manual'}</b><span id="h2d">${cur?MODE_SHORT[s.mode]+' · '+hzFor(s,s.mode):'Pengaturan CPU/GPU kustom dari Tweaks › CPU & GPU'}</span></div></div>
+  const g=s.games||[];let sel=g.includes(HSEL)?HSEL:(g[0]||'');
+  const cur=MODES.find(x=>x[0]===s.mode);
+  return rbBar(s)+rbRail(g,sel)+rbHero(s,sel)+rbTools()+
+  `<div class="sec">Mode global</div>
   <div class="mtiles">${MODES.map(([k,i,n,t])=>`<button class="mt tn-${t} ${s.mode===k?'on':''}" data-m="${k}" onclick="setMode('${k}')">${IC[i]||''}<span>${n}</span></button>`).join('')}</div>
+  <div class="mu" style="margin:4px 4px 10px" id="h2d">${cur?MODE_SHORT[s.mode]+' · '+hzFor(s,s.mode):'Pengaturan CPU/GPU kustom dari Tweaks › CPU & GPU'}</div>
   <div class="sec">Sedang aktif</div>
   ${activeChips(s)}
   ${s.mode==='perf'?`<div class="note tn-rose" style="margin:0 0 12px"><b class="dg">Clock dipaksa mentok.</b> ${PERF_NOTE}</div>`:''}
@@ -1181,7 +1257,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.51.0';
+const VER='2.53.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1286,7 +1362,7 @@ function pageSet(s){const d=s.dev||{},th=THEME_OPTS.find(x=>x[0]===curTheme())||
   ${mrow('phone','blue','Perangkat &amp; Laporan',esc(devName(d)||'Info perangkat')+' • '+esc(d.soc||'-'),"openSub('dev')")}
  </div>
  <div class="msec">Tentang</div><div class="mlist">${mrow('info','blue','Comatoze v'+VER,'Channel Telegram • t.me/ProjectComatoze',"openTg()")}</div>
-  <p class="mu" style="margin:12px 2px 0">Daftar game dibundel dari Encore Tweaks (Rem01Gaming, Apache-2.0). Beberapa jalur node MediaTek dipetakan dari analisis LuminaTweaks.</p>`;}
+`;}
 const TG_URL='https://t.me/ProjectComatoze';
 function openTg(){exec("am start --user 0 -a android.intent.action.VIEW -d '"+TG_URL+"' </dev/null >/dev/null 2>&1").catch(()=>{});try{toast&&toast('Membuka Telegram…');}catch(e){}}
 /* ----- sub-halaman ----- */
@@ -1307,24 +1383,90 @@ async function ovTest(){toast('Mengambil data…');const r=await run('ostat1');c
  const e=document.getElementById('ovtest');if(e)e.textContent='FPS '+(a[1]||'--')+' • CPU '+a[2]+'% • GPU '+(a[3]||'n/a')+'% • Bat '+a[4]+'% '+a[5]+'° • RAM '+a[6]+'% • '+a[7]+'/'+(a[8]||'-')+' MHz • ping '+(a[9]||'-')+' • '+(a[10]||'-');toast('Data terbaca');}
 const ovlSub=s=>{const o=s.ovl||{on:false,app:false,net:true,auto:true,res:'720',br:'auto',fps:'60'};
  const seg=(k,cur,opts)=>`<div class="seg3 tn-teal">${opts.map(([v,n])=>`<button class="chip ${String(cur)===v?'on':''}" onclick="recSet('${k}','${v}')">${n}</button>`).join('')}</div>`;
- return `<div class="fnote"><b>Overlay in-game.</b> Kotak FPS melayang di atas game; ketuk untuk membuka panel Dashboard (FPS, CPU, GPU, latensi, baterai, RAM, Record), Widgets (mode, Hz, bersihkan RAM, FPSGO) dan Apps. Tetap berjalan di latar walau aplikasi Comatoze ditutup.${o.app?'':' <b>Aplikasi Comatoze belum terpasang.</b>'}</div>
- <div class="card"><div style="display:flex;align-items:center;gap:12px;margin:0 0 10px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Aktifkan overlay</b><span style="font-size:12px;opacity:.65">Otomatis hidup lagi setelah reboot</span></div><label class="sw"><input type="checkbox" ${o.on?'checked':''} onchange="ovToggle(this.checked)"><i></i></label></div>
- <div style="display:flex;align-items:center;gap:12px;margin:0 0 10px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Hanya saat game dibuka</b><span style="font-size:12px;opacity:.65">Muncul otomatis di game daftar Aplikasi, hilang saat keluar</span></div><label class="sw"><input type="checkbox" ${o.auto?'checked':''} onchange="ovAuto(this.checked)"><i></i></label></div>
- <div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Ukur latensi (ping)</b><span style="font-size:12px;opacity:.65">ping 1.1.1.1 tiap 5 detik</span></div><label class="sw"><input type="checkbox" ${o.net?'checked':''} onchange="ovNet(this.checked)"><i></i></label></div></div>
- <div class="msec g">Rekam Layar (tombol REC di overlay)</div><div class="card">
+ return `${o.app?'':'<div class="fnote"><b>Aplikasi Comatoze belum terpasang.</b></div>'}
+ <div class="card"><div style="display:flex;align-items:center;gap:12px;margin:0 0 10px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Aktifkan overlay</b><span style="font-size:12px;opacity:.65">Aktif lagi setelah reboot</span></div><label class="sw"><input type="checkbox" ${o.on?'checked':''} onchange="ovToggle(this.checked)"><i></i></label></div>
+ <div style="display:flex;align-items:center;gap:12px;margin:0 0 10px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Hanya saat game dibuka</b><span style="font-size:12px;opacity:.65">Muncul saat game dibuka</span></div><label class="sw"><input type="checkbox" ${o.auto?'checked':''} onchange="ovAuto(this.checked)"><i></i></label></div>
+ <div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Ukur latensi (ping)</b><span style="font-size:12px;opacity:.65">Tampilkan ping</span></div><label class="sw"><input type="checkbox" ${o.net?'checked':''} onchange="ovNet(this.checked)"><i></i></label></div></div>
+ <div class="msec g">Rekam Layar</div><div class="card">
   <div class="lbl">Resolusi</div>${seg('res',o.res,[['native','Asli'],['1080','1080p'],['720','720p']])}
   <div class="lbl" style="margin-top:12px">Bitrate</div>${seg('br',o.br,[['auto','Auto'],['8','8 Mbps'],['16','16 Mbps'],['24','24 Mbps']])}
   <div class="lbl" style="margin-top:12px">Frame rate</div>${seg('fps',o.fps,[['30','30'],['60','60'],['90','90'],['120','120']])}
-  <div class="fnote" style="margin-top:12px">Pengaturan langsung dipakai tombol REC di overlay. Hasil: <b>Movies/Comatoze_*.mp4</b> (dipotong tiap 3 menit otomatis). Batas frame rate hanya berlaku bila ROM mendukung <code>--max-fps</code> pada screenrecord; selain itu mengikuti refresh rate layar.</div></div>
- <div class="card"><div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Animasi saat game dibuka</b><span style="font-size:12px;opacity:.65">Splash logo, cincin, dan nama game selama ±2 detik. Tidak menghalangi sentuhan.</span></div><label class="sw"><input type="checkbox" ${s.ovanim!==false?'checked':''} onchange="setOvAnim(this.checked)"><i></i></label></div><button class="btn tonal" style="margin-top:12px;width:100%" onclick="ovAnimTest()">Coba animasi</button></div>
+  <div class="fnote" style="margin-top:12px">Hasil: <b>Movies/Comatoze_*.mp4</b>, dipotong tiap 3 menit.</div></div>
+ <div class="card"><div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Animasi saat game dibuka</b><span style="font-size:12px;opacity:.65">Splash singkat ±2 detik</span></div><label class="sw"><input type="checkbox" ${s.ovanim!==false?'checked':''} onchange="setOvAnim(this.checked)"><i></i></label></div><button class="btn tonal" style="margin-top:12px;width:100%" onclick="ovAnimTest()">Coba animasi</button></div>
  <div class="card"><button class="btn tonal" onclick="ovTest()">Uji data overlay</button><div id="ovtest" style="font-size:12px;opacity:.8;margin-top:8px;word-break:break-word"></div></div>`;};
+
+/* ---------- CROSSHAIR ---------- */
+const XH_ST=[['dot','Dot'],['cross','Cross'],['crossdot','Cross + Dot'],['tcross','T-Cross'],['x','X'],['circle','Circle'],['brackets','Brackets'],['chevron','Chevron'],['diamond','Diamond']];
+const XH_AN=[['pulse','Pulse Ring'],['spin','Spin Reticle']];
+const XH_COL=['FF3B30','FF9500','FFD60A','34C759','2EDCFF','3B9BFF','AF52DE','FFFFFF'];
+const XH_DEF={on:false,style:'cross',color:'FF3B30',size:30,th:2,gap:6,op:90,glow:50,spd:1,ox:0,oy:0,out:true,dot:false};
+function xhShape(st,r,g,w,col,op,extra){
+  const c=100,a=`stroke="${col}" stroke-opacity="${op}" stroke-width="${w}" stroke-linecap="round" fill="none"`,L=(x1,y1,x2,y2)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${a}/>`;
+  switch(st){
+   case 'dot':return `<circle cx="${c}" cy="${c}" r="${Math.max(w*1.6,3)}" fill="${col}" fill-opacity="${op}"/>`;
+   case 'tcross':return L(c-r,c,c-g,c)+L(c+g,c,c+r,c)+L(c,c+g,c,c+r);
+   case 'x':{const q=r*.7071,b=g*.7071;return L(c-q,c-q,c-b,c-b)+L(c+b,c+b,c+q,c+q)+L(c+q,c-q,c+b,c-b)+L(c-b,c+b,c-q,c+q);}
+   case 'circle':return `<circle cx="${c}" cy="${c}" r="${r*.6}" ${a}/>`;
+   case 'brackets':{const q=r*.8,l=r*.4;return L(c-q,c-q,c-q+l,c-q)+L(c-q,c-q,c-q,c-q+l)+L(c+q,c-q,c+q-l,c-q)+L(c+q,c-q,c+q,c-q+l)+L(c-q,c+q,c-q+l,c+q)+L(c-q,c+q,c-q,c+q-l)+L(c+q,c+q,c+q-l,c+q)+L(c+q,c+q,c+q,c+q-l);}
+   case 'chevron':return `<polyline points="${c-r*.7},${c+r*.5} ${c},${c-g*.2} ${c+r*.7},${c+r*.5}" ${a}/>`;
+   case 'diamond':return `<polygon points="${c},${c-r*.8} ${c+r*.8},${c} ${c},${c+r*.8} ${c-r*.8},${c}" ${a}/>`;
+   case 'pulse':return `<g class="pls"><circle cx="${c}" cy="${c}" r="${r}" ${a}/></g><circle cx="${c}" cy="${c}" r="${r*.28}" ${a}/>`;
+   case 'spin':return `<g class="spin"><circle cx="${c}" cy="${c}" r="${r*.62}" ${a}/>${L(c-r,c,c-r*.62,c)}${L(c+r*.62,c,c+r,c)}${L(c,c-r,c,c-r*.62)}${L(c,c+r*.62,c,c+r)}</g>`;
+   default:return L(c-r,c,c-g,c)+L(c+g,c,c+r,c)+L(c,c-r,c,c-g)+L(c,c+g,c,c+r);}
+}
+function xhSvg(c){
+  const r=Math.min(95,c.size*1.1),g=Math.max(0,Math.min(c.gap*1.1,r-1)),w=Math.max(1,c.th*1.5),op=c.op/100,col='#'+c.color,gl=c.glow/100;
+  let h='';
+  if(gl>.02){h+=xhShape(c.style,r,g,w*4.2,col,op*gl*.18)+xhShape(c.style,r,g,w*2.6,col,op*gl*.32);}
+  if(c.out)h+=xhShape(c.style,r,g,w+3,'#000',op*.7);
+  h+=xhShape(c.style,r,g,w,col,op);
+  if(c.style==='crossdot'||(c.dot&&c.style!=='dot')){if(c.out)h+=`<circle cx="100" cy="100" r="${w*1.5+1.5}" fill="#000" fill-opacity="${op*.7}"/>`;h+=`<circle cx="100" cy="100" r="${w*1.5}" fill="${col}" fill-opacity="${op}"/>`;}
+  return `<svg viewBox="0 0 200 200">${h}</svg>`;
+}
+function xhChips(list,cur){return list.map(([k,n])=>`<button class="chip ${cur===k?'on':''}" onclick="xhSet('style','${k}')">${n}</button>`).join('');}
+const rng=(a,b,st)=>{const o=[];for(let v=a;v<=b+1e-9;v+=st)o.push(Math.round(v*100)/100);return o;};
+function xhCard(s){
+  const c=Object.assign({},XH_DEF,s.ch||{}),R=(lbl,id,vals,key,fmt)=>srow(lbl,id,vals,nearest(vals,c[key]),fmt||(v=>v),v=>xhSet(key,v));
+  const adv=
+    R('Size (radius)','xh_size',rng(8,90,1),'size')+R('Thickness','xh_th',rng(.5,8,.5),'th')+R('Center gap','xh_gap',rng(0,30,1),'gap')+
+    R('Opacity','xh_op',rng(10,100,5),'op',v=>v+'%')+R('Glow','xh_glow',rng(0,100,5),'glow',v=>v+'%')+R('Kecepatan animasi','xh_spd',rng(.3,3,.1),'spd',v=>v.toFixed(1)+'x')+
+    R('Offset X','xh_ox',rng(-400,400,2),'ox')+R('Offset Y','xh_oy',rng(-400,400,2),'oy')+
+    `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 10px"><b style="font-size:14px">Outline hitam</b><label class="sw"><input type="checkbox" ${c.out?'checked':''} onchange="xhSet('out',this.checked)"><i></i></label></div>
+     <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 6px"><b style="font-size:14px">Titik tengah</b><label class="sw"><input type="checkbox" ${c.dot?'checked':''} onchange="xhSet('dot',this.checked)"><i></i></label></div>
+     <button class="btn ghost" style="margin-top:10px;width:100%" onclick="xhReset()">${IC.refresh} Kembalikan bawaan</button>`;
+  return `<div class="card"><div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:15px">Crosshair kustom</b><span style="font-size:12px;opacity:.65">Mati otomatis setelah reboot</span></div>
+    <label class="sw"><input type="checkbox" ${c.on?'checked':''} onchange="xhOn(this.checked)"><i></i></label></div></div>
+   <div class="xh-prev" id="xhPrev">${xhSvg(c)}</div>
+   <div class="sec">Statis</div><div class="card"><div class="sw3">${xhChips(XH_ST,c.style)}</div></div>
+   <div class="sec">Animasi</div><div class="card"><div class="sw3">${xhChips(XH_AN,c.style)}</div></div>
+   <div class="sec">Warna</div><div class="card"><div class="swat">${XH_COL.map(h=>`<button class="${c.color.toUpperCase()===h?'on':''}" style="background:#${h}" aria-label="#${h}" onclick="xhSet('color','${h}')"></button>`).join('')}<input type="color" value="#${c.color}" onchange="xhSet('color',this.value.slice(1).toUpperCase())" aria-label="Warna lain"></div></div>
+   ${dcard('xhadv','cpu','purple','Lanjutan','Ukuran, ketebalan, glow, offset',adv)}
+   `;
+}
+async function xhOn(on){S.ch=Object.assign({},XH_DEF,S.ch||{},{on});const r=await run('crosshair '+(on?'on':'off'));const o=((r&&r.out)||'').trim();toast(o.startsWith('OK')?(on?'Crosshair aktif':'Crosshair mati'):'Gagal: '+(o.split('|')[1]||'izin overlay belum diberikan'));}
+async function xhSet(k,v){S.ch=Object.assign({},XH_DEF,S.ch||{});S.ch[k]=(k==='out'||k==='dot')?!!v:(k==='style'||k==='color'?v:+v);
+  const e=$('#xhPrev');if(e)e.innerHTML=xhSvg(S.ch);
+  if(k==='style'||k==='color')renderSub();
+  const wire=(k==='out'||k==='dot')?(v?1:0):v;await run('crosshair set '+k+' '+wire);}
+async function xhReset(){S.ch=Object.assign({},XH_DEF,{on:(S.ch||{}).on});await run('crosshair reset');renderSub();toast('Crosshair kembali ke bawaan');}
+/* ---------- IDLE RAM ---------- */
+function idleCard(s){const d=s.idle||{on:false,min:1024,int:15};
+  const body=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Bersihkan saat idle</b><span style="font-size:12px;opacity:.65">Saat tidak ada game, bersihkan bila RAM bebas rendah</span></div>
+   <label class="sw"><input type="checkbox" ${d.on?'checked':''} onchange="idleOn(this.checked)"><i></i></label></div>
+   <div style="${d.on?'':'opacity:.45;pointer-events:none'}">${srow('Minimum RAM bebas','idle_min',rng(128,8192,128),nearest(rng(128,8192,128),d.min),v=>v+' MB',v=>idleSet('min',v))}
+   ${srow('Interval cek','idle_int',rng(1,120,1),nearest(rng(1,120,1),d.int),v=>v+' mnt',v=>idleSet('int',v))}</div>
+   ${d.last?`<div class="mu" style="margin-top:8px">Terakhir: ${esc(d.last)}</div>`:''}`;
+  return dcard('idle','cpu','teal','Idle RAM',d.on?`Aktif · &lt; ${d.min} MB · tiap ${d.int} mnt`:'Mati',body);}
+async function idleOn(on){S.idle=Object.assign({on:false,min:1024,int:15},S.idle||{},{on});await run('idleram '+(on?'on':'off'));renderSub();toast(on?'Idle RAM aktif':'Idle RAM mati');}
+async function idleSet(k,v){S.idle=Object.assign({on:false,min:1024,int:15},S.idle||{});S.idle[k]=+v;await run('idleram set '+k+' '+v);}
 const SUBS={
+ xh:{t:'Crosshair',f:s=>xhCard(s)},
  hz:{t:'Refresh Rate',f:hzSub},
  cpu:{t:'CPU & GPU',f:s=>pageCpu(s)+gedCard(s)},
  tmode:{t:'Tweak Ekstra',f:tmodeSub},
  thermal:{t:'Disable Thermal',f:thermalSub},
  chg:{t:'Daya & Charging',f:s=>pageChg(s)},
- mem:{t:'Memory & ZRAM',f:s=>memCard(s)+dramCard(s)},
+ mem:{t:'Memory & ZRAM',f:s=>memCard(s)+idleCard(s)+dramCard(s)},
  dns:{t:'Private DNS',f:s=>dnsCard(s)},
  exp:{t:'Eksperimental',f:s=>`<div class="card">${rows('exp')}</div>`},
  care:{t:'Perawatan',f:s=>dpiCard(s)+killCard()+cacheCard()+colorCard(s)},
@@ -1389,7 +1531,7 @@ async function _load(){
 let _aq=Promise.resolve();
 const queueAct=f=>{const p=_aq.then(f,f);_aq=p.catch(()=>{});return p;};
 async function setMode(m){animMode(m);toast('Menerapkan…');await queueAct(()=>run('mode '+m));toast('Mode '+(MODE_NAME[m]||m));load();}
-function uirstCard(s){return `<div class="card"><div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Muat ulang UI otomatis</b><span style="font-size:12px;opacity:.65">Setelah ganti renderer, driver, atau ANGLE: SystemUI dimuat ulang dan game di daftar dihentikan supaya terpasang bersih (bukan reboot, layar berkedip sebentar).</span></div><label class="sw"><input type="checkbox" ${s.uirst!==false?'checked':''} onchange="setUirst(this.checked)"><i></i></label></div><button class="btn tonal" style="margin-top:12px;width:100%" onclick="uiNow()">Muat ulang UI sekarang</button></div>`;}
+function uirstCard(s){return `<div class="card"><div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Muat ulang UI otomatis</b><span style="font-size:12px;opacity:.65">Setelah ganti renderer, driver, atau ANGLE (bukan reboot)</span></div><label class="sw"><input type="checkbox" ${s.uirst!==false?'checked':''} onchange="setUirst(this.checked)"><i></i></label></div><button class="btn tonal" style="margin-top:12px;width:100%" onclick="uiNow()">Muat ulang UI sekarang</button></div>`;}
 async function setOvAnim(on){S.ovanim=on;await run('ovanim '+(on?'on':'off'));toast(on?'Animasi game: aktif':'Animasi game: mati');}
 async function ovAnimTest(){toast('Memutar animasi…');const r=await run('ovanim test');const o=((r&&r.out)||'').trim();if(!o.startsWith('OK'))toast('Gagal: '+(o.split('|')[1]||'overlay belum diberi izin'));}
 async function setUirst(on){S.uirst=on;await run('uirst '+(on?'on':'off'));toast(on?'Muat ulang UI otomatis: aktif':'Muat ulang UI otomatis: mati');}
