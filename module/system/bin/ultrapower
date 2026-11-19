@@ -1689,7 +1689,9 @@ game_wd(){
         [ "$(getcfg F_gameclean)" = on ] && gclean $cur &
         [ "$(getcfg F_preload)" = on ] && preload $cur &
         lastg=$cur; glog "masuk $cur"
-        [ "$(getcfg OV_ON)" = on ] && ov_auto && ov_svc &
+        _ax=; [ "$(getcfg OV_ANIM)" = off ] || _ax="--ez anim true --es pkg $cur"
+        if [ "$(getcfg OV_ON)" = on ] && ov_auto; then { setcfg OV_DEF on; ov_svc $_ax; } &
+        elif [ -n "$_ax" ]; then { ov_perm; ov_svc --ez animonly true $_ax; } & fi
         [ "$(getcfg F_gameprofile)" = on ] && gp_enter $cur
         [ "$(getcfg F_gamethermal)" = on ] && gth_on
         if [ "$(getcfg F_gamednd)" = on ]; then cmd notification set_dnd priority; dset=1; fi
@@ -1751,6 +1753,14 @@ gfx_scale_reset(){ # pkg -- hapus override khusus app itu, balik pakai default g
   gfx_scale_one "$pkg" "$s"
   echo OK
 }
+# Segarkan UI (bukan reboot): setelah ganti renderer/driver/ANGLE, game di daftar dihentikan paksa dan SystemUI dimuat ulang
+# supaya pengaturan grafis terpasang bersih. Ditunda 3 dtk; ketukan beruntun hanya memicu satu kali restart. Matikan: ultrapower uirst off
+ui_restart(){ [ "$(getcfg UI_RST)" = off ] && return 0
+  read _t < /proc/sys/kernel/random/uuid 2>/dev/null || _t=$$.$(date +%s%N); echo "$_t" > $DIR/uirst
+  ( sleep 3; [ "$(cat $DIR/uirst 2>/dev/null)" = "$_t" ] || exit 0; rm -f $DIR/uirst
+    for _p in $(cat $DIR/games.txt 2>/dev/null); do am force-stop $_p >/dev/null 2>&1; done
+    pkill -f com.android.systemui >/dev/null 2>&1 ) </dev/null >/dev/null 2>&1 &
+  return 0; }
 gfx_driver(){ # default | driver (Game Driver/updatable) | native (driver sistem)
   case $1 in default|driver|native) setcfg GFX_DRV $1;; *) echo "ERR|mode tidak dikenal"; return 1;; esac
   g=$(cat $DIR/games.txt 2>/dev/null | tr '\n' ',' | sed 's/,$//')
@@ -2260,7 +2270,13 @@ ov_perm(){ # beri izin overlay + notifikasi ke aplikasi Comatoze tanpa dialog (r
   appops set com.comatoze RUN_IN_BACKGROUND allow >/dev/null 2>&1
   cmd deviceidle whitelist +com.comatoze >/dev/null 2>&1; }
 ov_auto(){ [ "$(getcfg OV_AUTO)" != off ]; }   # bawaan: overlay hanya muncul saat game dari daftar dibuka
-ov_svc(){ am start-foreground-service --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1 || am startservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; }
+ov_svc(){ am start-foreground-service --user 0 -n com.comatoze/.OverlayService "$@" >/dev/null 2>&1 || am startservice --user 0 -n com.comatoze/.OverlayService "$@" >/dev/null 2>&1; }
+# Animasi pembuka game (layar penuh, ~2 dtk, tidak bisa disentuh). OV_ANIM: on (default) | off. "animonly" = animasi saja, tanpa overlay.
+ovanim(){ case $1 in
+  on|off) setcfg OV_ANIM $1; echo "OK|animasi $1";;
+  test) ov_perm; if [ "$(getcfg OV_ON)" = on ]; then ov_svc --ez anim true; else ov_svc --ez animonly true --ez anim true; fi; echo "OK|animasi dicoba";;
+  *) echo "OVANIM|$(getcfg OV_ANIM)";;
+esac; }
 ov_boot(){ sleep 30; ov_perm; if ov_auto; then game_sync; else ov_svc; fi; }
 # ---------- REKAM LAYAR (dipakai tombol REC overlay; pengaturan di WebUI: resolusi / bitrate / fps) ----------
 # Resolusi: native | 1080 | 720 (sisi pendek). Bitrate: auto(=16) | 8 | 16 | 24 Mbps. FPS: dipakai bila screenrecord mendukung --max-fps.
@@ -2298,10 +2314,11 @@ ovrec(){ case $1 in
   stop) touch $DIR/recstop; pkill -2 screenrecord; echo "OK|stop";;
   *) echo "REC|$(getcfg REC_RES)|$(getcfg REC_BR)|$(getcfg REC_FPS)";;
 esac; }
-ovstate(){ # status ringan untuk panel overlay: OVS|mode|hz|fpsgooff|nothermal|touchboost|gamednd|gamebypass|perfx|gmslimit|gameclean|gameprofile|aggrdoze|dnd|wifilatency|hzforce|lessdbg|datasaver|def
+ovstate(){ # status ringan untuk panel overlay: OVS|mode|hz|fpsgooff|nothermal|touchboost|gamednd|gamebypass|perfx|gmslimit|gameclean|gameprofile|aggrdoze|dnd|wifilatency|hzforce|lessdbg|datasaver|def|bkt|smooth|preload|gamethermal|doze|gamefps|fastcharge|autocut|bypass|ecox
   cfgv MODE; _m=$CV; cfgv RHZ; _h=$CV; _o="OVS|$_m|$_h"
   for _k in fpsgooff nothermal touchboost gamednd gamebypass perfx gmslimit gameclean gameprofile aggrdoze dnd wifilatency hzforce lessdbg datasaver; do _o="$_o|$(fstate $_k)"; done
-  cfgv OV_DEF; [ "$CV" = on ] && _o="$_o|on" || _o="$_o|off"
+  cfgv OV_DEF; [ "$CV" = off ] && _o="$_o|off" || _o="$_o|on"
+  for _k in bkt smooth preload gamethermal doze gamefps fastcharge autocut bypass ecox; do _o="$_o|$(fstate $_k)"; done
   echo "$_o"; }
 # Mode overlay: "default" = ikut setelan manager (profil per-game GPM_/GPH_ lalu profil global GP_MODE/GP_HZ, Hz per mode dari manager)
 ovmode(){ case $1 in
@@ -2323,9 +2340,18 @@ ovfloat(){ case $1 in ""|*[!A-Za-z0-9_.]*) echo "ERR|nama paket tidak valid"; re
   am start --windowingMode 5 -n "$_a" >/dev/null 2>&1 || cmd activity start-activity --windowingMode 5 -n "$_a" >/dev/null 2>&1 || { echo "ERR|ROM menolak jendela mengambang"; return 1; }
   echo "OK|jendela mengambang $1"; }
 ovact(){ case $1 in
-  clean) am kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; echo "OK|RAM dibersihkan";;
-  trim) pm trim-caches 8G >/dev/null 2>&1; echo "OK|cache dipangkas";;
-  killbg) gclean "$(game_fg)"; echo "OK|aplikasi latar dihentikan";;
+  clean) _g=$(game_fg); gclean "$_g"; am kill-all >/dev/null 2>&1; cmd activity kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory
+    pm trim-caches 16G >/dev/null 2>&1; echo "OK|RAM dibersihkan";;
+  trim) pm trim-caches 16G >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; cmd package bg-dexopt-job >/dev/null 2>&1 & echo "OK|cache dipangkas";;
+  killbg) gclean "$(game_fg)"; am kill-all >/dev/null 2>&1; echo "OK|aplikasi latar dihentikan";;
+  boost) # sekali tekan, sebuas mungkin: bersihkan RAM + mode Performa + prioritas game + semua boost aktif
+    set -- $(game_fgp); _g=$1; _pid=$2
+    gclean "$_g"; am kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; pm trim-caches 16G >/dev/null 2>&1
+    setcfg OV_DEF off; set_mode perf; game_sync
+    feat touchboost on >/dev/null 2>&1; feat fpsgooff on >/dev/null 2>&1; feat wifilatency on >/dev/null 2>&1; feat lessdbg on >/dev/null 2>&1; feat smooth on >/dev/null 2>&1
+    cmd power set-fixed-performance-mode-enabled true >/dev/null 2>&1
+    if [ -n "$_g" ]; then cmd game mode performance "$_g" >/dev/null 2>&1; [ -n "$_pid" ] && { renice -n -20 -p $_pid >/dev/null 2>&1; ionice -c 1 -n 0 -p $_pid >/dev/null 2>&1; echo -1000 > /proc/$_pid/oom_score_adj 2>/dev/null; }; fi
+    echo "OK|boost ekstrem aktif";;
   shot) f=/sdcard/Pictures/Comatoze_$(date +%Y%m%d_%H%M%S).png; mkdir -p /sdcard/Pictures; screencap -p $f && echo "OK|tersimpan $f" || echo "ERR|gagal";;
   *) echo "ERR|aksi tidak dikenal";;
 esac; }
@@ -2359,6 +2385,8 @@ status(){
   echo "CHGM|$(cut -d'|' -f1 $DIR/chgm 2>/dev/null | sed 's#.*/\([^/]*/[^/]*\)$#\1#' | tr '\n' ',')|$(cat $DIR/chgheld 2>/dev/null)|$(cat $DIR/chgfail 2>/dev/null)|$(cat $DIR/chgq 2>/dev/null | tr '|' ':')"
   echo "OVL|$(getcfg OV_ON)|$([ -d /data/data/com.comatoze ] && echo 1 || echo 0)|$(getcfg OV_NET)|$(getcfg OV_AUTO)|$(getcfg REC_RES)|$(getcfg REC_BR)|$(getcfg REC_FPS)"
   echo "PROF|$([ -f $DIR/prof_on ] && echo on || echo off)"
+  echo "UIRST|$(getcfg UI_RST)"
+  echo "OVANIM|$(getcfg OV_ANIM)"
   echo "RATES|$(rates)"
   echo "GPCFG|$(getcfg GP_MODE)|$(getcfg GP_HZ)"
   echo "GFX|$(getcfg GFX_SCALE)|$(getcfg GFX_DRV)|$(getcfg GFX_ANGLE)"
@@ -2459,7 +2487,7 @@ case "$1" in
   *) rm -f $DIR/c.t.* 2>/dev/null;;
 esac
 case "$1" in
-  mode) setcfg OV_DEF off; set_mode $2; game_sync;;
+  mode) setcfg OV_DEF on; set_mode $2; game_sync;;
   thermal) thermal $2;;
   thermal_check) for a in $(thermal_svcs); do echo "$a $(getprop init.svc.$a)"; done;;
   feat) feat $2 $3;;
@@ -2477,10 +2505,12 @@ case "$1" in
   games) games $2 $3;;
   gfx_scale) gfx_scale $2 $3;;
   gfx_scale_reset) gfx_scale_reset $2;;
-  gfx_driver) gfx_driver $2;;
-  gfx_angle) gfx_angle $2;;
-  angle_style) angle_style $2;;
-  angle_app) angle_app $2 $3;;
+  gfx_driver) gfx_driver $2; ui_restart;;
+  gfx_angle) gfx_angle $2; ui_restart;;
+  angle_style) angle_style $2; ui_restart;;
+  angle_app) angle_app $2 $3; ui_restart;;
+  ovanim) ovanim $2;;
+  uirst) case $2 in on|off) setcfg UI_RST $2; echo "OK|restart UI $2";; now) rm -f $DIR/uirst; setcfg UI_RST on; ui_restart; echo "OK|UI dimuat ulang";; *) echo "UIRST|$(getcfg UI_RST)";; esac;;
   cache) cache_clean;;
   trim) trim_run;;
   color) case $2 in set) color_set $3 $4 $5 $6;; reset) color_reset;; *) echo "ERR|perintah color tidak dikenal";; esac;;
@@ -2507,7 +2537,7 @@ case "$1" in
   dexopt_run) dexopt_run $2;;
   adoze_wd) adoze_wd;;
   iosched) case $2 in set) ios_set $3;; *) echo "IOS|$(ios_cur)|$(ios_list | tr ' ' ',')";; esac;;
-  renderer) rend_apply $2;;
+  renderer) rend_apply $2; ui_restart;;
   zram) case $2 in start) zram_start $3;; *) echo "ERR|perintah zram tidak dikenal";; esac;;
   zram_run) zram_run $2;;
   dram) case $2 in set) dram_set $3;; *) echo "ERR|perintah dram tidak dikenal";; esac;;

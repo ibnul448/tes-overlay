@@ -51,9 +51,9 @@ import java.util.Locale;
  * penyesuaian tweaks. Ikon vektor, tanpa emoji. Data: `ultrapower ostat`; status tombol: `ultrapower ovstate`.
  */
 public class OverlayService extends Service {
-    private static final int ECO_C = Color.parseColor("#33D17A");
-    private static final int BAL_C = Color.parseColor("#2F8CFF");
-    private static final int PERF_C = Color.parseColor("#FF6A3D");
+    private static final int ECO_C = Color.parseColor("#22E37E");
+    private static final int BAL_C = Color.parseColor("#3B9BFF");
+    private static final int PERF_C = Color.parseColor("#FF4B4B");
     private static final int PANEL = Color.parseColor("#F4121620");
     private static final int PANEL2 = Color.parseColor("#F40A0C11");
     private static final int CARD = Color.parseColor("#181B23");
@@ -62,20 +62,21 @@ public class OverlayService extends Service {
     private static final int TXT = Color.parseColor("#ECEFF4");
     private static final int MUTED = Color.parseColor("#8A91A0");
     private static final int WARN = Color.parseColor("#F2B24C");
-    private static final int BAD = Color.parseColor("#F0524F");
-    private static final int GOOD = Color.parseColor("#33D17A");
-    private static final int TABS = 4;
-    private static final int ECO2_C = Color.parseColor("#B6F04A");
-    private static final int BAL2_C = Color.parseColor("#27D3F5");
-    private static final int PERF2_C = Color.parseColor("#FFC247");
+    private static final int BAD = Color.parseColor("#FF4B4B");
+    private static final int GOOD = Color.parseColor("#22E37E");
+    private static final int TABS = 5;
+    private static final int ECO2_C = Color.parseColor("#9BF05A");
+    private static final int BAL2_C = Color.parseColor("#2EDCFF");
+    private static final int PERF2_C = Color.parseColor("#FF9A3D");
     private static final int RAIL_W = 80, BODY_W = 384, BODY_H = 330, HEAD_H = 34, APPS_H = 56;
     private static final int PANEL_W = 8 + BODY_W + 8, PANEL_H = 8 + HEAD_H + 4 + BODY_H + 8;
 
-    private static final String[] OVS_ORDER = {"fpsgooff", "nothermal", "touchboost", "gamednd", "gamebypass", "perfx", "gmslimit", "gameclean", "gameprofile", "aggrdoze", "dnd", "wifilatency", "hzforce", "lessdbg", "datasaver", "def"};
+    private static final String[] OVS_ORDER = {"fpsgooff", "nothermal", "touchboost", "gamednd", "gamebypass", "perfx", "gmslimit", "gameclean", "gameprofile", "aggrdoze", "dnd", "wifilatency", "hzforce", "lessdbg", "datasaver", "def",
+            "bkt", "smooth", "preload", "gamethermal", "doze", "gamefps", "fastcharge", "autocut", "bypass", "ecox"};
     private static final String[] MODE_KEYS = {"default", "eco", "balance", "perf"};
     private static final String[] MODE_NAMES = {"Default", "Eco", "Balance", "Performa"};
-    private static final String[] TAB_NAMES = {"Fitur\nDasar", "Alat Akses\nCepat", "Anti-\nganggu", "Gameplay\nTambahan"};
-    private static final int[] TAB_ICONS = {IconView.GRID, IconView.SLIDERS, IconView.DND, IconView.PAD};
+    private static final String[] TAB_NAMES = {"Fitur\nDasar", "Alat Akses\nCepat", "Anti-\nganggu", "Gameplay\nTambahan", "Daftar\nGame"};
+    private static final int[] TAB_ICONS = {IconView.GRID, IconView.SLIDERS, IconView.DND, IconView.PAD, IconView.BOLT};
     private static final int[] HZ = {60, 90, 120};
 
     private static final class Sw { String id; SkewSwitch view; }
@@ -89,22 +90,31 @@ public class OverlayService extends Service {
     private final LinearLayout[] sec = new LinearLayout[TABS];
     private FrameLayout subPage;
     private GradientDrawable pillBg;
-    private TextView pillNum, hdrClock, hdrBat, status, logo, fpsNum, infoTv, subTitle, hzLbl, recLbl;
+    private TextView pillNum, hdrClock, hdrBat, status, logo, infoTv, subTitle, hzLbl, recLbl, timerLbl;
     private LinearLayout rail;
     private final LinearLayout[] railItem = new LinearLayout[TABS];
     private final IconView[] railIc = new IconView[TABS];
     private final TextView[] railTx = new TextView[TABS];
     private final RingGauge[] gauge = new RingGauge[2];
     private final TextView[] modeTx = new TextView[4];
-    private final FrameLayout[] quickBtn = new FrameLayout[4];
-    private final IconView[] quickIc = new IconView[4];
-    private final TextView[] quickLbl = new TextView[4];
+    private final HashMap<String, LinearLayout> gridBox = new HashMap<String, LinearLayout>();
+    private final HashMap<String, IconView> gridIc = new HashMap<String, IconView>();
+    private final HashMap<String, TextView> gridLbl = new HashMap<String, TextView>();
+    private RingGauge fpsRing;
+    private LinearLayout cardNet, cardMem, boostBtn;
+    private TextView boostTx;
+    private IconView boostIc;
+    private IconView cardNetIc, cardMemIc;
+    private LinearLayout gamesBox;
+    private boolean wifiOn, timerRun;
+    private long timerStart, timerAcc;
+    private int briteStep = 0;
     private SeekBar bright;
     private final ArrayList<Sw> sws = new ArrayList<Sw>();
     private final ArrayList<Sw> subSws = new ArrayList<Sw>();
     private final HashMap<String, Boolean> tstate = new HashMap<String, Boolean>();
     private String curMode = "", curHz = "", curPkg = "";
-    private boolean curDef, subOpen;
+    private boolean curDef = true, subOpen;
     private int accent = BAL_C, accent2 = BAL2_C, curTab = 0;
     private LogoView logoView;
     private float sc = 1f, density = 1f;
@@ -170,8 +180,13 @@ public class OverlayService extends Service {
     // ---------- siklus hidup ----------
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (root != null) return START_STICKY;
+        final boolean animOnly = intent != null && intent.getBooleanExtra("animonly", false);
+        final boolean wantAnim = intent != null && intent.getBooleanExtra("anim", false);
+        final String apkg = intent != null ? intent.getStringExtra("pkg") : null;
+        if (root != null) { if (wantAnim) showLaunchAnim(apkg, false); return START_STICKY; }
         startFg();
+        if (animOnly) { showLaunchAnim(apkg, true); return START_NOT_STICKY; }
+        if (wantAnim) showLaunchAnim(apkg, false);
         try {
             build();
         } catch (Throwable t) {
@@ -183,6 +198,38 @@ public class OverlayService extends Service {
             } }).start();
         }
         return START_STICKY;
+    }
+
+    // ---------- animasi pembuka game ----------
+    private LaunchAnimView animView;
+
+    private void showLaunchAnim(String pkg, final boolean stopAfter) {
+        try {
+            if (animView != null) { animView.cancel(); try { getSystemService(WindowManager.class).removeView(animView); } catch (Exception ignored) { } animView = null; }
+            String label = "";
+            if (pkg != null && !pkg.isEmpty()) {
+                try { label = String.valueOf(getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pkg, 0))); }
+                catch (Exception e) { label = pkg; }
+            }
+            final WindowManager w = getSystemService(WindowManager.class);
+            final LaunchAnimView v = new LaunchAnimView(this);
+            v.setSub(label.isEmpty() ? "GAME MODE AKTIF" : "MEMUAT " + label.toUpperCase(Locale.US));
+            WindowManager.LayoutParams l = new WindowManager.LayoutParams(-1, -1,
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                            | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    PixelFormat.TRANSLUCENT);
+            w.addView(v, l);
+            animView = v;
+            v.play(new Runnable() { @Override public void run() {
+                try { w.removeView(v); } catch (Exception ignored) { }
+                if (animView == v) animView = null;
+                if (stopAfter) stopSelf();
+            } });
+        } catch (Throwable t) {
+            animView = null;
+            if (stopAfter) stopSelf();
+        }
     }
 
     private void startFg() {
@@ -247,6 +294,7 @@ public class OverlayService extends Service {
         sec[1] = buildSec1();
         sec[2] = buildSec2();
         sec[3] = buildSec3();
+        sec[4] = buildSec4();
         for (int i = 0; i < TABS; i++) scrollCol.addView(sec[i], lpw(-1, -2, RAIL_W + 8, i == 0 ? 6 : 14, 0, 0));
         scroll.addView(scrollCol, new FrameLayout.LayoutParams(-1, -2));
         body.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
@@ -414,15 +462,15 @@ public class OverlayService extends Service {
             LinearLayout it = new LinearLayout(this);
             it.setOrientation(LinearLayout.VERTICAL);
             it.setGravity(Gravity.CENTER);
-            it.setPadding(dp(1), dp(10), dp(1), dp(10));
+            it.setPadding(dp(1), dp(6), dp(1), dp(6));
             railIc[i] = new IconView(this, TAB_ICONS[i]);
-            it.addView(railIc[i], new LinearLayout.LayoutParams(dp(30), dp(30)));
-            railTx[i] = tv(TAB_NAMES[i], 9.5f, MUTED, false);
+            it.addView(railIc[i], new LinearLayout.LayoutParams(dp(26), dp(26)));
+            railTx[i] = tv(TAB_NAMES[i], 8.5f, MUTED, false);
             railTx[i].setGravity(Gravity.CENTER);
             it.addView(railTx[i], lpw(-2, -2, 0, 3, 0, 0));
             it.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { goSection(idx); } });
             railItem[i] = it;
-            r.addView(it, lpw(-1, -2, 0, 0, 0, 6));
+            r.addView(it, lpw(-1, -2, 0, 0, 0, 2));
         }
         return r;
     }
@@ -515,34 +563,20 @@ public class OverlayService extends Service {
     // ---------- Seksi 0: Fitur Dasar ----------
     private LinearLayout buildSec0() {
         LinearLayout c = section(0);
-        // garis pemisah bertakik + FPS
-        FrameLayout notch = new FrameLayout(this);
-        notch.addView(new DecoView(this, 1), new FrameLayout.LayoutParams(-1, -1));
-        LinearLayout fl = new LinearLayout(this);
-        fl.setOrientation(LinearLayout.HORIZONTAL);
-        fl.setGravity(Gravity.BOTTOM);
-        TextView ft = tv("FPS ", 10, MUTED, true);
-        ft.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
-        fl.addView(ft, lpw(-2, -2, 0, 0, 3, 3));
-        fpsNum = tv("--", 22, Color.WHITE, true);
-        fpsNum.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
-        fl.addView(fpsNum);
-        FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(-2, -2, Gravity.END | Gravity.BOTTOM);
-        fp.rightMargin = dp(8);
-        notch.addView(fl, fp);
-        c.addView(notch, lpw(-1, dp(30), 0, 0, 0, 0));
-
-        // dial CPU & GPU
+        // hero: dial CPU | cincin FPS besar | dial GPU
         LinearLayout gr = new LinearLayout(this);
         gr.setOrientation(LinearLayout.HORIZONTAL);
         gr.setGravity(Gravity.CENTER);
-        for (int i = 0; i < 2; i++) {
-            gauge[i] = new RingGauge(this);
-            gauge[i].setSide(i == 0 ? 1 : -1);
-            gr.addView(gauge[i], lpwt(1f, 0, 0, 0, 0));
-            gauge[i].getLayoutParams().height = dp(138);
-        }
-        c.addView(gr, lpw(-1, -2, 0, 0, 0, 0));
+        gauge[0] = new RingGauge(this); gauge[0].setSide(1);
+        fpsRing = new RingGauge(this);
+        gauge[1] = new RingGauge(this); gauge[1].setSide(-1);
+        gr.addView(gauge[0], lpwt(1f, 0, 0, 0, 0));
+        gr.addView(fpsRing, lpwt(1.35f, -6, 0, -6, 0));
+        gr.addView(gauge[1], lpwt(1f, 0, 0, 0, 0));
+        gauge[0].getLayoutParams().height = dp(112);
+        fpsRing.getLayoutParams().height = dp(122);
+        gauge[1].getLayoutParams().height = dp(112);
+        c.addView(gr, lpw(-1, -2, 0, 2, 0, 0));
         infoTv = tv("", 9, MUTED, false);
         infoTv.setGravity(Gravity.CENTER);
         c.addView(infoTv, lpw(-1, -2, 0, 2, 0, 0));
@@ -550,11 +584,11 @@ public class OverlayService extends Service {
         // mode (kontrol segmen, garis tepi)
         LinearLayout seg = new LinearLayout(this);
         seg.setOrientation(LinearLayout.HORIZONTAL);
-        seg.setBackground(rounded(Color.parseColor("#0D1015"), 8, LINE, 1));
+        seg.setBackground(rounded(Color.parseColor("#0D1015"), 10, LINE, 1));
         seg.setPadding(dp(2), dp(2), dp(2), dp(2));
         for (int i = 0; i < 4; i++) {
             final int k = i;
-            TextView t = tv(MODE_NAMES[i], 10.5f, MUTED, false);
+            TextView t = tv(MODE_NAMES[i], 10.5f, MUTED, true);
             t.setGravity(Gravity.CENTER);
             t.setSingleLine(true);
             t.setPadding(dp(2), dp(10), dp(2), dp(10));
@@ -562,34 +596,57 @@ public class OverlayService extends Service {
             modeTx[i] = t;
             seg.addView(t, lpwt(1f, 0, 0, 0, 0));
         }
-        c.addView(seg, lpw(-1, -2, 0, 12, 0, 0));
+        c.addView(seg, lpw(-1, -2, 0, 10, 0, 0));
 
-        // 4 tombol bulat
-        LinearLayout qr = new LinearLayout(this);
-        qr.setOrientation(LinearLayout.HORIZONTAL);
-        int[] qi = {IconView.SHOT, IconView.REC, IconView.HZ, IconView.RAM};
-        String[] ql = {"Tangkapan\nlayar", "Perekam\nlayar", "-- Hz", "Pembersih\nmemori"};
-        for (int i = 0; i < 4; i++) {
-            final int k = i;
-            LinearLayout cell = new LinearLayout(this);
-            cell.setOrientation(LinearLayout.VERTICAL);
-            cell.setGravity(Gravity.CENTER_HORIZONTAL);
-            FrameLayout b = new FrameLayout(this);
-            b.setPadding(dp(15), dp(15), dp(15), dp(15));
-            quickIc[i] = new IconView(this, qi[i]);
-            b.addView(quickIc[i], new FrameLayout.LayoutParams(-1, -1));
-            b.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { quick(k, v); } });
-            quickBtn[i] = b;
-            cell.addView(b, new LinearLayout.LayoutParams(dp(52), dp(52)));
-            TextView l = tv(ql[i], 8.5f, MUTED, false);
-            l.setGravity(Gravity.CENTER);
-            quickLbl[i] = l;
-            cell.addView(l, lpw(-2, -2, 0, 4, 0, 0));
-            if (i == 1) recLbl = l;
-            if (i == 2) hzLbl = l;
-            qr.addView(cell, new LinearLayout.LayoutParams(0, -2, 1f));
+        // dua kartu fitur: boost jaringan & optimasi memori
+        LinearLayout cr = new LinearLayout(this);
+        cr.setOrientation(LinearLayout.HORIZONTAL);
+        cardNet = featCard("Boost jaringan", "Kurangi lag & jitter", IconView.WIFI, true);
+        cardMem = featCard("Optimasi memori", "Bebaskan RAM sistem", IconView.RAM, false);
+        cr.addView(cardNet, lpwt(1f, 0, 0, 0, 0));
+        cr.addView(cardMem, lpwt(1f, 8, 0, 0, 0));
+        c.addView(cr, lpw(-1, -2, 0, 10, 0, 0));
+        cardNet.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { pulse(v); toggleFeat("wifilatency", "Boost jaringan"); } });
+        cardMem.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { pulse(v); runCmd(Root.BIN + " ovact clean", "RAM DIBERSIHKAN", null); } });
+
+        // tombol BOOST: satu ketukan, pembersihan RAM + mode Performa + prioritas game
+        boostBtn = new LinearLayout(this);
+        boostBtn.setOrientation(LinearLayout.HORIZONTAL);
+        boostBtn.setGravity(Gravity.CENTER);
+        boostBtn.setPadding(dp(12), dp(10), dp(12), dp(10));
+        boostIc = new IconView(this, IconView.BOLT);
+        boostIc.setColor(Color.WHITE);
+        boostBtn.addView(boostIc, new LinearLayout.LayoutParams(dp(20), dp(20)));
+        boostTx = tv("BOOST EKSTREM", 12, Color.WHITE, true);
+        boostTx.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
+        boostTx.setLetterSpacing(0.12f);
+        boostBtn.addView(boostTx, lpw(-2, -2, 8, 0, 0, 0));
+        c.addView(boostBtn, lpw(-1, -2, 0, 10, 0, 0));
+        boostBtn.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
+            pulse(v);
+            runCmd(Root.BIN + " ovact boost", "BOOST EKSTREM AKTIF", new Runnable() { @Override public void run() { loadState(); } });
+        } });
+
+        // kisi 4 x 3 alat cepat
+        String[][] g = {
+                {"shot", "Tangkapan"}, {"rec", "Rekam"}, {"touch", "Touch boost"}, {"bright", "Kecerahan"},
+                {"dnd", "DND"}, {"wifi", "Wi-Fi"}, {"timer", "Timer"}, {"hz", "Hz"},
+                {"kill", "Tutup latar"}, {"float", "Mengambang"}, {"mgr", "Pengaturan"}, {"diag", "Diagnosa"}};
+        int[] gi = {IconView.SHOT, IconView.REC, IconView.TOUCH, IconView.SUN,
+                IconView.DND, IconView.WIFI, IconView.PULSE, IconView.HZ,
+                IconView.TRASH, IconView.WINDOW, IconView.SLIDERS, IconView.TARGET};
+        LinearLayout row = null;
+        for (int i = 0; i < g.length; i++) {
+            if (i % 4 == 0) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                c.addView(row, lpw(-1, -2, 0, i == 0 ? 12 : 6, 0, 0));
+            }
+            row.addView(gridCell(g[i][0], g[i][1], gi[i]), lpwt(1f, 0, 0, 0, 0));
         }
-        c.addView(qr, lpw(-1, -2, 0, 14, 0, 12));
+        timerLbl = gridLbl.get("timer");
+        recLbl = gridLbl.get("rec");
+        hzLbl = gridLbl.get("hz");
 
         // kecerahan
         LinearLayout br = rowBase();
@@ -611,7 +668,7 @@ public class OverlayService extends Service {
         IconView sun = new IconView(this, IconView.SUN);
         sun.setColor(TXT);
         br.addView(sun, lpw(dp(24), dp(24), 8, 0, 0, 0));
-        c.addView(br, lpw(-1, -2, 0, 0, 0, 10));
+        c.addView(br, lpw(-1, -2, 0, 12, 0, 10));
 
         View line = new View(this);
         line.setBackgroundColor(LINE);
@@ -624,9 +681,88 @@ public class OverlayService extends Service {
         return c;
     }
 
+    private LinearLayout featCard(String title, String sub, int icon, boolean isNet) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.HORIZONTAL);
+        c.setGravity(Gravity.CENTER_VERTICAL);
+        c.setPadding(dp(10), dp(9), dp(10), dp(9));
+        c.setBackground(rounded(CARD, 12, 0, 0));
+        LinearLayout t = new LinearLayout(this);
+        t.setOrientation(LinearLayout.VERTICAL);
+        TextView a = tv(title, 11, Color.WHITE, true);
+        a.setSingleLine(true);
+        t.addView(a);
+        TextView b = tv(sub, 8, MUTED, false);
+        b.setMaxLines(2);
+        t.addView(b, lpw(-2, -2, 0, 2, 0, 0));
+        c.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+        IconView ic = new IconView(this, icon);
+        ic.setColor(TXT);
+        c.addView(ic, lpw(dp(24), dp(24), 4, 0, 0, 0));
+        if (isNet) cardNetIc = ic; else cardMemIc = ic;
+        return c;
+    }
+
+    private LinearLayout gridCell(final String id, String label, int icon) {
+        LinearLayout cell = new LinearLayout(this);
+        cell.setOrientation(LinearLayout.VERTICAL);
+        cell.setGravity(Gravity.CENTER_HORIZONTAL);
+        cell.setPadding(dp(2), dp(7), dp(2), dp(6));
+        IconView ic = new IconView(this, icon);
+        cell.addView(ic, new LinearLayout.LayoutParams(dp(26), dp(26)));
+        TextView l = tv(label, 8.5f, MUTED, false);
+        l.setGravity(Gravity.CENTER);
+        l.setSingleLine(true);
+        l.setEllipsize(TextUtils.TruncateAt.END);
+        cell.addView(l, lpw(-1, -2, 0, 4, 0, 0));
+        cell.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { pulse(v); gridAction(id); } });
+        if ("timer".equals(id)) cell.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override public boolean onLongClick(View v) { timerRun = false; timerAcc = 0; timerLbl.setText("Timer"); paintState(); return true; }
+        });
+        gridBox.put(id, cell); gridIc.put(id, ic); gridLbl.put(id, l);
+        return cell;
+    }
+
+    private void gridAction(String id) {
+        if ("shot".equals(id)) shot();
+        else if ("rec".equals(id)) toggleRecord();
+        else if ("touch".equals(id)) toggleFeat("touchboost", "Touch Boost");
+        else if ("dnd".equals(id)) toggleFeat("dnd", "DND");
+        else if ("wifi".equals(id)) {
+            final boolean to = !wifiOn;
+            wifiOn = to; paintState();
+            runCmd("svc wifi " + (to ? "enable" : "disable"), "WI-FI " + (to ? "ON" : "OFF"), null, new Runnable() { @Override public void run() { wifiOn = !to; paintState(); } });
+        } else if ("timer".equals(id)) {
+            if (timerRun) { timerAcc += System.currentTimeMillis() - timerStart; timerRun = false; }
+            else { timerStart = System.currentTimeMillis(); timerRun = true; }
+            paintState();
+        } else if ("bright".equals(id)) {
+            briteStep = (briteStep + 1) % 4;
+            int[] lv = {64, 128, 192, 255};
+            final int v = lv[briteStep];
+            if (bright != null) bright.setProgress(v);
+            gridLbl.get("bright").setText((v * 100 / 255) + "%");
+            new Thread(new Runnable() { @Override public void run() {
+                Root.exec("settings put system screen_brightness_mode 0; settings put system screen_brightness " + v);
+            } }).start();
+        } else if ("hz".equals(id)) {
+            int cur = parse(curHz);
+            int next = HZ[0];
+            for (int i = 0; i < HZ.length; i++) if (HZ[i] == cur) next = HZ[(i + 1) % HZ.length];
+            final int to = next;
+            runCmd(Root.BIN + " refresh " + to, to + " HZ", new Runnable() { @Override public void run() { curHz = String.valueOf(to); paintState(); } });
+        } else if ("kill".equals(id)) runCmd(Root.BIN + " ovact killbg", "APP LATAR DIHENTIKAN", null);
+        else if ("float".equals(id)) openSub("float");
+        else if ("mgr".equals(id)) runCmd("am start -n com.comatoze/.MainActivity", "MEMBUKA PENGATURAN", new Runnable() { @Override public void run() { setExpanded(false); } });
+        else if ("diag".equals(id)) runCmd(Root.BIN + " ovdiag > /sdcard/Download/comatoze_ovdiag.txt 2>&1; echo OK", "TERSIMPAN: Download/comatoze_ovdiag.txt", null);
+    }
+
     // ---------- Seksi 1: Alat Akses Cepat ----------
     private LinearLayout buildSec1() {
         LinearLayout c = section(150);
+        actionRow(c, "Boost ekstrem (RAM + Performa + prioritas game)", new Runnable() { @Override public void run() {
+            runCmd(Root.BIN + " ovact boost", "BOOST EKSTREM AKTIF", new Runnable() { @Override public void run() { loadState(); } }); } });
+        actionRow(c, "Bersihkan RAM agresif", new Runnable() { @Override public void run() { runCmd(Root.BIN + " ovact clean", "RAM DIBERSIHKAN", null); } });
         actionRow(c, "Tutup app di latar", new Runnable() { @Override public void run() { runCmd(Root.BIN + " ovact killbg", "APP LATAR DIHENTIKAN", null); } });
         actionRow(c, "Pangkas cache", new Runnable() { @Override public void run() { runCmd(Root.BIN + " ovact trim", "CACHE DIPANGKAS", null); } });
         actionRow(c, "Tangkapan layar", new Runnable() { @Override public void run() { shot(); } });
@@ -653,8 +789,80 @@ public class OverlayService extends Service {
         switchRow(c, "gameclean", "Bersihkan RAM otomatis", sws);
         switchRow(c, "gameprofile", "Profil Game otomatis", sws);
         switchRow(c, "gamebypass", "Pengisian Daya Bypass", sws);
+        switchRow(c, "gamethermal", "Thermal otomatis saat game", sws);
+        switchRow(c, "preload", "Preload game ke cache", sws);
+        navRow(c, "Daya & Pengisian", "chg");
         actionRow(c, "Tambah game yang sedang dibuka", new Runnable() { @Override public void run() { addCurrentGame(); } });
         return c;
+    }
+
+    // ---------- Seksi 4: Daftar Game ----------
+    private LinearLayout buildSec4() {
+        LinearLayout c = section(170);
+        gamesBox = new LinearLayout(this);
+        gamesBox.setOrientation(LinearLayout.VERTICAL);
+        c.addView(gamesBox, new LinearLayout.LayoutParams(-1, -2));
+        loadGames();
+        return c;
+    }
+
+    private void loadGames() {
+        new Thread(new Runnable() { @Override public void run() {
+            final String out = Root.sh("cat /data/adb/ultrapower/games.txt 2>/dev/null");
+            ui.post(new Runnable() { @Override public void run() {
+                if (root == null) return;
+                gamesBox.removeAllViews();
+                PackageManager pm = getPackageManager();
+                LinearLayout row = null;
+                int n = 0;
+                for (String l : out.split("\n")) {
+                    final String p = l.trim();
+                    if (!p.matches("[A-Za-z0-9_.]+")) continue;
+                    Drawable d;
+                    String lbl;
+                    try {
+                        d = pm.getApplicationIcon(p);
+                        lbl = String.valueOf(pm.getApplicationLabel(pm.getApplicationInfo(p, 0)));
+                    } catch (Exception e) { continue; }
+                    if (n % 4 == 0) {
+                        row = new LinearLayout(OverlayService.this);
+                        row.setOrientation(LinearLayout.HORIZONTAL);
+                        gamesBox.addView(row, lpw(-1, -2, 0, 0, 0, 8));
+                    }
+                    n++;
+                    LinearLayout t = new LinearLayout(OverlayService.this);
+                    t.setOrientation(LinearLayout.VERTICAL);
+                    t.setGravity(Gravity.CENTER_HORIZONTAL);
+                    t.setPadding(dp(2), dp(6), dp(2), dp(6));
+                    t.setBackground(rounded(CARD, 12, 0, 0));
+                    ImageView iv = new ImageView(OverlayService.this);
+                    iv.setImageDrawable(d);
+                    t.addView(iv, new LinearLayout.LayoutParams(dp(38), dp(38)));
+                    TextView tx = tv(lbl, 8, TXT, false);
+                    tx.setGravity(Gravity.CENTER);
+                    tx.setSingleLine(true);
+                    tx.setEllipsize(TextUtils.TruncateAt.END);
+                    t.addView(tx, lpw(-1, -2, 0, 4, 0, 0));
+                    t.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
+                        pulse(v);
+                        runCmd("monkey -p " + p + " -c android.intent.category.LAUNCHER 1", "MEMBUKA", new Runnable() { @Override public void run() { setExpanded(false); } });
+                    } });
+                    t.setOnLongClickListener(new View.OnLongClickListener() { @Override public boolean onLongClick(View v) {
+                        runCmd(Root.BIN + " ovfloat " + p, "JENDELA MENGAMBANG", new Runnable() { @Override public void run() { setExpanded(false); } });
+                        return true;
+                    } });
+                    row.addView(t, lpwt(1f, n % 4 == 1 ? 0 : 6, 0, 0, 0));
+                }
+                if (n == 0) {
+                    TextView t = tv("Belum ada game terdaftar. Buka game lalu tambahkan lewat Gameplay Tambahan.", 10, MUTED, false);
+                    gamesBox.addView(t);
+                } else {
+                    TextView t = tv("Ketuk untuk membuka, tekan lama untuk jendela mengambang.", 8.5f, MUTED, false);
+                    gamesBox.addView(t, lpw(-1, -2, 0, 2, 0, 0));
+                    for (int i = n % 4 == 0 ? 4 : n % 4; i < 4 && row != null; i++) row.addView(new View(OverlayService.this), lpwt(1f, 6, 0, 0, 0));
+                }
+            } });
+        } }).start();
     }
 
     // ---------- Sub halaman (lipatan fitur) ----------
@@ -693,6 +901,15 @@ public class OverlayService extends Service {
             switchRow(subBox, "fpsgooff", "Matikan FPSGO", subSws);
             switchRow(subBox, "touchboost", "Touch Boost", subSws);
             switchRow(subBox, "hzforce", "Kunci Refresh Rate", subSws);
+            switchRow(subBox, "gamefps", "Buka batas 60 FPS game", subSws);
+            switchRow(subBox, "bkt", "Kernel Tweaks (BKT)", subSws);
+            switchRow(subBox, "smooth", "Anti kill proses latar", subSws);
+            switchRow(subBox, "ecox", "Tweak Ekstra Eco", subSws);
+        } else if ("chg".equals(key)) {
+            subTitle.setText("Daya & Pengisian");
+            switchRow(subBox, "fastcharge", "Fast Charging", subSws);
+            switchRow(subBox, "autocut", "Auto Cut Charging", subSws);
+            switchRow(subBox, "bypass", "Bypass Charging", subSws);
         } else if ("net".equals(key)) {
             subTitle.setText("Peningkatan Jaringan");
             switchRow(subBox, "wifilatency", "Wi-Fi latensi rendah", subSws);
@@ -701,6 +918,7 @@ public class OverlayService extends Service {
             subTitle.setText("Pembatas Latar");
             switchRow(subBox, "aggrdoze", "Doze agresif", subSws);
             switchRow(subBox, "lessdbg", "Kurangi log debug", subSws);
+            switchRow(subBox, "doze", "Doze Mode", subSws);
         } else {
             subTitle.setText("Jendela Mengambang");
             loadPicker();
@@ -784,7 +1002,23 @@ public class OverlayService extends Service {
         runCmd(Root.BIN + " games add " + p, "GAME DITAMBAHKAN", null);
     }
 
-    private void shot() { runCmd(Root.BIN + " ovact shot", "TANGKAPAN TERSIMPAN", null); }
+    // Overlay disembunyikan total sebelum menangkap layar, lalu dimunculkan lagi (panel yang lebar ikut diciutkan).
+    private void shot() {
+        if (root == null) return;
+        if (expanded) setExpanded(false);
+        root.setVisibility(View.INVISIBLE);
+        ui.postDelayed(new Runnable() { @Override public void run() {
+            new Thread(new Runnable() { @Override public void run() {
+                final Root.Res r = Root.exec(Root.BIN + " ovact shot");
+                final boolean ok = r.code == 0 && !r.out().trim().startsWith("ERR|");
+                ui.postDelayed(new Runnable() { @Override public void run() {
+                    if (root == null) return;
+                    root.setVisibility(View.VISIBLE);
+                    flash(ok ? "TANGKAPAN TERSIMPAN" : "GAGAL MENANGKAP LAYAR", ok ? GOOD : BAD, 2200);
+                } }, 250);
+            } }).start();
+        } }, 450);
+    }
 
     private void loadBrightness() {
         new Thread(new Runnable() { @Override public void run() {
@@ -801,7 +1035,7 @@ public class OverlayService extends Service {
     private void applyAccent(int a, int b) {
         accent = a; accent2 = b;
         if (pillBg != null) pillBg.setStroke(Math.max(1, dp(1)), alpha(a, 150));
-        if (gauge[0] != null) { gauge[0].setAccent(a); gauge[1].setAccent(b); }
+        if (gauge[0] != null) { gauge[0].setAccent(a); gauge[1].setAccent(b); fpsRing.setAccent(a); }
         if (logoView != null) logoView.setColors(a, b);
         if (bright != null) {
             bright.setProgressTintList(ColorStateList.valueOf(Color.WHITE));
@@ -845,15 +1079,32 @@ public class OverlayService extends Service {
                 modeTx[i].setTextColor(MUTED);
             }
         }
-        int hz = 0;
-        try { hz = Integer.parseInt(curHz); } catch (Exception ignored) { }
-        for (int i = 0; i < 4; i++) {
-            if (quickBtn[i] == null) continue;
-            boolean act = (i == 1 && recording) || (i == 2 && hz >= 90);
-            int fill = (i == 1 && recording) ? BAD : accent;
-            quickBtn[i].setBackground(act ? circle(fill, 0, 0) : circle(CARD2, LINE, 1));
-            quickIc[i].setColor(act ? Color.WHITE : Color.parseColor("#BFC6D3"));
-            quickLbl[i].setTextColor(act ? Color.WHITE : MUTED);
+        int hz = parse(curHz);
+        boolean[] act = new boolean[12];
+        String[] ids = {"shot", "rec", "touch", "bright", "dnd", "wifi", "timer", "hz", "kill", "float", "mgr", "diag"};
+        for (int i = 0; i < ids.length; i++) {
+            String id = ids[i];
+            boolean on = ("rec".equals(id) && recording) || ("touch".equals(id) && Boolean.TRUE.equals(tstate.get("touchboost")))
+                    || ("dnd".equals(id) && Boolean.TRUE.equals(tstate.get("dnd"))) || ("wifi".equals(id) && wifiOn)
+                    || ("timer".equals(id) && timerRun) || ("hz".equals(id) && hz >= 90);
+            int col = ("rec".equals(id) && recording) ? BAD : accent;
+            LinearLayout box = gridBox.get(id);
+            if (box == null) continue;
+            box.setBackground(on ? rounded(alpha(col, 34), 12, alpha(col, 190), 1.2f) : null);
+            gridIc.get(id).setColor(on ? col : Color.parseColor("#C3CAD6"));
+            gridLbl.get(id).setTextColor(on ? Color.WHITE : MUTED);
+        }
+        if (boostBtn != null) {
+            GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{accent, accent2});
+            bg.setCornerRadius(dp(12));
+            bg.setStroke(Math.max(1, dp(1)), alpha(Color.WHITE, 90));
+            boostBtn.setBackground(bg);
+        }
+        boolean netOn = Boolean.TRUE.equals(tstate.get("wifilatency"));
+        if (cardNet != null) {
+            cardNet.setBackground(netOn ? rounded(alpha(accent, 34), 12, alpha(accent, 190), 1.2f) : rounded(CARD, 12, 0, 0));
+            cardNetIc.setColor(netOn ? accent : TXT);
+            cardMemIc.setColor(accent);
         }
         if (hzLbl != null) hzLbl.setText(curHz.isEmpty() ? "Hz" : curHz + " Hz");
         for (Sw s : sws) paintSw(s);
@@ -925,24 +1176,12 @@ public class OverlayService extends Service {
                 new Runnable() { @Override public void run() { tstate.put(id, !to); paintState(); } });
     }
 
-    private void quick(int k, View v) {
-        pulse(v);
-        if (k == 0) shot();
-        else if (k == 1) toggleRecord();
-        else if (k == 2) {
-            int cur = 0;
-            try { cur = Integer.parseInt(curHz); } catch (Exception ignored) { }
-            int next = HZ[0];
-            for (int i = 0; i < HZ.length; i++) if (HZ[i] == cur) next = HZ[(i + 1) % HZ.length];
-            final int to = next;
-            runCmd(Root.BIN + " refresh " + to, to + " HZ", new Runnable() { @Override public void run() { curHz = String.valueOf(to); paintState(); } });
-        } else runCmd(Root.BIN + " ovact clean", "RAM DIBERSIHKAN", null);
-    }
-
     private void loadState() {
         new Thread(new Runnable() { @Override public void run() {
             final String out = Root.sh(Root.BIN + " ovstate");
+            final boolean wf = "1".equals(Root.sh("settings get global wifi_on").trim());
             ui.post(new Runnable() { @Override public void run() {
+                wifiOn = wf;
                 for (String l : out.split("\n")) {
                     if (!l.startsWith("OVS|")) continue;
                     String[] a = l.split("\\|", -1);
@@ -1003,7 +1242,7 @@ public class OverlayService extends Service {
                 final String o = r.out().trim();
                 ui.post(new Runnable() { @Override public void run() {
                     recording = false;
-                    recLbl.setText("Perekam\nlayar");
+                    recLbl.setText("Rekam");
                     recLbl.setTextColor(MUTED);
                     paintState();
                     if (o.startsWith("OK|")) {
@@ -1052,7 +1291,16 @@ public class OverlayService extends Service {
         pillNum.setText(fps.isEmpty() ? "--" : fps);
         if (!expanded) return;
         tick++;
-        fpsNum.setText(fps.isEmpty() ? "--" : fps);
+        int fv = parse(fps);
+        int hzN = Math.max(60, parse(curHz));
+        fpsRing.set(fps.isEmpty() ? 0 : Math.min(100, fv * 100f / hzN), fps.isEmpty() ? "--" : fps, "", "FPS");
+        if (timerRun && timerLbl != null) {
+            long ts = (timerAcc + System.currentTimeMillis() - timerStart) / 1000;
+            timerLbl.setText(String.format(Locale.US, "%02d:%02d", ts / 60, ts % 60));
+        } else if (timerLbl != null && timerAcc > 0) {
+            long ts = timerAcc / 1000;
+            timerLbl.setText(String.format(Locale.US, "%02d:%02d", ts / 60, ts % 60));
+        }
         hdrBat.setText(bat + "%");
         hdrClock.setText(clockFmt.format(new Date()));
         int tmp = ct.isEmpty() ? parse(bt) : parse(ct);
@@ -1077,6 +1325,7 @@ public class OverlayService extends Service {
     @Override
     public void onDestroy() {
         running = false;
+        if (animView != null) { animView.cancel(); try { getSystemService(WindowManager.class).removeView(animView); } catch (Exception ignored) { } animView = null; }
         if (proc != null) proc.destroy();
         if (root != null) { try { wm.removeView(root); } catch (Exception ignored) { } root = null; }
         super.onDestroy();

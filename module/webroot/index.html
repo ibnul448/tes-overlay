@@ -311,6 +311,18 @@ input[type=range].sl{width:100%;height:28px;margin:0;accent-color:var(--tone,var
 .sl input::-webkit-slider-thumb,input[type=range].sl::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:0;margin-top:-7px;box-shadow:0 1px 4px rgba(0,0,0,.35),0 0 0 3px color-mix(in srgb,var(--tone,var(--ac)) 32%,transparent)}
 .hero2 .core svg{transform:none}
 /* menu lipat */
+details.dfold{transition:border-color .2s}
+details.dfold:not([open]){padding:14px 18px}
+details.dfold>summary{list-style:none;cursor:pointer;align-items:center;-webkit-tap-highlight-color:transparent}
+details.dfold>summary::-webkit-details-marker{display:none}
+details.dfold>summary:after,details.dfold[open]>summary:after{content:none}
+details.dfold>summary{justify-content:flex-start;font-weight:inherit}
+details.dfold>summary:active{opacity:.7}
+details.dfold>summary .chev{margin-left:auto;flex:none;width:30px;height:30px;display:grid;place-items:center;opacity:.55;transition:transform .22s}
+details.dfold>summary .chev svg{width:20px;height:20px}
+details.dfold[open]{border-color:color-mix(in srgb,var(--tone,var(--ac)) 40%,var(--ln))}
+details.dfold[open]>summary .chev{transform:rotate(180deg);opacity:.9}
+details.dfold>.fb{margin-top:14px;animation:foldIn .2s ease-out}
 .card.fold{transition:border-color .2s}
 .card.fold:not(.open){padding:14px 18px}
 .card.fold>.head{cursor:pointer;align-items:center;-webkit-tap-highlight-color:transparent}
@@ -355,6 +367,12 @@ body{padding:calc(env(safe-area-inset-top,0px) + 10px) 16px calc(112px + env(saf
 .mrow:active{background:var(--s3)}
 .mrow .st{flex:none;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:9px 14px;border-radius:14px;background:var(--s2);color:var(--mu)}
 .mrow .st.on{background:var(--ico);color:var(--icoc)}
+.arow{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.arow .tx .pk{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.abadge{display:inline-block;font-style:normal;margin-top:7px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:99px;background:var(--s2);color:var(--mu)}
+.abadge.on{background:var(--ico);color:var(--icoc)}
+.playb{flex:none;width:48px;height:48px;border-radius:50%;border:0;background:var(--ac);color:var(--on);display:grid;place-items:center;padding:0;box-shadow:0 4px 14px color-mix(in srgb,var(--ac) 35%,transparent)}
+.playb svg{width:22px;height:22px;margin-left:2px}.playb:active{transform:scale(.92)}
 .msec{font-size:15px;font-weight:600;margin:26px 12px 12px;color:var(--tx)}
 .msec.g{color:var(--ac)}
 .sbox{display:flex;align-items:center;gap:12px;background:var(--s1);border-radius:30px;padding:0 18px;min-height:56px;margin:0 0 14px;color:var(--mu)}
@@ -437,6 +455,7 @@ const FEATURES=[
 const P=d=>d.map(x=>`<path d="${x}"/>`).join('');
 const sv=d=>`<svg class="i" viewBox="0 0 24 24">${d}</svg>`;
 const IC={
+ play:sv('<path style="fill:currentColor;stroke-width:2" d="M8 5.2v13.6a.6.6 0 0 0 .9.5l11-6.8a.6.6 0 0 0 0-1L8.9 4.7a.6.6 0 0 0-.9.5z"/>'),
  rocket:sv('<path style="fill:currentColor;opacity:.22;stroke:none" d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"/><path style="stroke-width:2.2" d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11"/><path style="stroke-width:1.7" d="M3.5 9.5h3M2.5 13h3.5"/>'),
  scale:sv('<path style="stroke-width:2.2" d="M12 3v3"/><path style="stroke-width:2.2" d="M4 8h16"/><path style="stroke-width:2.2" d="M12 8v10"/><path style="stroke-width:2.2" d="M8 20h8"/><path style="fill:currentColor;opacity:.22;stroke:none" d="M1.3 8a3 3 0 0 0 6 0z"/><path style="stroke-width:2.2" d="M1.3 8a3 3 0 0 0 6 0"/><path style="fill:currentColor;opacity:.22;stroke:none" d="M16.7 8a3 3 0 0 0 6 0z"/><path style="stroke-width:2.2" d="M16.7 8a3 3 0 0 0 6 0"/>'),
  leaf:sv('<path style="fill:currentColor;opacity:.22;stroke:none" d="M6 20c0 -9 4 -15 13 -17c1.5 8 -3 15 -13 17z"/><path style="stroke-width:2.2" d="M6 20c0 -9 4 -15 13 -17c1.5 8 -3 15 -13 17z"/><path style="stroke-width:2.2" d="M8.5 17.5c3 -5 6 -9.5 9 -13.5"/>'),
@@ -523,6 +542,8 @@ function parse(t){
     else if(a[0]==='BAT')s.bat={lvl:a[1],st:a[2],cur:+a[3],temp:+a[4]},s.chgn=parseInt(a[6])||0,s.cut=parseInt(a[7])||80;
     else if(a[0]==='CHGM')s.chgm={m:a[1],held:a[2]==='1',fail:a[3],q:a[4]||''};
     else if(a[0]==='PROF')s.prof=a[1]==='on';
+    else if(a[0]==='UIRST')s.uirst=a[1]!=='off';
+    else if(a[0]==='OVANIM')s.ovanim=a[1]!=='off';
     else if(a[0]==='GWD')s.gwd={alive:a[1]==='1',ing:a[2]==='1',n:+a[3]||0,last:a[4]||''};
     else if(a[0]==='RATES')s.rates=list(a[1]).map(Number);
     else if(a[0]==='GPROF'){s.gprof={};(a[1]||'').split(',').filter(Boolean).forEach(e=>{const f=e.split('~');if(f[0])s.gprof[f[0]]={mode:f[1]||'',hz:f[2]||''};});}
@@ -722,7 +743,7 @@ function angleStyleCard(s){const g=s.ang||{style:'blok',ok:true,apps:[]},a=g.app
   ${a.map(p=>`<div class="app">${appIcon(p)}<div class="n"><b>${esc(labelOf(p))}</b><span>${esc(p)}</span></div><button class="rm" onclick="angDel('${esc(p)}')" aria-label="Hapus">${IC.trash}</button></div>`).join('')}
   ${g.ok?'':'<p class="mu" style="margin:12px 2px 0">ANGLE tidak terdeteksi di perangkat ini.</p>'}</div>`;}
 async function angStyle(k,el){el.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===el));toast('Menerapkan…');
-  const r=await run('angle_style '+k);await load();toast((r.out||'').trim().startsWith('OK')?'Gaya diterapkan · buka ulang gamenya':'Gagal: '+((r.out||'').split('|')[1]||'tidak ada respon'));}
+  const r=await run('angle_style '+k);await load();toast((r.out||'').trim().startsWith('OK')?'Gaya diterapkan · UI dimuat ulang':'Gagal: '+((r.out||'').split('|')[1]||'tidak ada respon'));}
 async function angAll(){toast('Menerapkan…');const r=await run('angle_app all');await load();toast((r.out||'').trim().startsWith('OK')?'Semua game di daftar memakai ANGLE · buka ulang gamenya':'Gagal');}
 async function angClear(){toast('Menonaktifkan…');const r=await run('angle_app clear');await load();toast((r.out||'').trim().startsWith('OK')?'Dimatikan · buka ulang gamenya':'Gagal');}
 async function angDel(p){if(!/^[A-Za-z0-9._]+$/.test(p))return;await run('angle_app del '+p);await load();toast('Dihapus · buka ulang gamenya');}
@@ -759,6 +780,16 @@ function gfxCard(s){const g=s.gfx||{scale:100,drv:'default',angle:'default'};
   <div class="lbl" style="margin-top:16px">API grafis (ANGLE)</div>
   <div class="seg3 tn-purple" data-grp="angle">${[['default','Default'],['native','OpenGL Native'],['angle','ANGLE']].map(([k,n])=>`<button class="chip ${g.angle===k?'on':''}" onclick="gfxPick('angle','${k}',this)">${n}</button>`).join('')}</div>
   </div>`;}
+const DOPEN=new Set(['prof']);
+function dfoldSet(id,on){on?DOPEN.add(id):DOPEN.delete(id);}
+function dcard(id,icon,tone,title,sub,body){ // kartu lipat per-halaman (<details>): judul + status, isi muncul saat dibuka
+ return `<details class="card dfold" ${DOPEN.has(id)?'open':''} ontoggle="dfoldSet('${id}',this.open)"><summary class="head">${ico(icon,tone)}<div class="tx"><b>${title}</b><span>${sub}</span></div><span class="chev">${IC.chev}</span></summary><div class="fb">${body}</div></details>`;}
+const DRV_N={default:'Default',driver:'Game Driver',native:'Driver Sistem'},API_N={default:'Default',native:'OpenGL Native',angle:'ANGLE'};
+function gfxChips(s){const g=s.gfx||{scale:100,drv:'default',angle:'default'};
+ return `<div class="lbl">Driver grafis (Vulkan)</div>
+  <div class="seg3 tn-blue" data-grp="drv">${[['default','Default'],['driver','Game Driver'],['native','Driver Sistem']].map(([k,n])=>`<button class="chip ${g.drv===k?'on':''}" onclick="gfxPick('drv','${k}',this)">${n}</button>`).join('')}</div>
+  <div class="lbl" style="margin-top:16px">API grafis (ANGLE)</div>
+  <div class="seg3 tn-purple" data-grp="angle">${[['default','Default'],['native','OpenGL Native'],['angle','ANGLE']].map(([k,n])=>`<button class="chip ${g.angle===k?'on':''}" onclick="gfxPick('angle','${k}',this)">${n}</button>`).join('')}</div>`;}
 let GFX_OPEN=null;
 function gfxToggle(p){GFX_OPEN=GFX_OPEN===p?null:p;render();}
 function gfxAppCard(s){const g=s.games||[],ov=s.gfxApp||{};
@@ -777,14 +808,12 @@ function pageGame(s){const g=s.games||[];prefetchLabels(g);
   `<div class="empty tn-blue">${ico('game','blue')}Tambahkan game agar profil, preload, dan fitur otomatis bisa bekerja.</div>`}</div>
  ${foldCards('gp',gpCard(s))}
  ${foldCards('pg',pgCard(s))}
- ${foldCards('gfxa',gfxAppCard(s))}
- ${foldCards('gfx',gfxCard(s))}
  ${spoofAppCard(s)}
  ${angleStyleCard(s)}
  <div class="sec">Otomatisasi</div><div class="card">${rowsById(['gameprofile','gamethermal','gameclean','gamebypass','preload','gamednd'])}</div>`;}
 async function delGame(p){await run('games del '+p);await load();toast('Dihapus');}
 async function gpPick(k,v,el){el.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===el));await run(`gp_cfg ${k} ${v}`);toast('Disimpan');}
-async function gfxPick(k,v,el){el.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===el));toast('Menerapkan…');const r=await run(`gfx_${k==='scale'?'scale':k==='drv'?'driver':'angle'} ${v}`);await load();toast(r.out.trim().startsWith('OK')?'Diterapkan':'Gagal: '+(r.out.split('|')[1]||'tidak ada respon'));}
+async function gfxPick(k,v,el){el.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===el));toast('Menerapkan…');const r=await run(`gfx_${k==='scale'?'scale':k==='drv'?'driver':'angle'} ${v}`);await load();toast(r.out.trim().startsWith('OK')?(k==='scale'?'Diterapkan':'Diterapkan · UI dimuat ulang'):'Gagal: '+(r.out.split('|')[1]||'tidak ada respon'));}
 
 /* ---------- bottom sheet pilih game ---------- */
 let PK={sel:new Set(),q:''};
@@ -866,13 +895,11 @@ function dramCard(s){const d=s.dram;if(!d)return '';
  const info=`${gb?'RAM '+gb+' GB · ':''}${top?'maks '+top+' MHz · ':''}${d.freqs.length} level`;
  const sub=`Sekarang ${mhz(d.cur)} MHz`+(d.lock?` · dikunci minimal ${mhz(d.lock)} MHz`:' · otomatis');
  const pre=dramPresets(d.freqs);
- return `<div class="card tn-teal"><div class="head">${ico('cpu','teal')}<div class="tx"><b>Frekuensi DRAM</b><span>${sub}</span></div></div>
-  <p class="mu" style="margin:2px 2px 0">${info}</p>
+ return dcard('dram','cpu','teal','Frekuensi DRAM',sub,`  <p class="mu" style="margin:2px 2px 0">${info}</p>
   <div class="lbl" style="margin-top:14px">Preset</div>
   <div class="chips" data-grp="drampre" style="grid-template-columns:repeat(${pre.length+1},1fr)"><button class="chip pre ${!d.lock?'on':''}" onclick="dramPick(0)"><b>Auto</b><small>bawaan</small></button>${pre.map(([nm,v])=>`<button class="chip pre ${d.lock===v?'on':''}" onclick="dramPick(${v})"><b>${nm}</b><small>${mhz(v)}</small></button>`).join('')}</div>
   <div class="lbl" style="margin-top:14px">Manual (MHz)</div>
-  <div class="chips" data-grp="dram">${d.freqs.map(f=>`<button class="chip ${d.lock===f?'on':''}" onclick="dramPick(${f})">${mhz(f)}</button>`).join('')}</div>
-  </div>`;}
+  <div class="chips" data-grp="dram">${d.freqs.map(f=>`<button class="chip ${d.lock===f?'on':''}" onclick="dramPick(${f})">${mhz(f)}</button>`).join('')}</div>`);}
 async function dramPick(f){const d=(S&&S.dram)||{};if(!d.ok)return;d.lock=f;render();
   const r=await queueAct(()=>run('dram set '+(f||'auto')));const o=((r&&r.out)||'').trim();load();
   if(/^ERR/.test(o)){toast(o.split('|')[1]||'Gagal');return;}
@@ -884,22 +911,19 @@ function memCard(s){
   const cur=z.preset||'reset',pct=x.total>0?Math.min(100,Math.round(x.done*100/x.total)):0;
   const zres=z.ok&&z.state==='error'?`<p class="mu" style="margin:10px 2px 0"><b class="dg">Gagal:</b> ${esc(z.msg||'tidak diketahui')}</p>`:'';
   const dres=!xr&&x.state==='done'?`Terakhir selesai: ${x.done}/${x.total} app.`:!xr&&x.state==='stopped'?`Terakhir dihentikan di ${x.done}/${x.total} app.`:'';
-  return `<div class="card"><div class="head">${ico('cpu','purple')}<div class="tx"><b>ZRAM &amp; Swap</b><span>${sub}</span></div></div>
-  ${z.ok?`<div class="lbl" style="margin-top:14px">Preset</div>
+  return dcard('zram','cpu','purple','ZRAM &amp; Swap',sub,`  ${z.ok?`<div class="lbl" style="margin-top:14px">Preset</div>
   <div class="chips" data-grp="zram">${ZR_OPTS.map(([k,n])=>`<button class="chip ${cur===k?'on':''}" ${zb?'disabled style="opacity:.5;pointer-events:none"':''} onclick="zramPick('${k}')">${n}</button>`).join('')}</div>
   <div class="lbl" style="margin-top:14px">Ukuran ZRAM</div>
   <div class="chips" data-grp="zramgb">${[1,2,3,4,5,6].map(n=>{const bad=z.ram>0&&n*1024>z.ram*2,off=zb||bad;return `<button class="chip ${cur==='gb'+n?'on':''}" ${off?'disabled style="opacity:.5;pointer-events:none"':''} onclick="zramPick('gb${n}')">${n} GB</button>`;}).join('')}</div>
   ${zb?'<p class="mu" style="margin:12px 2px 0">Menerapkan… bisa beberapa detik.</p>':''}${zres}
-  `:''}</div>
-  <div class="card tn-amber"><div class="head">${ico('rocket','amber')}<div class="tx"><b>Optimasi App (Dexopt)</b><span>${xr?`Berjalan ${x.done}/${x.total}`:'Kompilasi ulang app'}</span></div></div>
-  ${xr?`<div style="height:8px;border-radius:99px;background:var(--s2);overflow:hidden;margin:14px 0 8px"><i style="display:block;height:100%;width:${pct}%;background:var(--ac);border-radius:99px;transition:width .4s"></i></div>
+  `:''}`)+(xr?(DOPEN.add('dex'),''):'')+dcard('dex','rocket','amber','Optimasi App (Dexopt)',xr?`Berjalan ${x.done}/${x.total}`:'Kompilasi ulang app',`  ${xr?`<div style="height:8px;border-radius:99px;background:var(--s2);overflow:hidden;margin:14px 0 8px"><i style="display:block;height:100%;width:${pct}%;background:var(--ac);border-radius:99px;transition:width .4s"></i></div>
   <p class="mu" style="margin:0 2px;word-break:break-all">${esc(x.pkg||'menyiapkan daftar app…')}</p>
   <button class="btn tonal" onclick="dexStop()">${IC.trash} Hentikan</button>`:
   `<button class="btn tonal tn-amber" onclick="dexStart('apps')">${IC.bolt} Optimasi Semua App</button>
   <button class="btn ghost" onclick="dexStart('games')">${IC.bolt} Optimasi Game (Penuh)</button>
   <button class="btn ghost" onclick="dexStart('reset')">${IC.check} Kembalikan ke Default</button>
   ${dres?`<p class="mu" style="margin:10px 2px 0">${dres}</p>`:''}`}
-  <p class="mu" style="margin:12px 2px 0">Proses berat: sebaiknya sambil mengisi daya.</p></div>`;}
+  <p class="mu" style="margin:12px 2px 0">Proses berat: sebaiknya sambil mengisi daya.</p>`);}
 async function zramPick(k){
   const z=(S&&S.zram)||{};if(!z.ok){toast('ZRAM tidak didukung perangkat ini');return;}
   toast('Menerapkan ZRAM…');const r=await run('zram start '+k),o=(r.out||'').trim();
@@ -1095,7 +1119,7 @@ function pageFeat(s){const d=s.dev||{};
   <div class="sec">Sistem</div><div class="card">${rows('sys')}</div>
   <div class="sec">Eksperimental</div><div class="card">${rows('exp')}</div>
   ${foldCards('dns',dnsCard(s))}
-  <div class="sec">Memori &amp; Optimasi</div>${foldCards('mem',memCard(s))}${foldCards('dram',dramCard(s))}${foldCards('ged',gedCard(s))}
+  <div class="sec">Memori &amp; Optimasi</div>${memCard(s)}${dramCard(s)}${foldCards('ged',gedCard(s))}
   <div class="sec">Perawatan</div>${foldCards('dpi',dpiCard(s))}${foldCards('cool',coolCard(s))}${killCard()}${cacheCard()}${foldCards('color',colorCard(s))}
   <div class="sec">Perangkat</div>
   <div class="card"><div class="head">${ico('phone','blue')}<div class="tx"><b>${esc(devName(d))}</b><span>${esc(d.soc||'-')} · Android ${esc(d.android||'-')}</span></div></div>
@@ -1157,7 +1181,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.45.0';
+const VER='2.50.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1180,7 +1204,7 @@ function closeDlg(){const d=$('#dlg');if(!d)return;d.classList.remove('on');DLG=
 function dlgPick(k){const f=DLG&&DLG.fn;closeDlg();if(f)f(k);}
 const SAFEK=/^[A-Za-z0-9_.-]+$/;
 async function setRend(k){if(!SAFEK.test(k))return;toast('Menerapkan…');const r=await queueAct(()=>run('renderer '+k));load();const o=((r&&r.out)||'').trim();
-  toast(o.startsWith('OK')?'Renderer: '+rendName(k)+' · buka ulang aplikasinya':'Gagal: '+(o.split('|')[1]||'tidak ada respon'));}
+  toast(o.startsWith('OK')?'Renderer: '+rendName(k)+' · UI dimuat ulang':'Gagal: '+(o.split('|')[1]||'tidak ada respon'));}
 async function setIos(k){if(!SAFEK.test(k))return;toast('Menerapkan…');const r=await queueAct(()=>run('iosched set '+k));load();const o=((r&&r.out)||'').trim();
   toast(o.startsWith('OK')?'I/O scheduler: '+k:'Gagal: '+(o.split('|')[1]||'tidak ada respon'));}
 function rendDlg(){openDlg('Pilih Graphics Renderer',REND_OPTS,(S&&S.rend)||'default',setRend,'Berlaku untuk aplikasi yang dibuka setelah diubah. Pilih Default Sistem bila ada game yang bermasalah.');}
@@ -1220,27 +1244,31 @@ function pageApps(s){const g=s.games||[],ov=s.gprof||{};prefetchLabels(g);
  <div class="arow2"><button class="btn tonal" onclick="openPick()">${IC.plus} Tambah game</button></div>
  <div class="msec">Game dipantau${g.length?' ('+g.length+')':''}</div>
  ${g.length?`<div class="mlist" id="alist2">${g.map(p=>{const c=ov[p]||{mode:'',hz:''},st=c.mode==='skip'?['Nonaktif',0]:(c.mode||c.hz)?['Kustom',1]:['Global',1];
-   return `<button class="mrow arow" data-q="${esc((labelOf(p)+' '+p).toLowerCase())}" onclick="openSub('app:${esc(p)}')">${appIcon(p)}<div class="tx"><b>${esc(labelOf(p))}</b><span>${esc(p)}</span></div><span class="st ${st[1]?'on':''}">${st[0]}</span></button>`;}).join('')}</div>`:
+   return `<div class="mrow arow" role="button" tabindex="0" data-q="${esc((labelOf(p)+' '+p).toLowerCase())}" onclick="openSub('app:${esc(p)}')">${appIcon(p)}<div class="tx"><b>${esc(labelOf(p))}</b><span class="pk">${esc(p)}</span><em class="abadge ${st[1]?'on':''}">${st[0]}</em></div><button class="playb" aria-label="Jalankan ${esc(labelOf(p))}" onclick="event.stopPropagation();playGame('${esc(p)}')">${IC.play}</button></div>`;}).join('')}</div>`:
   `<div class="fnote"><b>Belum ada game.</b> Tekan <b>Tambah game</b>: game populer terdeteksi otomatis di daftar, jadi tinggal dipilih.</div>`}
  <div class="msec">Pengaturan game</div><div class="mlist">
   ${mrow('rocket','purple','Profil Game','Mode dan Hz saat game berjalan',"openSub('gglobal')")}
   ${mrow('flame','rose','Otomatisasi','Thermal, bypass charging, preload, DND',"openSub('gauto')")}
-  ${mrow('layers','purple','Grafis & Render','Resolusi, driver, dan ANGLE',"openSub('ggfx')")}
+  ${mrow('layers','purple','Grafis & Render','Gaya tekstur ANGLE',"openSub('ggfx')")}
   ${mrow('phone','blue','Spoof Perangkat','Buka opsi FPS per aplikasi (Zygisk)',"openSub('gspoof')")}
  </div>`;}
-async function angToggle(p,on){if(!/^[A-Za-z0-9._]+$/.test(p))return;toast('Menerapkan…');await run('angle_app '+(on?'add ':'del ')+p);await load();toast((on?'ANGLE aktif':'ANGLE mati')+' · buka ulang gamenya');}
+async function angToggle(p,on){if(!/^[A-Za-z0-9._]+$/.test(p))return;toast('Menerapkan…');await run('angle_app '+(on?'add ':'del ')+p);await load();toast((on?'ANGLE aktif':'ANGLE mati')+' · UI dimuat ulang');}
+async function playGame(p){if(!/^[A-Za-z0-9._]+$/.test(p))return;toast('Membuka '+labelOf(p)+'…');
+ try{await exec(`monkey -p ${p} -c android.intent.category.LAUNCHER 1 </dev/null >/dev/null 2>&1`);}catch(e){}}
 async function appDel(p){await delGame(p);closeSub();}
 function appSub(p,s){const q=esc(p),c=(s.gprof||{})[p]||{mode:'',hz:''},sc=(s.gfxApp||{})[p]||100,idx=Math.max(0,SCALE_OPTS.indexOf(sc)),key='gs_'+p.replace(/[^a-zA-Z0-9]/g,'_');
- const ang=((s.ang||{}).apps||[]).indexOf(p)>=0,sp=(s.spoofApps||[]).find(x=>x.pkg===p);
+ const ang=((s.ang||{}).apps||[]).indexOf(p)>=0,sp=(s.spoofApps||[]).find(x=>x.pkg===p),g=s.gfx||{drv:'default',angle:'default'};
+ const mn=(PG_MODES.find(x=>x[0]===c.mode)||PG_MODES[0])[1];
+ const prof=`<div class="lbl">Mode</div><div class="chips" style="margin-top:8px">${PG_MODES.map(([k,n])=>`<button class="chip ${c.mode===k?'on':''}" onclick="pgSet('${q}','mode','${k}')">${n}</button>`).join('')}</div>
+  ${c.mode==='skip'?'':`<div class="lbl" style="margin-top:16px">Refresh Rate</div><div class="chips" style="margin-top:8px"><button class="chip ${c.hz===''?'on':''}" onclick="pgSet('${q}','hz','')">Ikut global</button>${RT(s).map(v=>`<button class="chip ${String(c.hz)===String(v)?'on':''}" onclick="pgSet('${q}','hz','${v}')">${v} Hz</button>`).join('')}</div>`}`;
+ const res=srow('Skala render',key,SCALE_OPTS,idx,scaleFmt,v=>gfxAppSet(p,v));
+ const gfx=gfxChips(s)+`<div class="mrow" style="cursor:default;margin-top:16px">${ico('layers','purple')}<div class="tx"><b>ANGLE untuk game ini</b><span>${ang?'Aktif untuk game ini':'Memakai driver bawaan'}</span></div><label class="sw"><input type="checkbox" ${ang?'checked':''} onchange="angToggle('${q}',this.checked)"><i></i></label></div>
+  <p class="mu" style="margin:10px 2px 0">Driver dan API grafis berlaku untuk semua game di daftar; sakelar ANGLE hanya untuk game ini.</p>`;
  return `<div class="card"><div class="head">${appIcon(p)}<div class="tx"><b>${esc(labelOf(p))}</b><span>${q}</span></div></div></div>
- <div class="sec">Profil</div>
- <div class="card"><div class="lbl">Mode</div><div class="chips" style="margin-top:8px">${PG_MODES.map(([k,n])=>`<button class="chip ${c.mode===k?'on':''}" onclick="pgSet('${q}','mode','${k}')">${n}</button>`).join('')}</div>
-  ${c.mode==='skip'?'':`<div class="lbl" style="margin-top:16px">Refresh Rate</div><div class="chips" style="margin-top:8px"><button class="chip ${c.hz===''?'on':''}" onclick="pgSet('${q}','hz','')">Ikut global</button>${RT(s).map(v=>`<button class="chip ${String(c.hz)===String(v)?'on':''}" onclick="pgSet('${q}','hz','${v}')">${v} Hz</button>`).join('')}</div>`}</div>
- <div class="sec">Resolusi Render</div>
- <div class="card">${srow('Skala render',key,SCALE_OPTS,idx,scaleFmt,v=>gfxAppSet(p,v))}</div>
- <div class="sec">Grafis &amp; Spoof</div>
+ ${dcard('prof','rocket','purple','Profil Game',esc(mn)+(c.mode==='skip'?'':' · '+(c.hz===''?'Hz ikut global':c.hz+' Hz')),prof)}
+ ${dcard('res','game','amber','Resolusi Render',scaleFmt(sc),res)}
+ ${dcard('gfx','layers','teal','Driver & API Grafis',(DRV_N[g.drv]||'Default')+' · '+(API_N[g.angle]||'Default')+(ang?' · ANGLE aktif':''),gfx)}
  <div class="mlist">
-  <div class="mrow" style="cursor:default">${ico('layers','purple')}<div class="tx"><b>ANGLE</b><span>${ang?'Aktif untuk game ini':'Memakai driver bawaan'}</span></div><label class="sw"><input type="checkbox" ${ang?'checked':''} onchange="angToggle('${q}',this.checked)"><i></i></label></div>
   <button class="mrow" onclick="spoofAppOpen()">${ico('phone','blue')}<div class="tx"><b>Spoof Perangkat</b><span>${sp?esc(spoofPresetName(sp))+(sp.on?'':' · nonaktif'):'Belum ada · pilih aplikasi ini di daftar'}</span></div><span class="chv">${IC.chev}</span></button>
  </div>
  <button class="btn ghost" style="color:var(--dg)" onclick="appDel('${q}')">${IC.trash} Hapus dari daftar game</button>`;}
@@ -1257,8 +1285,10 @@ function pageSet(s){const d=s.dev||{},th=THEME_OPTS.find(x=>x[0]===curTheme())||
   ${mrow('power','amber','Fitur Sistem','Terapkan saat boot, boost touch, kernel tweaks, dan lainnya',"openSub('sys')")}
   ${mrow('phone','blue','Perangkat &amp; Laporan',esc(devName(d)||'Info perangkat')+' • '+esc(d.soc||'-'),"openSub('dev')")}
  </div>
- <div class="msec">Tentang</div><div class="card"><div class="head">${ico('info','blue')}<div class="tx"><b>Comatoze v${VER}</b><span>Performa, daya, game, dan grafis dalam satu modul</span></div></div>
-  <p class="mu" style="margin:12px 2px 0">Daftar game dibundel dari Encore Tweaks (Rem01Gaming, Apache-2.0). Beberapa jalur node MediaTek dipetakan dari analisis LuminaTweaks.</p></div>`;}
+ <div class="msec">Tentang</div><div class="mlist">${mrow('info','blue','Comatoze v'+VER,'Channel Telegram • t.me/ProjectComatoze',"openTg()")}</div>
+  <p class="mu" style="margin:12px 2px 0">Daftar game dibundel dari Encore Tweaks (Rem01Gaming, Apache-2.0). Beberapa jalur node MediaTek dipetakan dari analisis LuminaTweaks.</p>`;}
+const TG_URL='https://t.me/ProjectComatoze';
+function openTg(){exec("am start --user 0 -a android.intent.action.VIEW -d '"+TG_URL+"' </dev/null >/dev/null 2>&1").catch(()=>{});try{toast&&toast('Membuka Telegram…');}catch(e){}}
 /* ----- sub-halaman ----- */
 const hzSub=s=>`<div class="fnote"><b>Refresh rate mengikuti mode.</b> Performa = tertinggi, Balance = 90 Hz, Eco = terendah. Dikunci lewat SurfaceFlinger, jadi benar-benar berubah di semua aplikasi.</div>
  <div class="card"><div class="kv">${MODES.map(([k,i,n])=>`<span>${n}</span><b>${hzFor(s,k)}</b>`).join('')}</div></div>
@@ -1286,6 +1316,7 @@ const ovlSub=s=>{const o=s.ovl||{on:false,app:false,net:true,auto:true,res:'720'
   <div class="lbl" style="margin-top:12px">Bitrate</div>${seg('br',o.br,[['auto','Auto'],['8','8 Mbps'],['16','16 Mbps'],['24','24 Mbps']])}
   <div class="lbl" style="margin-top:12px">Frame rate</div>${seg('fps',o.fps,[['30','30'],['60','60'],['90','90'],['120','120']])}
   <div class="fnote" style="margin-top:12px">Pengaturan langsung dipakai tombol REC di overlay. Hasil: <b>Movies/Comatoze_*.mp4</b> (dipotong tiap 3 menit otomatis). Batas frame rate hanya berlaku bila ROM mendukung <code>--max-fps</code> pada screenrecord; selain itu mengikuti refresh rate layar.</div></div>
+ <div class="card"><div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Animasi saat game dibuka</b><span style="font-size:12px;opacity:.65">Splash logo, cincin, dan nama game selama ±2 detik. Tidak menghalangi sentuhan.</span></div><label class="sw"><input type="checkbox" ${s.ovanim!==false?'checked':''} onchange="setOvAnim(this.checked)"><i></i></label></div><button class="btn tonal" style="margin-top:12px;width:100%" onclick="ovAnimTest()">Coba animasi</button></div>
  <div class="card"><button class="btn tonal" onclick="ovTest()">Uji data overlay</button><div id="ovtest" style="font-size:12px;opacity:.8;margin-top:8px;word-break:break-word"></div></div>`;};
 const SUBS={
  hz:{t:'Refresh Rate',f:hzSub},
@@ -1303,7 +1334,7 @@ const SUBS={
  dev:{t:'Perangkat',f:devCard},
  gglobal:{t:'Profil Game',f:s=>gpCard(s)+pgCard(s)},
  gauto:{t:'Otomatisasi Game',f:s=>`<div class="card">${rowsById(['gameprofile','gamethermal','gameclean','gamebypass','preload','gamednd'])}</div>`},
- ggfx:{t:'Grafis & Render',f:s=>gfxAppCard(s)+gfxCard(s)+angleStyleCard(s)},
+ ggfx:{t:'Grafis & Render',f:s=>`<div class="card"><div class="note"><b>Resolusi render, driver, dan API grafis</b> kini ada di profil tiap game: <b>Aplikasi → pilih game</b>. Di sini hanya pengaturan gaya tekstur ANGLE.</div></div>`+uirstCard(s)+angleStyleCard(s)},
  gspoof:{t:'Spoof Perangkat',f:s=>spoofAppCard(s)}
 };
 const TAB_T={home:'Comatoze',apps:'Aplikasi',tweaks:'Tweaks',set:'Pengaturan'};
@@ -1358,6 +1389,11 @@ async function _load(){
 let _aq=Promise.resolve();
 const queueAct=f=>{const p=_aq.then(f,f);_aq=p.catch(()=>{});return p;};
 async function setMode(m){animMode(m);toast('Menerapkan…');await queueAct(()=>run('mode '+m));toast('Mode '+(MODE_NAME[m]||m));load();}
+function uirstCard(s){return `<div class="card"><div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Muat ulang UI otomatis</b><span style="font-size:12px;opacity:.65">Setelah ganti renderer, driver, atau ANGLE: SystemUI dimuat ulang dan game di daftar dihentikan supaya terpasang bersih (bukan reboot, layar berkedip sebentar).</span></div><label class="sw"><input type="checkbox" ${s.uirst!==false?'checked':''} onchange="setUirst(this.checked)"><i></i></label></div><button class="btn tonal" style="margin-top:12px;width:100%" onclick="uiNow()">Muat ulang UI sekarang</button></div>`;}
+async function setOvAnim(on){S.ovanim=on;await run('ovanim '+(on?'on':'off'));toast(on?'Animasi game: aktif':'Animasi game: mati');}
+async function ovAnimTest(){toast('Memutar animasi…');const r=await run('ovanim test');const o=((r&&r.out)||'').trim();if(!o.startsWith('OK'))toast('Gagal: '+(o.split('|')[1]||'overlay belum diberi izin'));}
+async function setUirst(on){S.uirst=on;await run('uirst '+(on?'on':'off'));toast(on?'Muat ulang UI otomatis: aktif':'Muat ulang UI otomatis: mati');}
+async function uiNow(){toast('Memuat ulang UI…');await run('uirst now');}
 async function setFeat(id,on){const r=await queueAct(()=>run(`feat ${id} ${on?'on':'off'}`));load();const o=((r&&r.out)||'').trim();if(/^ERR/.test(o)){toast(o.split('|')[1]||'Gagal');return;}toast((on?'Aktif: ':'Nonaktif: ')+(FEATURES.find(f=>f.id===id)||{}).name+(id==='nothermal'?' · reboot untuk efek penuh':''));}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function spinRefresh(){const b=$('#btnRefresh');if(!b)return;b.classList.remove('spin');void b.offsetWidth;b.classList.add('spin');}
