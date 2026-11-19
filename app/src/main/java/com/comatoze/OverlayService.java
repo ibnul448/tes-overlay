@@ -101,9 +101,7 @@ public class OverlayService extends Service {
     private final HashMap<String, IconView> gridIc = new HashMap<String, IconView>();
     private final HashMap<String, TextView> gridLbl = new HashMap<String, TextView>();
     private RingGauge fpsRing;
-    private LinearLayout cardNet, cardMem, boostBtn;
-    private TextView boostTx;
-    private IconView boostIc;
+    private LinearLayout cardNet, cardMem;
     private IconView cardNetIc, cardMemIc;
     private LinearLayout gamesBox;
     private boolean wifiOn, timerRun;
@@ -609,24 +607,6 @@ public class OverlayService extends Service {
         cardNet.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { pulse(v); toggleFeat("wifilatency", "Boost jaringan"); } });
         cardMem.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { pulse(v); runCmd(Root.BIN + " ovact clean", "RAM DIBERSIHKAN", null); } });
 
-        // tombol BOOST: satu ketukan, pembersihan RAM + mode Performa + prioritas game
-        boostBtn = new LinearLayout(this);
-        boostBtn.setOrientation(LinearLayout.HORIZONTAL);
-        boostBtn.setGravity(Gravity.CENTER);
-        boostBtn.setPadding(dp(12), dp(10), dp(12), dp(10));
-        boostIc = new IconView(this, IconView.BOLT);
-        boostIc.setColor(Color.WHITE);
-        boostBtn.addView(boostIc, new LinearLayout.LayoutParams(dp(20), dp(20)));
-        boostTx = tv("BOOST EKSTREM", 12, Color.WHITE, true);
-        boostTx.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD_ITALIC));
-        boostTx.setLetterSpacing(0.12f);
-        boostBtn.addView(boostTx, lpw(-2, -2, 8, 0, 0, 0));
-        c.addView(boostBtn, lpw(-1, -2, 0, 10, 0, 0));
-        boostBtn.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) {
-            pulse(v);
-            runCmd(Root.BIN + " ovact boost", "BOOST EKSTREM AKTIF", new Runnable() { @Override public void run() { loadState(); } });
-        } });
-
         // kisi 4 x 3 alat cepat
         String[][] g = {
                 {"shot", "Tangkapan"}, {"rec", "Rekam"}, {"touch", "Touch boost"}, {"bright", "Kecerahan"},
@@ -760,8 +740,6 @@ public class OverlayService extends Service {
     // ---------- Seksi 1: Alat Akses Cepat ----------
     private LinearLayout buildSec1() {
         LinearLayout c = section(150);
-        actionRow(c, "Boost ekstrem (RAM + Performa + prioritas game)", new Runnable() { @Override public void run() {
-            runCmd(Root.BIN + " ovact boost", "BOOST EKSTREM AKTIF", new Runnable() { @Override public void run() { loadState(); } }); } });
         actionRow(c, "Bersihkan RAM agresif", new Runnable() { @Override public void run() { runCmd(Root.BIN + " ovact clean", "RAM DIBERSIHKAN", null); } });
         actionRow(c, "Tutup app di latar", new Runnable() { @Override public void run() { runCmd(Root.BIN + " ovact killbg", "APP LATAR DIHENTIKAN", null); } });
         actionRow(c, "Pangkas cache", new Runnable() { @Override public void run() { runCmd(Root.BIN + " ovact trim", "CACHE DIPANGKAS", null); } });
@@ -1035,7 +1013,7 @@ public class OverlayService extends Service {
     private void applyAccent(int a, int b) {
         accent = a; accent2 = b;
         if (pillBg != null) pillBg.setStroke(Math.max(1, dp(1)), alpha(a, 150));
-        if (gauge[0] != null) { gauge[0].setAccent(a); gauge[1].setAccent(b); fpsRing.setAccent(a); }
+        if (gauge[0] != null) { gauge[0].setAccent(a, b); gauge[1].setAccent(b, a); fpsRing.setAccent(a, b); }
         if (logoView != null) logoView.setColors(a, b);
         if (bright != null) {
             bright.setProgressTintList(ColorStateList.valueOf(Color.WHITE));
@@ -1093,12 +1071,6 @@ public class OverlayService extends Service {
             box.setBackground(on ? rounded(alpha(col, 34), 12, alpha(col, 190), 1.2f) : null);
             gridIc.get(id).setColor(on ? col : Color.parseColor("#C3CAD6"));
             gridLbl.get(id).setTextColor(on ? Color.WHITE : MUTED);
-        }
-        if (boostBtn != null) {
-            GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{accent, accent2});
-            bg.setCornerRadius(dp(12));
-            bg.setStroke(Math.max(1, dp(1)), alpha(Color.WHITE, 90));
-            boostBtn.setBackground(bg);
         }
         boolean netOn = Boolean.TRUE.equals(tstate.get("wifilatency"));
         if (cardNet != null) {

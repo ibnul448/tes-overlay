@@ -243,6 +243,7 @@ perf_x(){
     for st in /sys/devices/system/cpu/cpu[0-9]*/cpuidle/state[1-9]*; do px2 $st/disable 1; done
   fi
   perf_x_mtk
+  perf_x_boost
 }
 px4(){ case "$(cat "$1" 2>/dev/null)" in ''|*[!0-9-]*) return 0;; esac; px2 "$1" "$2"; }   # hanya node berisi bilangan bulat polos (bentuk lain tidak bisa dipulihkan dengan aman -> dilewati)
 brk_cur(){ _o=$(cat "$1" 2>/dev/null); case "$_o" in *\[*\]*) _o=${_o#*\[}; _o=${_o%%\]*};; esac; echo $_o; }   # node "[aktif] lain": ambil nama aktif
@@ -282,7 +283,35 @@ perf_x_agg(){
     px4 $_q/iostats 0; px4 $_q/add_random 0; px4 $_q/rq_affinity 2; px4 $_q/read_ahead_kb 512
   done
 }
+# v2.51 "super brutal" tertanam di mode Performa (tidak ada tombol terpisah): masuk Performa = bersihkan RAM sekali, nyalakan
+# Touch Boost / Wi-Fi latensi rendah / kurangi debug / anti-kill latar / matikan FPSGO (yang belum aktif; dicatat di $PXF dan
+# dimatikan lagi saat keluar Performa), mode performa tetap sistem, dan prioritas game (nice -20, I/O realtime, anti-OOM).
+PXF=$DIR/pxfeat; PXG=$DIR/pxgame
+px_feat(){ [ "$(fstate $1)" = on ] && return 0; feat $1 on >/dev/null 2>&1; [ "$(fstate $1)" = on ] && echo $1 >> $PXF; return 0; }
+perf_x_boost(){
+  if [ ! -f $DIR/pxclean ]; then : > $DIR/pxclean
+    ( gclean "$(game_fg)"; am kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; pm trim-caches 16G >/dev/null 2>&1 ) </dev/null >/dev/null 2>&1 &
+  fi
+  for _f in touchboost wifilatency lessdbg smooth fpsgooff; do px_feat $_f; done
+  [ -f $DIR/pxfpm ] || { cmd power set-fixed-performance-mode-enabled true >/dev/null 2>&1 && : > $DIR/pxfpm; }
+  perf_x_game
+  return 0
+}
+perf_x_game(){ # prioritas game yang sedang di depan (dipanggil juga saat game dibuka ketika Performa sudah aktif)
+  set -- $(game_fgp); [ -n "$1" ] || return 0
+  _pg=$1; _pd=$2
+  echo "$_pg" > $PXG; cmd game mode performance "$_pg" >/dev/null 2>&1
+  if [ -n "$_pd" ]; then renice -n -20 -p $_pd >/dev/null 2>&1; ionice -c 1 -n 0 -p $_pd >/dev/null 2>&1; { echo -1000 > /proc/$_pd/oom_score_adj; } 2>/dev/null; fi
+  return 0
+}
+perf_x_boost_off(){
+  [ -f $PXF ] && { while read -r _f; do [ -n "$_f" ] && feat $_f off >/dev/null 2>&1; done < $PXF; rm -f $PXF; }
+  [ -f $DIR/pxfpm ] && { cmd power set-fixed-performance-mode-enabled false >/dev/null 2>&1; rm -f $DIR/pxfpm; }
+  [ -f $PXG ] && { _pg=$(cat $PXG); cmd game mode standard "$_pg" >/dev/null 2>&1; rm -f $PXG; }
+  rm -f $DIR/pxclean
+}
 perf_x_off(){
+  perf_x_boost_off
   [ -f $PXV2 ] || return 0
   while IFS='|' read -r node val; do
     [ -n "$node" ] && [ -e "$node" ] && w "$val" "$node"
@@ -1689,6 +1718,7 @@ game_wd(){
         [ "$(getcfg F_gameclean)" = on ] && gclean $cur &
         [ "$(getcfg F_preload)" = on ] && preload $cur &
         lastg=$cur; glog "masuk $cur"
+        [ -f $PXV2 ] && { sleep 4; perf_x_game; } &
         _ax=; [ "$(getcfg OV_ANIM)" = off ] || _ax="--ez anim true --es pkg $cur"
         if [ "$(getcfg OV_ON)" = on ] && ov_auto; then { setcfg OV_DEF on; ov_svc $_ax; } &
         elif [ -n "$_ax" ]; then { ov_perm; ov_svc --ez animonly true $_ax; } & fi
@@ -2344,14 +2374,6 @@ ovact(){ case $1 in
     pm trim-caches 16G >/dev/null 2>&1; echo "OK|RAM dibersihkan";;
   trim) pm trim-caches 16G >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; cmd package bg-dexopt-job >/dev/null 2>&1 & echo "OK|cache dipangkas";;
   killbg) gclean "$(game_fg)"; am kill-all >/dev/null 2>&1; echo "OK|aplikasi latar dihentikan";;
-  boost) # sekali tekan, sebuas mungkin: bersihkan RAM + mode Performa + prioritas game + semua boost aktif
-    set -- $(game_fgp); _g=$1; _pid=$2
-    gclean "$_g"; am kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; pm trim-caches 16G >/dev/null 2>&1
-    setcfg OV_DEF off; set_mode perf; game_sync
-    feat touchboost on >/dev/null 2>&1; feat fpsgooff on >/dev/null 2>&1; feat wifilatency on >/dev/null 2>&1; feat lessdbg on >/dev/null 2>&1; feat smooth on >/dev/null 2>&1
-    cmd power set-fixed-performance-mode-enabled true >/dev/null 2>&1
-    if [ -n "$_g" ]; then cmd game mode performance "$_g" >/dev/null 2>&1; [ -n "$_pid" ] && { renice -n -20 -p $_pid >/dev/null 2>&1; ionice -c 1 -n 0 -p $_pid >/dev/null 2>&1; echo -1000 > /proc/$_pid/oom_score_adj 2>/dev/null; }; fi
-    echo "OK|boost ekstrem aktif";;
   shot) f=/sdcard/Pictures/Comatoze_$(date +%Y%m%d_%H%M%S).png; mkdir -p /sdcard/Pictures; screencap -p $f && echo "OK|tersimpan $f" || echo "ERR|gagal";;
   *) echo "ERR|aksi tidak dikenal";;
 esac; }
