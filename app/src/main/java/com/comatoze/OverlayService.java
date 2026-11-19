@@ -45,7 +45,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Overlay in-game bergaya panel XBoost: header (logo, sinyal, baterai, jam), baris app jendela mengambang,
+ * Overlay in-game: header (logo, sinyal, baterai, jam), baris app jendela mengambang,
  * rail 4 menu di kiri yang ikut berpindah saat daftar digulir (Fitur Dasar, Alat Cepat, Anti-ganggu, Gameplay),
  * dial CPU/GPU bercahaya, mode, tombol bulat, kecerahan, dan saklar fitur. Baris berpanah membuka sub-halaman
  * penyesuaian tweaks. Ikon vektor, tanpa emoji. Data: `ultrapower ostat`; status tombol: `ultrapower ovstate`.
@@ -102,6 +102,7 @@ public class OverlayService extends Service {
     private final HashMap<String, TextView> gridLbl = new HashMap<String, TextView>();
     private RingGauge fpsRing;
     private LinearLayout cardNet, cardMem;
+    private boolean xhOn;
     private IconView cardNetIc, cardMemIc;
     private LinearLayout gamesBox;
     private boolean wifiOn, timerRun;
@@ -609,12 +610,12 @@ public class OverlayService extends Service {
 
         // kisi 4 x 3 alat cepat
         String[][] g = {
-                {"shot", "Tangkapan"}, {"rec", "Rekam"}, {"touch", "Touch boost"}, {"bright", "Kecerahan"},
+                {"shot", "Tangkapan"}, {"rec", "Rekam"}, {"touch", "Touch boost"}, {"xh", "Crosshair"},
                 {"dnd", "DND"}, {"wifi", "Wi-Fi"}, {"timer", "Timer"}, {"hz", "Hz"},
                 {"kill", "Tutup latar"}, {"float", "Mengambang"}, {"mgr", "Pengaturan"}, {"diag", "Diagnosa"}};
-        int[] gi = {IconView.SHOT, IconView.REC, IconView.TOUCH, IconView.SUN,
+        int[] gi = {IconView.SHOT, IconView.REC, IconView.TOUCH, IconView.TARGET,
                 IconView.DND, IconView.WIFI, IconView.PULSE, IconView.HZ,
-                IconView.TRASH, IconView.WINDOW, IconView.SLIDERS, IconView.TARGET};
+                IconView.TRASH, IconView.WINDOW, IconView.SLIDERS, IconView.GAUGE};
         LinearLayout row = null;
         for (int i = 0; i < g.length; i++) {
             if (i % 4 == 0) {
@@ -657,7 +658,6 @@ public class OverlayService extends Service {
         navRow(c, "Optimalisasi Performa", "perf");
         switchRow(c, "perfx", "Tweak Ekstra Performa", sws);
         switchRow(c, "nothermal", "Matikan Thermal", sws);
-        navRow(c, "Peningkatan Jaringan", "net");
         return c;
     }
 
@@ -716,14 +716,12 @@ public class OverlayService extends Service {
             if (timerRun) { timerAcc += System.currentTimeMillis() - timerStart; timerRun = false; }
             else { timerStart = System.currentTimeMillis(); timerRun = true; }
             paintState();
-        } else if ("bright".equals(id)) {
-            briteStep = (briteStep + 1) % 4;
-            int[] lv = {64, 128, 192, 255};
-            final int v = lv[briteStep];
-            if (bright != null) bright.setProgress(v);
-            gridLbl.get("bright").setText((v * 100 / 255) + "%");
+        } else if ("xh".equals(id)) {
             new Thread(new Runnable() { @Override public void run() {
-                Root.exec("settings put system screen_brightness_mode 0; settings put system screen_brightness " + v);
+                String o = Root.sh(Root.BIN + " crosshair");
+                final boolean to = !o.contains("CH|on|");
+                Root.exec(Root.BIN + " crosshair " + (to ? "on" : "off"));
+                ui.post(new Runnable() { @Override public void run() { xhOn = to; flash(to ? "CROSSHAIR AKTIF" : "CROSSHAIR MATI", to ? GOOD : MUTED, 1400); paintState(); } });
             } }).start();
         } else if ("hz".equals(id)) {
             int cur = parse(curHz);
@@ -740,23 +738,18 @@ public class OverlayService extends Service {
     // ---------- Seksi 1: Alat Akses Cepat ----------
     private LinearLayout buildSec1() {
         LinearLayout c = section(150);
-        actionRow(c, "Bersihkan RAM agresif", new Runnable() { @Override public void run() { runCmd(Root.BIN + " ovact clean", "RAM DIBERSIHKAN", null); } });
-        actionRow(c, "Tutup app di latar", new Runnable() { @Override public void run() { runCmd(Root.BIN + " ovact killbg", "APP LATAR DIHENTIKAN", null); } });
         actionRow(c, "Pangkas cache", new Runnable() { @Override public void run() { runCmd(Root.BIN + " ovact trim", "CACHE DIPANGKAS", null); } });
-        actionRow(c, "Tangkapan layar", new Runnable() { @Override public void run() { shot(); } });
-        actionRow(c, "Diagnosa FPS (simpan ke Download)", new Runnable() { @Override public void run() {
-            runCmd(Root.BIN + " ovdiag > /sdcard/Download/comatoze_ovdiag.txt 2>&1; echo OK", "TERSIMPAN: Download/comatoze_ovdiag.txt", null);
-        } });
-        navRow(c, "Jendela Mengambang", "float");
+        actionRow(c, "Ganti gaya crosshair", new Runnable() { @Override public void run() { runCmd(Root.BIN + " crosshair next style", "GAYA CROSSHAIR DIGANTI", null); } });
+        actionRow(c, "Ganti warna crosshair", new Runnable() { @Override public void run() { runCmd(Root.BIN + " crosshair next color", "WARNA CROSSHAIR DIGANTI", null); } });
         return c;
     }
 
     // ---------- Seksi 2: Anti-ganggu ----------
     private LinearLayout buildSec2() {
         LinearLayout c = section(150);
-        switchRow(c, "dnd", "Jangan Ganggu (DND)", sws);
         switchRow(c, "gamednd", "DND otomatis saat game", sws);
         switchRow(c, "gmslimit", "Batasi Google Play Services", sws);
+        switchRow(c, "datasaver", "Hemat Data", sws);
         navRow(c, "Pembatas Latar", "bg");
         return c;
     }
@@ -877,7 +870,6 @@ public class OverlayService extends Service {
         if ("perf".equals(key)) {
             subTitle.setText("Optimalisasi Performa");
             switchRow(subBox, "fpsgooff", "Matikan FPSGO", subSws);
-            switchRow(subBox, "touchboost", "Touch Boost", subSws);
             switchRow(subBox, "hzforce", "Kunci Refresh Rate", subSws);
             switchRow(subBox, "gamefps", "Buka batas 60 FPS game", subSws);
             switchRow(subBox, "bkt", "Kernel Tweaks (BKT)", subSws);
@@ -888,10 +880,6 @@ public class OverlayService extends Service {
             switchRow(subBox, "fastcharge", "Fast Charging", subSws);
             switchRow(subBox, "autocut", "Auto Cut Charging", subSws);
             switchRow(subBox, "bypass", "Bypass Charging", subSws);
-        } else if ("net".equals(key)) {
-            subTitle.setText("Peningkatan Jaringan");
-            switchRow(subBox, "wifilatency", "Wi-Fi latensi rendah", subSws);
-            switchRow(subBox, "datasaver", "Hemat Data", subSws);
         } else if ("bg".equals(key)) {
             subTitle.setText("Pembatas Latar");
             switchRow(subBox, "aggrdoze", "Doze agresif", subSws);
@@ -1059,12 +1047,12 @@ public class OverlayService extends Service {
         }
         int hz = parse(curHz);
         boolean[] act = new boolean[12];
-        String[] ids = {"shot", "rec", "touch", "bright", "dnd", "wifi", "timer", "hz", "kill", "float", "mgr", "diag"};
+        String[] ids = {"shot", "rec", "touch", "xh", "dnd", "wifi", "timer", "hz", "kill", "float", "mgr", "diag"};
         for (int i = 0; i < ids.length; i++) {
             String id = ids[i];
             boolean on = ("rec".equals(id) && recording) || ("touch".equals(id) && Boolean.TRUE.equals(tstate.get("touchboost")))
                     || ("dnd".equals(id) && Boolean.TRUE.equals(tstate.get("dnd"))) || ("wifi".equals(id) && wifiOn)
-                    || ("timer".equals(id) && timerRun) || ("hz".equals(id) && hz >= 90);
+                    || ("timer".equals(id) && timerRun) || ("hz".equals(id) && hz >= 90) || ("xh".equals(id) && xhOn);
             int col = ("rec".equals(id) && recording) ? BAD : accent;
             LinearLayout box = gridBox.get(id);
             if (box == null) continue;
@@ -1277,9 +1265,7 @@ public class OverlayService extends Service {
         hdrClock.setText(clockFmt.format(new Date()));
         int tmp = ct.isEmpty() ? parse(bt) : parse(ct);
         float cmv = parse(cm), gmv = parse(gm);
-        infoTv.setText("CPU " + (cmv > 0 ? String.format(Locale.US, "%.2f", cmv / 1000f) : "--") + "G  ·  GPU "
-                + (gmv > 0 ? String.format(Locale.US, "%.2f", gmv / 1000f) : "--") + "G  ·  RAM " + ram + "%  ·  " + tmp + "°C  ·  "
-                + (ping.isEmpty() ? "ping --" : ping + "ms") + "  ·  " + (curHz.isEmpty() ? "--" : curHz) + "Hz");
+        infoTv.setText("RAM " + ram + "%  ·  " + tmp + "°C  ·  " + (ping.isEmpty() ? "ping --" : ping + "ms") + "  ·  " + (curHz.isEmpty() ? "--" : curHz) + "Hz");
         gauge[0].set(parse(cpu), String.valueOf(parse(cpu)), "%", "CPU");
         if (gpu.isEmpty()) gauge[1].set(0, "n/a", "", "GPU");
         else gauge[1].set(parse(gpu), String.valueOf(parse(gpu)), "%", "GPU");

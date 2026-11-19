@@ -32,5 +32,6 @@
         </activity>
 
         <service android:name=".OverlayService" android:exported="true" android:stopWithTask="false"/>
+        <service android:name=".CrosshairService" android:exported="true" android:stopWithTask="false"/>
     </application>
 </manifest>
