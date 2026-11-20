@@ -1156,7 +1156,7 @@ adoze_wd(){
     if [ "${b:-1}" = 0 ]; then off=$((off+1)); else off=0; fi
     if [ $off -ge 2 ] && [ $forced = 0 ]; then dumpsys deviceidle force-idle >/dev/null 2>&1; forced=1
     elif [ $off = 0 ] && [ $forced = 1 ]; then dumpsys deviceidle unforce >/dev/null 2>&1; forced=0; fi
-    sleep 5
+    sleep 2
   done
 }
 adoze_sync(){ # on|off
@@ -1375,8 +1375,15 @@ smooth_on(){
   [ "$(getprop ro.build.version.sdk)" -ge 31 ] 2>/dev/null || return 0
   grep -q '^dc|' $SMD 2>/dev/null || echo "dc|$(device_config get activity_manager max_phantom_processes 2>/dev/null)" >> $SMD
   grep -q '^st|' $SMD 2>/dev/null || echo "st|$(sget global settings_enable_monitor_phantom_procs)" >> $SMD
+  grep -q '^fz|' $SMD 2>/dev/null || echo "fz|$(sget_r global cached_apps_freezer)" >> $SMD
+  grep -q '^nf|' $SMD 2>/dev/null || echo "nf|$(device_config get activity_manager_native_boot use_freezer 2>/dev/null)" >> $SMD
+  grep -q '^mc|' $SMD 2>/dev/null || echo "mc|$(device_config get activity_manager max_cached_processes 2>/dev/null)" >> $SMD
   device_config put activity_manager max_phantom_processes 2147483647 >/dev/null 2>&1
   sput global settings_enable_monitor_phantom_procs false
+  # brutal: matikan pembekuan app cache (freezer) + longgarkan batas proses cache supaya game/app latar tidak dibekukan atau dimatikan
+  sput global cached_apps_freezer disabled
+  device_config put activity_manager_native_boot use_freezer false >/dev/null 2>&1
+  device_config put activity_manager max_cached_processes 256 >/dev/null 2>&1
 }
 smooth_off(){
   [ -f $SMD ] || return 0
@@ -1384,9 +1391,25 @@ smooth_off(){
     case $k in
       dc) if [ -z "$v" ] || [ "$v" = null ]; then device_config delete activity_manager max_phantom_processes >/dev/null 2>&1; else device_config put activity_manager max_phantom_processes "$v" >/dev/null 2>&1; fi;;
       st) if [ -z "$v" ] || [ "$v" = null ]; then sdel global settings_enable_monitor_phantom_procs; else sput global settings_enable_monitor_phantom_procs "$v"; fi;;
+      fz) if [ -z "$v" ] || [ "$v" = null ]; then sdel global cached_apps_freezer; else sput global cached_apps_freezer "$v"; fi;;
+      nf) if [ -z "$v" ] || [ "$v" = null ]; then device_config delete activity_manager_native_boot use_freezer >/dev/null 2>&1; else device_config put activity_manager_native_boot use_freezer "$v" >/dev/null 2>&1; fi;;
+      mc) if [ -z "$v" ] || [ "$v" = null ]; then device_config delete activity_manager max_cached_processes >/dev/null 2>&1; else device_config put activity_manager max_cached_processes "$v" >/dev/null 2>&1; fi;;
     esac
   done < $SMD
   rm -f $SMD
+}
+wl_apply(){ # on|off: WiFi tanpa scan latar & tanpa tidur (nilai asli disimpan lalu dipulihkan)
+  if [ "$1" = on ]; then
+    [ "$(getcfg WLO_set)" = 1 ] || { setcfg WLO_ss "$(sget_r global wifi_scan_always_enabled)"; setcfg WLO_sp "$(sget_r global wifi_sleep_policy)"; setcfg WLO_set 1; }
+    sput global wifi_scan_always_enabled 0
+    sput global wifi_sleep_policy 2
+    cmd wifi set-scan-always-available disabled >/dev/null 2>&1
+  else
+    [ "$(getcfg WLO_set)" = 1 ] || return 0
+    v=$(getcfg WLO_ss); if [ -z "$v" ] || [ "$v" = null ]; then sdel global wifi_scan_always_enabled; else sput global wifi_scan_always_enabled "$v"; fi
+    v=$(getcfg WLO_sp); if [ -z "$v" ] || [ "$v" = null ]; then sdel global wifi_sleep_policy; else sput global wifi_sleep_policy "$v"; fi
+    setcfg WLO_set 0
+  fi
 }
 FEATS="f2fsgc gamefps gamethermal nothermal doze datasaver wifilatency bootapply dnd fastcharge autocut bypass gamebypass preload gamednd gameprofile gameclean touchboost perfx ecox lessdbg fpsgooff gmslimit aggrdoze hzlock120 hzforce bkt smooth"
 feat(){ # name on|off
@@ -1421,7 +1444,7 @@ feat(){ # name on|off
     gamethermal) setcfg "F_$1" $2; if [ "$2" = on ]; then [ -f $DIR/ingame ] && gth_on; else gth_off; fi; game_sync; return;;
     gameprofile) setcfg "F_$1" $2; [ "$2" = on ] || gp_leave; game_sync; return;;
     gameclean) setcfg "F_$1" $2; game_sync; return;;
-    wifilatency) if [ "$2" = on ]; then wm=enabled; else wm=disabled; fi; cmd wifi force-hi-perf-mode $wm >/dev/null 2>&1; cmd wifi force-low-latency-mode $wm >/dev/null 2>&1;;
+    wifilatency) if [ "$2" = on ]; then wm=enabled; else wm=disabled; fi; cmd wifi force-hi-perf-mode $wm >/dev/null 2>&1; cmd wifi force-low-latency-mode $wm >/dev/null 2>&1; wl_apply $2;;
     fastcharge|autocut|bypass) setcfg "F_$1" $2; chg_sync; return;;
     preload|gamednd) setcfg "F_$1" $2; game_sync; return;;
     doze) [ "$2" = on ] && dumpsys deviceidle enable all >/dev/null 2>&1 || dumpsys deviceidle disable all >/dev/null 2>&1;;
@@ -2239,8 +2262,16 @@ color_set(){ # saturasi% r% g% b%
 }
 color_reset(){ for k in COL_SAT COL_R COL_G COL_B; do grep -v "^$k=" $CFG > $CFG.t; mv $CFG.t $CFG; done; color_apply; echo OK; }
 color_boot(){ [ -n "$(getcfg COL_SAT)$(getcfg COL_R)$(getcfg COL_G)$(getcfg COL_B)" ] && color_apply; return 0; }
-dbg_off(){ cmd looper_stats disable >/dev/null 2>&1; dumpsys binder_calls_stats --disable >/dev/null 2>&1; dumpsys binder_calls_stats --disable-detailed-tracking >/dev/null 2>&1; atrace --async_stop >/dev/null 2>&1; return 0; }
-dbg_on(){ cmd looper_stats enable >/dev/null 2>&1; dumpsys binder_calls_stats --enable >/dev/null 2>&1; return 0; }
+dbg_off(){ cmd looper_stats disable >/dev/null 2>&1; dumpsys binder_calls_stats --disable >/dev/null 2>&1; dumpsys binder_calls_stats --disable-detailed-tracking >/dev/null 2>&1; atrace --async_stop >/dev/null 2>&1
+  # brutal: hentikan tracing kernel + perfetto (traced) yang jalan di latar
+  for _t in /sys/kernel/tracing/tracing_on /sys/kernel/debug/tracing/tracing_on; do [ -w $_t ] && echo 0 > $_t 2>/dev/null; done
+  setprop debug.atrace.tags.enableflags 0 >/dev/null 2>&1
+  mkdir -p $DIR; : > $DIR/dbg.off
+  stop traced_probes >/dev/null 2>&1; stop traced >/dev/null 2>&1
+  return 0; }
+dbg_on(){ cmd looper_stats enable >/dev/null 2>&1; dumpsys binder_calls_stats --enable >/dev/null 2>&1
+  if [ -f $DIR/dbg.off ]; then start traced >/dev/null 2>&1; start traced_probes >/dev/null 2>&1; rm -f $DIR/dbg.off; fi
+  return 0; }
 
 # ---------- STATUS (dibaca WebUI) ----------
 cl(){ # baris status yang tetap selama HP hidup: hitung sekali, simpan sampai reboot (cache c.* dibuang saat boot); hasil kosong tidak disimpan

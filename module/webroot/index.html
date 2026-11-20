@@ -7,11 +7,11 @@
 <title>Comatoze</title>
 <style>
 :root{color-scheme:light;--bg:#F8FAF7;--s1:#E1E5E2;--s2:#EEF1EE;--s3:#CDD5CF;--ln:rgba(25,40,30,.09);--tx:#191C1A;--mu:#5A635D;--ac:#0F6B37;--on:#FFFFFF;--dg:#B3261E;--ok:#0F6B37;--wn:#8A6D00;--sh:0 8px 24px rgba(0,30,10,.12);--ico:#A8F5B6;--icoc:#00531F;
- --t-blue:#0F6B37;--t-purple:#2B6B52;--t-teal:#0B6B5E;--t-amber:#6F6A00;--t-rose:#B3261E}
+ --t-blue:#0F6B37;--t-purple:#0F6B37;--t-teal:#0F6B37;--t-amber:#0F6B37;--t-rose:#0F6B37}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#101411;--s1:#1E2420;--s2:#29302B;--s3:#343C36;--ln:rgba(200,225,205,.10);--tx:#E1E4DF;--mu:#A3ADA5;--ac:#8BDB9A;--on:#00391B;--dg:#FFB4AB;--ok:#8BDB9A;--wn:#E3C85A;--sh:0 8px 24px rgba(0,0,0,.45);--ico:#2F4A37;--icoc:#A8F5B6;
- --t-blue:#8BDB9A;--t-purple:#9BD6BE;--t-teal:#83D8CB;--t-amber:#D8CC6A;--t-rose:#FFB4AB}}
+ --t-blue:#8BDB9A;--t-purple:#8BDB9A;--t-teal:#8BDB9A;--t-amber:#8BDB9A;--t-rose:#8BDB9A}}
 :root[data-theme=dark]{color-scheme:dark;--bg:#101411;--s1:#1E2420;--s2:#29302B;--s3:#343C36;--ln:rgba(200,225,205,.10);--tx:#E1E4DF;--mu:#A3ADA5;--ac:#8BDB9A;--on:#00391B;--dg:#FFB4AB;--ok:#8BDB9A;--wn:#E3C85A;--sh:0 8px 24px rgba(0,0,0,.45);--ico:#2F4A37;--icoc:#A8F5B6;
- --t-blue:#8BDB9A;--t-purple:#9BD6BE;--t-teal:#83D8CB;--t-amber:#D8CC6A;--t-rose:#FFB4AB}
+ --t-blue:#8BDB9A;--t-purple:#8BDB9A;--t-teal:#8BDB9A;--t-amber:#8BDB9A;--t-rose:#8BDB9A}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{background:var(--bg)}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 "Google Sans","Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -532,14 +532,14 @@ nav button.on .pl{background:var(--ico);color:var(--icoc)}
 const FEATURES=[
  {id:'gamefps',group:'exp',ic:'bolt',tn:'purple',name:'Buka Batas 60 FPS Game',short:'Android 15+',desc:'Mematikan batas frame rate bawaan game (60 FPS) di Android 15. Dipulihkan saat dimatikan.',nope:'Butuh Android 15 atau lebih baru.',ok:s=>(+((s.dev||{}).android)||0)>=15},
  {id:'fpsgooff',group:'exp',ic:'activity',tn:'amber',name:'Matikan FPSGO',short:'FPS tidak diturunkan kernel',desc:'ON = FPSGO (scheduler frame kernel MediaTek) dimatikan lewat fpsgo_enable=0, jadi kernel tidak menurunkan clock/FPS secara dinamis. OFF = FPSGO bawaan ROM (1). Dijaga ulang tiap beberapa detik oleh pemantau bila sistem menyalakannya lagi. Bisa membuat HP lebih panas.',nope:'Node fpsgo_enable tidak ditemukan di kernel ini (bukan MediaTek, atau FPSGO tidak diekspos). Jalankan: ls /sys/kernel/fpsgo',ok:s=>s.fpsgoSup!==false},
- {id:'nothermal',ic:'flame',tn:'rose',name:'Disable Thermal (Brutal)',short:'Hentikan service thermal',desc:'Hentikan SEMUA service thermal, matikan thermal zone & limit GPU/PPM, trip suhu 125°C. Risiko panas berlebih/baterai. Aktif/nonaktif langsung tanpa reboot.',danger:true},
- {id:'wifilatency',ic:'wifi',tn:'blue',name:'WiFi Low Latency',short:'Latensi rendah untuk game online',desc:'Mode performa & latensi rendah WiFi untuk game online.'},
+ {id:'nothermal',hide:1,ic:'flame',tn:'rose',name:'Disable Thermal (Brutal)',short:'Hentikan service thermal',desc:'Hentikan SEMUA service thermal, matikan thermal zone & limit GPU/PPM, trip suhu 125°C. Risiko panas berlebih/baterai. Aktif/nonaktif langsung tanpa reboot.',danger:true},
+ {id:'wifilatency',ic:'wifi',tn:'blue',name:'WiFi Low Latency',short:'Latensi rendah untuk game online',desc:'Mode performa & latensi rendah WiFi untuk game online, ditambah scan WiFi latar dimatikan dan WiFi tidak pernah tidur. Nilai asli dipulihkan saat dimatikan.'},
  {id:'perfx',hide:1,ic:'activity',tn:'rose',name:'Tweak Ekstra Performa',desc:'Otomatis aktif saat mode Performa dan mati saat pindah mode. Tidak bisa bersamaan dengan Tweak Ekstra Eco (pilih salah satu). Isinya: scheduler tanpa bias hemat energi, thread app di depan dipaksa ke core besar, I/O lebih lancar. Tambahan MediaTek: DRAM/vcore dikunci tinggi (governor DVFSRC performance), GPU Mali selalu menyala (power_policy always_on), pembatas sistem & mode CCI cepat, kompaksi memori dimatikan. Idle dalam CPU hanya dimatikan bila PERF_IDLE=on di config. Dipulihkan persis saat keluar mode Performa. Lebih panas & boros.'},
  {id:'ecox',hide:1,ic:'leaf',tn:'teal',name:'Tweak Ekstra Eco',desc:'Otomatis aktif saat mode Eco dan mati saat pindah mode. Tidak bisa bersamaan dengan Tweak Ekstra Performa (pilih salah satu). Isinya: cluster CPU besar dibatasi 45%, app latar dibatasi, naik clock lebih lambat & turun lebih cepat, scan Wi-Fi/BLE latar dimatikan. Tambahan MediaTek: DRAM/vcore boleh turun (DVFSRC powersave), GPU Mali boleh tidur (coarse_demand), mode CCI normal. Lebih dingin & hemat; dipulihkan persis saat keluar Eco.'},
- {id:'lessdbg',ic:'activity',tn:'teal',name:'Kurangi Overhead Debug',short:'Matikan statistik debug sistem',desc:'Mematikan pengumpulan statistik debug yang berjalan terus di latar (looper stats, binder calls stats). Efeknya kecil tetapi tanpa risiko untuk pemakaian biasa. Matikan fitur ini untuk menyalakannya kembali.'},
+ {id:'lessdbg',ic:'activity',tn:'teal',name:'Kurangi Overhead Debug',short:'Matikan statistik debug & tracing sistem',desc:'Mematikan pengumpulan statistik debug yang berjalan terus di latar (looper stats, binder calls stats) serta tracing kernel dan perfetto (traced). Tanpa risiko untuk pemakaian biasa; mematikan fitur ini menyalakannya kembali.'},
  {id:'touchboost',ic:'touch',tn:'amber',name:'Boost Touch',short:'Respons sentuh lebih cepat',desc:'Input boost kernel & node touch vendor MediaTek/Oppo/Realme (bila HP mendukung), ramp-up CPU lebih cepat saat disentuh, dan properti HWUI aman. Tanpa lantai clock permanen, jadi tidak membuat HP berat/panas. Dilewati di mode Eco. Langsung aktif tanpa reboot, dipulihkan saat dimatikan.'},
  {id:'bkt',ic:'cpu',tn:'blue',name:'Kernel Tweaks (BKT)',short:'Scheduler, memori & jaringan lebih responsif',desc:'Porting selektif dari Better Kernel Tweaks (RiProG): tunable scheduler CFS, VM/memori (dirty ratio, swappiness, cache pressure sesuai RAM), BBR + TCP fast open. Node yang tidak ada di kernel kamu dilewati, nilai asli dipulihkan saat dimatikan. Tidak menyentuh governor, GPU, atau IO scheduler (diatur mode Performa/Eco).'},
- {id:'smooth',ic:'activity',tn:'teal',name:'Anti Kill Proses Latar',short:'Cegah app/game ditutup paksa (Android 12+)',desc:'Android 12 ke atas membatasi proses anak (phantom) dan menutup paksa app atau game yang membuatnya, sehingga tiba-tiba keluar atau macet. Fitur ini melonggarkan batas itu. Nilai asli dipulihkan saat dimatikan; di Android 11 ke bawah tidak berefek.'},
+ {id:'smooth',ic:'activity',tn:'teal',name:'Anti Kill Proses Latar',short:'Cegah app/game ditutup paksa (Android 12+)',desc:'BRUTAL: juga mematikan pembekuan app cache (freezer) dan menaikkan batas proses cache ke 256. Android 12 ke atas membatasi proses anak (phantom) dan menutup paksa app atau game yang membuatnya, sehingga tiba-tiba keluar atau macet. Fitur ini melonggarkan batas itu. Nilai asli dipulihkan saat dimatikan; di Android 11 ke bawah tidak berefek.'},
  {id:'dnd',ic:'moon',tn:'purple',name:"Don't Disturb",short:'Jangan ganggu sekarang',desc:'Nyalakan mode jangan ganggu sekarang.'},
  {id:'fastcharge',group:'chg',ic:'bolt',tn:'amber',name:'Fast Charging',short:'Paksa status baterai Good',desc:'Paksa status baterai "Good" & charge_control_limit 0 (metode modul Fast Charging) agar arus tidak diturunkan saat baterai hangat. Hasil tergantung charger & hardware.'},
  {id:'autocut',group:'chg',ic:'battery',tn:'teal',name:'Auto Cut Charging',short:'Berhenti di batas level',desc:'Berhenti mengisi di batas level yang dipilih.'},
@@ -552,7 +552,7 @@ const FEATURES=[
  {id:'gamednd',group:'game',ic:'moon',tn:'rose',name:'DND saat Game',short:'DND otomatis saat game',desc:"Aktifkan Don't Disturb otomatis selama game berjalan."},
  {id:'doze',group:'util',ic:'moon',tn:'blue',name:'Doze Mode',short:'Hemat baterai saat layar mati',desc:'Hemat baterai saat layar mati.'},
  {id:'datasaver',group:'util',ic:'data',tn:'teal',name:'Data Saver',short:'Batasi data latar belakang',desc:'Batasi data latar belakang.'},
- {id:'aggrdoze',group:'util',ic:'moon',tn:'blue',name:'Aggressive Doze',short:'Deep Sleep sesaat setelah layar mati',desc:'Memaksa perangkat masuk Deep Sleep sekitar 10 detik setelah layar mati, dan melepasnya saat layar menyala. Standby lebih hemat, tetapi notifikasi aplikasi non-prioritas bisa tertunda selama layar mati.'},
+ {id:'aggrdoze',group:'util',ic:'moon',tn:'blue',name:'Aggressive Doze',short:'Deep Sleep sesaat setelah layar mati',desc:'Memaksa perangkat masuk Deep Sleep sekitar 4 detik setelah layar mati, dan melepasnya saat layar menyala. Standby lebih hemat, tetapi notifikasi aplikasi non-prioritas bisa tertunda selama layar mati.'},
  {id:'gmslimit',group:'util',ic:'layers',tn:'amber',name:'GMS Doze',short:'Kurung Google Play Services habis-habisan',desc:'Mengeluarkan Google Play Services dari daftar putih hemat daya, memblokir jalan di latar, wakelock, auto-start saat boot, dan ubah pengaturan sistem, serta mematikan device admin GMS (Find My Device ikut nonaktif). Bisa menunda notifikasi; matikan bila ada yang telat. Saat dimatikan semuanya kembali ke default ROM.'},
  {id:'f2fsgc',group:'util',ic:'cpu',tn:'teal',name:'F2FS GC',short:'Bersihkan penyimpanan saat layar mati',desc:'Menjalankan garbage collection paksa pada partisi F2FS lalu fstrim, otomatis saat layar mati dan tidak sedang main game (maksimal tiap 6 jam). Menjaga kecepatan baca-tulis penyimpanan tetap segar. Tidak aktif bila HP tidak memakai F2FS.'},
  {id:'bootapply',ic:'power',tn:'amber',name:'Terapkan saat boot',short:'Matikan jika bootloop',desc:'Matikan jika terjadi bootloop.'}
@@ -1316,7 +1316,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.61.0';
+const VER='2.63.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1351,10 +1351,7 @@ applyTheme(curTheme());
 function themeDlg(){openDlg('Pilih Tema',THEME_OPTS,curTheme(),k=>{applyTheme(k);render();});}
 /* ----- Tweaks ----- */
 function pageTweaks(s){const f=s.feat||{},z=s.zram,b=s.bat||{},tw=f.perfx?'Performa':f.ecox?'Eco':'Mati',io=s.ios;
- return `<div class="msec">Layar &amp; Grafis</div><div class="mlist">
-  ${mrow('brush','purple','Renderer',esc(rendName(s.rend))+' • Graphics',"rendDlg()")}
- </div>
- <div class="msec">Performa &amp; Termal</div><div class="mlist">
+ return `<div class="msec">Performa &amp; Termal</div><div class="mlist">
   ${mrow('cpu','blue','CPU & GPU',(MODE_NAME[s.mode]||'Manual')+' • Clock, governor, GPU Boost',"openSub('cpu')")}
   ${mrow('rocket','rose','Tweak Ekstra',tw+' • Performa / Eco',"openSub('tmode')")}
   ${mrow('flame','rose','Disable Thermal',(f.nothermal?'Aktif':'Nonaktif')+' • Mitigasi suhu vendor',"openSub('thermal')")}

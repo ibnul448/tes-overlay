@@ -81,7 +81,7 @@ public class OverlayService extends Service {
     private static final int[] TAB_ICONS = {IconView.GRID, IconView.SLIDERS, IconView.DND, IconView.PAD, IconView.BOLT};
     private static final int[] HZ = {60, 90, 120};
 
-    private static final class Sw { String id; SkewSwitch view; }
+    private static final class Sw { String id; GlowSwitch view; }
 
     private WindowManager wm;
     private WindowManager.LayoutParams lp;
@@ -257,17 +257,23 @@ public class OverlayService extends Service {
 
         root = new FrameLayout(this);
 
-        // chip FPS: kotak membulat hitam, hanya angka putih
+        // chip FPS: kotak membulat gelap setengah transparan, angka besar + label "FPS" kecil di bawahnya
         pill = new LinearLayout(this);
         pill.setOrientation(LinearLayout.VERTICAL);
         pill.setGravity(Gravity.CENTER);
-        pill.setPadding(dp(14), dp(9), dp(14), dp(9));
-        pillBg = rounded(Color.parseColor("#F2000000"), 18, 0, 0);
+        pill.setPadding(dp(14), dp(8), dp(14), dp(8));
+        pillBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{Color.parseColor("#E61E242D"), Color.parseColor("#E610141B")});
+        pillBg.setCornerRadius(dp(10));
+        pillBg.setStroke(Math.max(1, dp(1)), Color.parseColor("#33FFFFFF"));
         pill.setBackground(pillBg);
-        pillNum = tv("--", 22, Color.WHITE, true);
+        pillNum = tv("--", 21, Color.parseColor("#F1F1F1"), true);
         pillNum.setGravity(Gravity.CENTER);
+        pillNum.setSingleLine(true);
         pill.addView(pillNum, new LinearLayout.LayoutParams(-2, -2));
-        pill.setMinimumWidth(dp(60));
+        TextView pillLbl = tv("FPS", 10, Color.parseColor("#A3A9B2"), false);
+        pillLbl.setGravity(Gravity.CENTER);
+        pill.addView(pillLbl, lpw(-2, -2, 0, 0, 0, 0));
+        pill.setMinimumWidth(dp(72));
         root.addView(pill, new FrameLayout.LayoutParams(-2, -2));
 
         // panel
@@ -522,8 +528,8 @@ public class OverlayService extends Service {
         r.addView(tv(label, 13, TXT, false), new LinearLayout.LayoutParams(0, -2, 1f));
         final Sw sw = new Sw();
         sw.id = id;
-        sw.view = new SkewSwitch(this);
-        r.addView(sw.view, lpw(dp(40), dp(16), 8, 0, 0, 0));
+        sw.view = new GlowSwitch(this);
+        r.addView(sw.view, lpw(dp(50), dp(26), 8, 0, 0, 0));
         reg.add(sw);
         r.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { pulse(v); toggleFeat(id, label); } });
         parent.addView(r, lpw(-1, -2, 0, 0, 0, 8));
@@ -616,12 +622,10 @@ public class OverlayService extends Service {
 
         // kisi 4 x 3 alat cepat
         String[][] g = {
-                {"shot", "Tangkapan"}, {"rec", "Rekam"}, {"touch", "Touch boost"}, {"xh", "Crosshair"},
-                {"dnd", "DND"}, {"wifi", "Wi-Fi"}, {"timer", "Timer"}, {"hz", "Hz"},
-                {"kill", "Tutup latar"}, {"float", "Mengambang"}, {"mgr", "Pengaturan"}, {"diag", "Diagnosa"}};
-        int[] gi = {IconView.SHOT, IconView.REC, IconView.TOUCH, IconView.TARGET,
-                IconView.DND, IconView.WIFI, IconView.PULSE, IconView.HZ,
-                IconView.TRASH, IconView.WINDOW, IconView.SLIDERS, IconView.GAUGE};
+                {"shot", "Tangkapan"}, {"rec", "Rekam"}, {"xh", "Crosshair"}, {"dnd", "DND"},
+                {"wifi", "Wi-Fi"}, {"hz", "Hz"}, {"kill", "Tutup latar"}, {"mgr", "Pengaturan"}};
+        int[] gi = {IconView.SHOT, IconView.REC, IconView.TARGET, IconView.DND,
+                IconView.WIFI, IconView.HZ, IconView.TRASH, IconView.SLIDERS};
         LinearLayout row = null;
         for (int i = 0; i < g.length; i++) {
             if (i % 4 == 0) {
@@ -664,6 +668,8 @@ public class OverlayService extends Service {
         navRow(c, "Optimalisasi Performa", "perf");
         switchRow(c, "perfx", "Tweak Ekstra Performa", sws);
         switchRow(c, "nothermal", "Matikan Thermal", sws);
+        switchRow(c, "touchboost", "Touch boost", sws);
+        navRow(c, "Jendela Mengambang", "float");
         return c;
     }
 
@@ -747,6 +753,7 @@ public class OverlayService extends Service {
         actionRow(c, "Pangkas cache", new Runnable() { @Override public void run() { runCmd(Root.BIN + " ovact trim", "CACHE DIPANGKAS", null); } });
         actionRow(c, "Ganti gaya crosshair", new Runnable() { @Override public void run() { runCmd(Root.BIN + " crosshair next style", "GAYA CROSSHAIR DIGANTI", null); } });
         actionRow(c, "Ganti warna crosshair", new Runnable() { @Override public void run() { runCmd(Root.BIN + " crosshair next color", "WARNA CROSSHAIR DIGANTI", null); } });
+        actionRow(c, "Diagnosa (simpan ke Download)", new Runnable() { @Override public void run() { gridAction("diag"); } });
         return c;
     }
 
@@ -1068,8 +1075,7 @@ public class OverlayService extends Service {
             modeTx[i].setTextColor(sel ? Color.WHITE : Color.parseColor("#9AA1AE"));
         }
         int hz = parse(curHz);
-        boolean[] act = new boolean[12];
-        String[] ids = {"shot", "rec", "touch", "xh", "dnd", "wifi", "timer", "hz", "kill", "float", "mgr", "diag"};
+                String[] ids = {"shot", "rec", "xh", "dnd", "wifi", "hz", "kill", "mgr"};
         for (int i = 0; i < ids.length; i++) {
             String id = ids[i];
             boolean on = ("rec".equals(id) && recording) || ("touch".equals(id) && Boolean.TRUE.equals(tstate.get("touchboost")))
@@ -1286,7 +1292,7 @@ public class OverlayService extends Service {
         String fps = f(a, 1), cpu = f(a, 2), gpu = f(a, 3), bat = f(a, 4), bt = f(a, 5), ram = f(a, 6);
         String cm = f(a, 7), gm = f(a, 8), ping = f(a, 9), pkg = f(a, 10), ct = f(a, 11);
         curPkg = pkg;
-        pillNum.setText(fps.isEmpty() ? "--" : fps);
+        pillNum.setText(fps.isEmpty() ? "--" : (fps.indexOf('.') >= 0 ? fps : fps + ".0"));
         clampPos();
         if (!expanded) return;
         tick++;
