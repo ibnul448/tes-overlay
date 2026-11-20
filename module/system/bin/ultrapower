@@ -1087,10 +1087,64 @@ rend_apply(){
 rend_boot(){ v=$(getcfg RENDERER); [ -n "$v" ] && [ "$v" != default ] && rend_apply $v >/dev/null 2>&1; }
 # GMS limiter: RUN_IN_BACKGROUND & WAKE_LOCK Google Play Services -> ignore. Mati = kembali ke "default" (bukan "allow", supaya setelan bawaan ROM utuh).
 gms_limit(){
+  GMSA=com.google.android.gms/com.google.android.gms.auth.managed.admin.DeviceAdminReceiver; GMSM=com.google.android.gms/com.google.android.gms.mdm.receivers.MdmDeviceAdminReceiver
   for op in RUN_IN_BACKGROUND RUN_ANY_IN_BACKGROUND WAKE_LOCK; do
     if [ "$1" = on ]; then cmd appops set com.google.android.gms $op ignore >/dev/null 2>&1; else cmd appops set com.google.android.gms $op default >/dev/null 2>&1; fi
   done
+  # Doze GMS: keluarkan GMS dari daftar putih hemat daya sistem (sys-whitelist) + daftar putih pengguna; tanpa ini GMS kebal Doze
+  if [ "$1" = on ]; then cmd deviceidle sys-whitelist -com.google.android.gms >/dev/null 2>&1; cmd deviceidle whitelist -com.google.android.gms >/dev/null 2>&1
+  else cmd deviceidle sys-whitelist reset >/dev/null 2>&1; fi
+  for u in $(ls /data/user 2>/dev/null); do
+    for pk in com.google.android.gms com.google.android.ims; do
+      for op in BOOT_COMPLETED AUTO_START WRITE_SETTINGS; do
+        if [ "$1" = on ]; then cmd appops set --user $u $pk $op ignore >/dev/null 2>&1; else cmd appops set --user $u $pk $op default >/dev/null 2>&1; fi
+      done
+    done
+    # device admin GMS (Find My Device ikut mati saat ON; hidup lagi saat OFF)
+    if [ "$1" = on ]; then pm disable --user $u $GMSA >/dev/null 2>&1; pm disable --user $u $GMSM >/dev/null 2>&1
+    else pm enable --user $u $GMSA >/dev/null 2>&1; pm enable --user $u $GMSM >/dev/null 2>&1; fi
+  done
 }
+# F2FS GC: paksa garbage collection partisi F2FS (gc_urgent) + fstrim saat layar mati, tidak sedang main game. Ditulis sendiri.
+F2W=$DIR/f2fs.pid; F2L=$DIR/f2fs.last
+f2fs_dirs(){ for d in /sys/fs/f2fs/*; do [ -w "$d/gc_urgent" ] && echo "$d"; done; }
+f2fs_free(){ _t=0; for d in $(f2fs_dirs); do _f=; read -r _f 2>/dev/null < $d/free_segments; _t=$((_t + ${_f:-0})); done; echo $_t; }
+f2fs_gc_run(){ # jalan maksimal ~120 dtk; berhenti dini bila free_segments sudah tidak naik
+  [ -f $DIR/ingame ] && { echo "ERR|sedang main game"; return 1; }
+  [ -n "$(f2fs_dirs)" ] || { echo "ERR|node F2FS tidak ada"; return 1; }
+  [ -f $DIR/f2fs.run ] && kill -0 "$(cat $DIR/f2fs.run 2>/dev/null)" 2>/dev/null && { echo "ERR|GC sedang berjalan"; return 1; }
+  echo $$ > $DIR/f2fs.run; b=$(f2fs_free); l=$b; n=0
+  for d in $(f2fs_dirs); do echo 1 > $d/gc_urgent 2>/dev/null; done
+  i=0; while [ $i -lt 24 ]; do
+    sleep 5; i=$((i+1)); c=$(f2fs_free)
+    if [ "$c" -le "$l" ]; then n=$((n+1)); else n=0; fi
+    l=$c; [ $n -ge 3 ] && break
+    [ -f $DIR/ingame ] && break
+  done
+  for d in $(f2fs_dirs); do echo 0 > $d/gc_urgent 2>/dev/null; done
+  sm fstrim >/dev/null 2>&1
+  echo "$(date +%s)|$b|$(f2fs_free)" > $F2L; rm -f $DIR/f2fs.run; echo "OK|$b -> $(f2fs_free) segmen bebas"
+}
+f2fs_wd(){
+  echo $$ > $F2W; off=0
+  BL=; for f in /sys/class/leds/lcd-backlight/brightness /sys/class/backlight/*/brightness; do [ -r "$f" ] && { BL=$f; break; }; done
+  [ -n "$BL" ] || { rm -f $F2W; return 1; }
+  while :; do
+    sleep 60; b=; read -r b 2>/dev/null < $BL
+    if [ "${b:-1}" = 0 ]; then off=$((off+1)); else off=0; fi
+    if [ $off -ge 2 ]; then
+      now=$(date +%s); t=0; [ -f $F2L ] && t=$(cut -d'|' -f1 $F2L)
+      h=$(getcfg F2FS_H); [ -n "$h" ] || h=6
+      [ $((now - ${t:-0})) -ge $((h*3600)) ] && f2fs_gc_run >/dev/null 2>&1
+    fi
+  done
+}
+f2fs_sync(){ # on|off
+  alive=0; [ -f $F2W ] && kill -0 $(cat $F2W) 2>/dev/null && alive=1
+  if [ "$1" = on ] && [ $alive = 0 ]; then bg f2fs_wd
+  elif [ "$1" != on ] && [ $alive = 1 ]; then kill $(cat $F2W) 2>/dev/null; rm -f $F2W; fi
+}
+f2fs_status(){ _l=0; _b=0; _a=0; [ -f $F2L ] && { IFS='|' read -r _l _b _a < $F2L; }; echo "F2FS|$(f2fs_dirs | wc -l)|${_l:-0}|${_b:-0}|${_a:-0}"; }
 # Aggressive Doze: layar mati (backlight 0) 2x berturut-turut (10 dtk) -> deviceidle force-idle; layar hidup -> unforce. Pemantau memakai read bawaan shell (tanpa fork) di antara transisi.
 ADZ=$DIR/adoze.pid
 adoze_wd(){
@@ -1334,13 +1388,14 @@ smooth_off(){
   done < $SMD
   rm -f $SMD
 }
-FEATS="gamefps gamethermal nothermal doze datasaver wifilatency bootapply dnd fastcharge autocut bypass gamebypass preload gamednd gameprofile gameclean touchboost perfx ecox lessdbg fpsgooff gmslimit aggrdoze hzlock120 hzforce bkt smooth"
+FEATS="f2fsgc gamefps gamethermal nothermal doze datasaver wifilatency bootapply dnd fastcharge autocut bypass gamebypass preload gamednd gameprofile gameclean touchboost perfx ecox lessdbg fpsgooff gmslimit aggrdoze hzlock120 hzforce bkt smooth"
 feat(){ # name on|off
   case $1 in
     nothermal) if [ "$2" = on ]; then thermal off; else thermal on; fi; return;;
     touchboost) if [ "$2" = on ]; then touch_on; else touch_off; fi;;
     bkt) if [ "$2" = on ]; then bkt_on; else bkt_off; fi;;
     smooth) if [ "$2" = on ]; then smooth_on; else smooth_off; fi;;
+    f2fsgc) setcfg "F_$1" $2; f2fs_sync $2; return;;
     gmslimit) setcfg "F_$1" $2; gms_limit $2; return;;
     aggrdoze) setcfg "F_$1" $2; adoze_sync $2; return;;
     lessdbg) setcfg "F_$1" $2; if [ "$2" = on ]; then dbg_off; else dbg_on; fi; return;;
@@ -1672,7 +1727,7 @@ preload(){ # apk/lib/oat/obb + aset non-media di Android/data/<pkg>/files -> pag
   rm -f $L
 }
 # Ide fitur game terinspirasi dari CMD-Tweaks (t.me/HoyoSlave); kode ditulis ulang.
-gclean(){ cmd activity kill-all >/dev/null 2>&1; for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || cmd activity kill --user 0 $p >/dev/null 2>&1; done; }
+gclean(){ cmd activity kill-all >/dev/null 2>&1; for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || [ "$p" = com.comatoze ] || cmd activity kill --user 0 $p >/dev/null 2>&1; done; ov_alive || { [ "$(getcfg OV_ON)" = on ] && [ -f $DIR/ingame ] && ov_svc; }; }
 mode_restore(){
   m=$(getcfg MODE); [ "$m" = auto ] && m=balance
   if [ "$m" = custom ]; then batsaver custom; while IFS='|' read -r k a; do [ -n "$a" ] && NOSAVE=1 sh $SELF $a; done < $CUS
@@ -1720,7 +1775,7 @@ game_wd(){
         ing=1; touch $DIR/ingame
         [ "$(getcfg F_gameclean)" = on ] && gclean $cur &
         [ "$(getcfg F_preload)" = on ] && preload $cur &
-        lastg=$cur; glog "masuk $cur"
+        lastg=$cur; glog "masuk $cur"; [ -s $AAP ] && tex_cur $cur
         [ -f $PXV2 ] && { sleep 4; perf_x_game; } &
         _ax=; [ "$(getcfg OV_ANIM)" = off ] || _ax="--ez anim true --es pkg $cur"
         if [ "$(getcfg OV_ON)" = on ] && ov_auto; then { setcfg OV_DEF on; ov_svc $_ax; } &
@@ -1729,12 +1784,15 @@ game_wd(){
         [ "$(getcfg F_gamethermal)" = on ] && gth_on
         if [ "$(getcfg F_gamednd)" = on ]; then cmd notification set_dnd priority; dset=1; fi
       elif [ "$cur" != "$lastg" ]; then   # pindah langsung ke game lain di daftar: terapkan profil game barunya
-        lastg=$cur
+        lastg=$cur; [ -s $AAP ] && tex_cur $cur
         if [ "$(getcfg F_gameprofile)" = on ]; then gp_leave; gp_enter $cur; fi
+      else   # pengawas overlay: tiap ~15 dtk pastikan layanan overlay masih hidup (bisa mati karena memori/pembersihan)
+        wdc=$((wdc+1))
+        if [ $wdc -ge 5 ]; then wdc=0; [ "$(getcfg OV_ON)" = on ] && { ov_alive || ov_svc; }; fi
       fi
     elif [ "$ing" = 1 ]; then
       away=$((away+1))
-      if [ $away -ge 2 ]; then   # keluar game bila 2x cek berturut-turut (anti-flicker shade/dialog)
+      if [ $away -ge 3 ]; then   # keluar game bila 3x cek berturut-turut (anti-flicker shade/dialog/pemuatan)
         ing=0; rm -f $DIR/ingame; gp_leave; gth_off; glog "keluar ${lastg}"
         [ "$(getcfg OV_ON)" = on ] && ov_auto && am stopservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1 &
         [ "$dset" = 1 ] && { cmd notification set_dnd off; dset=0; }
@@ -2038,8 +2096,8 @@ spoofapp_test(){ # tampilkan log spoof terakhir untuk paket (dicatat modul Zygis
 }
 
 # ---------- GAYA TEKSTUR ANGLE (per-app) ----------
-# Memaksa ANGLE untuk app terpilih lalu menambahkan "feature override" ANGLE (debug.angle.feature_overrides_enabled) -> tekstur
-# kotak-kotak (blok) atau blur-halus. Pakai setelan Android yang SAMA dengan gfx_angle di atas, jadi semua penulisan daftar
+# Memaksa ANGLE untuk app terpilih lalu menambahkan "feature override" ANGLE (debug.angle.feature_overrides_enabled) -> kualitas tekstur
+# per game: level 1-4 (LOD offset) dengan gaya Blur (halus) atau Pixel (nearest filtering). Pakai setelan Android yang SAMA dengan gfx_angle di atas, jadi semua penulisan daftar
 # angle_gl_driver_selection_* lewat angle_compose: entri lain (milik gfx_angle / buatan pengguna) tetap dipertahankan,
 # entri milik fitur ini ditambah/diperbarui, dan daftar paket & nilai selalu sama panjang.
 # Catatan: debug.angle.feature_overrides_enabled itu properti GLOBAL (satu gaya untuk semua app ber-ANGLE) dan hilang saat reboot,
@@ -2059,11 +2117,12 @@ angle_ok_r(){ # ANGLE terdeteksi di perangkat? (hanya informasi; bila tidak ada,
   done
   return 1
 }
-angle_feat(){ case "$1" in
-  blok)  echo forceNearestFiltering:disableAnisotropicFiltering:forceTextureLodOffset4;;
-  halus) echo disableAnisotropicFiltering:forceTextureLodOffset4;;
-  *)     echo "";;
-esac; }
+# Kualitas tekstur per game: TEX_<paket>="level|gaya" (level 1-4, gaya blur|pixel). Kosong = tidak diubah.
+tex_feat(){ v=$(getcfg "TEX_$1"); [ -n "$v" ] || return 1
+  l=${v%%|*}; st=${v#*|}; case $l in 1|2|3|4) ;; *) l=4;; esac
+  f=disableAnisotropicFiltering:forceTextureLodOffset$l; [ "$st" = pixel ] && f=forceNearestFiltering:$f
+  echo $f; }
+tex_forget(){ grep -v "^TEX_$1=" $CFG > $CFG.t 2>/dev/null; mv -f $CFG.t $CFG; grep -v "^TEXA_$1=" $CFG > $CFG.t 2>/dev/null; mv -f $CFG.t $CFG; }
 ANL=$DIR/angle_last.txt   # catatan penggabungan terakhir (untuk diagnosa)
 angle_write(){ # key nilai -> tulis lalu BACA ULANG; bila beda, coba jalur lain
   sput global "$1" "$2"
@@ -2098,10 +2157,13 @@ angle_compose(){ # [paket yang harus dibuang dari daftar]  -- murni shell (tanpa
   return 0
 }
 angle_setprop(){ setprop debug.angle.feature_overrides_enabled "$1" 2>/dev/null || resetprop -n debug.angle.feature_overrides_enabled "$1" 2>/dev/null; }
-angle_prop_apply(){
+angle_prop_apply(){ # properti ANGLE bersifat global: dipasang sesuai game aktif terakhir ($DIR/tex_cur); game ANGLE tanpa pengaturan tekstur = tanpa override
   if [ -s $AAP ]; then
     [ -f $AAO ] || getprop debug.angle.feature_overrides_enabled > $AAO
-    s=$(getcfg ANGLE_STYLE); angle_setprop "$(angle_feat "${s:-blok}")"
+    f=; c=$(cat $DIR/tex_cur 2>/dev/null)
+    if [ -n "$c" ] && grep -qx "$c" $AAP; then f=$(tex_feat $c)
+    else for q in $(cat $AAP); do f=$(tex_feat $q); [ -n "$f" ] && break; done; fi
+    angle_setprop "$f"
   elif [ -f $AAO ]; then
     angle_setprop "$(cat $AAO)"; rm -f $AAO
   fi
@@ -2110,9 +2172,25 @@ angle_regame(){ # kembalikan pengaturan ANGLE global (gfx_angle) untuk game di d
   a=$(getcfg GFX_ANGLE); [ -n "$a" ] && [ "$a" != default ] && gfx_angle $a >/dev/null
   return 0
 }
-angle_style(){ # blok | halus | plain
-  case "$1" in blok|halus|plain) ;; *) echo "ERR|gaya tidak dikenal"; return 1;; esac
-  setcfg ANGLE_STYLE $1; angle_prop_apply; echo OK
+tex_cur(){ [ -s $AAP ] || return 0; echo "$1" > $DIR/tex_cur; angle_prop_apply; }
+tex_status(){ o=; for q in $(cat $DIR/games.txt 2>/dev/null); do v=$(getcfg "TEX_$q"); [ -n "$v" ] && o="$o$q~${v%%|*}~${v#*|};"; done; echo "TEX|${o%;}"; }
+tex(){ # set <paket> <1-4> <blur|pixel> | off <paket> | cur <paket>
+  case $1 in
+    set) angle_pkg_ok "$2" || { echo "ERR|nama paket tidak valid"; return 1; }
+         case $3 in 1|2|3|4) ;; *) echo "ERR|level 1-4"; return 1;; esac
+         case $4 in blur|pixel) ;; *) echo "ERR|gaya blur atau pixel"; return 1;; esac
+         new=0; [ -f $AAP ] || : > $AAP
+         if ! grep -qx "$2" $AAP; then new=1; setcfg "TEXA_$2" 1; echo "$2" >> $AAP; fi
+         setcfg "TEX_$2" "$3|$4"; echo "$2" > $DIR/tex_cur
+         [ $new = 1 ] && angle_compose; angle_prop_apply; am force-stop "$2" >/dev/null 2>&1
+         [ $new = 1 ] && ui_restart; echo OK;;
+    off) angle_pkg_ok "$2" || { echo "ERR|nama paket tidak valid"; return 1; }
+         auto=$(getcfg "TEXA_$2"); tex_forget "$2"
+         if [ "$auto" = 1 ]; then angle_app del "$2" >/dev/null; ui_restart; else angle_prop_apply; am force-stop "$2" >/dev/null 2>&1; fi
+         echo OK;;
+    cur) angle_pkg_ok "$2" && tex_cur "$2"; echo OK;;
+    *) echo "ERR|perintah tex tidak dikenal"; return 1;;
+  esac
 }
 angle_app(){ # add <paket> | del <paket> | all | clear
   case "$1" in
@@ -2122,11 +2200,11 @@ angle_app(){ # add <paket> | del <paket> | all | clear
          angle_compose; angle_prop_apply; am force-stop "$2" >/dev/null 2>&1; echo OK;;
     del) angle_pkg_ok "$2" || { echo "ERR|nama paket tidak valid"; return 1; }
          [ -f $AAP ] && { grep -vx "$2" $AAP > $AAP.t; mv $AAP.t $AAP; }
-         angle_compose "$2"; angle_regame; angle_prop_apply; am force-stop "$2" >/dev/null 2>&1; echo OK;;
+         tex_forget "$2"; angle_compose "$2"; angle_regame; angle_prop_apply; am force-stop "$2" >/dev/null 2>&1; echo OK;;
     all) [ -f $AAP ] || : > $AAP
          for g in $(cat $DIR/games.txt 2>/dev/null); do angle_pkg_ok "$g" && { grep -qx "$g" $AAP || echo "$g" >> $AAP; }; done
          angle_compose; angle_prop_apply; echo OK;;
-    clear) old=$(cat $AAP 2>/dev/null | tr '\n' ' '); rm -f $AAP
+    clear) old=$(cat $AAP 2>/dev/null | tr '\n' ' '); for g in $old; do tex_forget "$g"; done; rm -f $AAP
          angle_compose "$old"; angle_regame; angle_prop_apply; echo OK;;
     *) echo "ERR|perintah angle_app tidak dikenal"; return 1;;
   esac
@@ -2300,10 +2378,15 @@ ostat(){
 ov_perm(){ # beri izin overlay + notifikasi ke aplikasi Comatoze tanpa dialog (root)
   appops set com.comatoze SYSTEM_ALERT_WINDOW allow >/dev/null 2>&1
   pm grant com.comatoze android.permission.POST_NOTIFICATIONS >/dev/null 2>&1
-  appops set com.comatoze RUN_IN_BACKGROUND allow >/dev/null 2>&1
-  cmd deviceidle whitelist +com.comatoze >/dev/null 2>&1; }
+  for _o in RUN_IN_BACKGROUND RUN_ANY_IN_BACKGROUND START_FOREGROUND SYSTEM_ALERT_WINDOW; do appops set com.comatoze $_o allow >/dev/null 2>&1; done
+  cmd deviceidle whitelist +com.comatoze >/dev/null 2>&1   # baterai: Tanpa batasan
+  cmd deviceidle sys-whitelist +com.comatoze >/dev/null 2>&1
+  am set-standby-bucket com.comatoze active >/dev/null 2>&1
+  cmd appops set com.comatoze SYSTEM_ALERT_WINDOW allow >/dev/null 2>&1; }
 ov_auto(){ [ "$(getcfg OV_AUTO)" != off ]; }   # bawaan: overlay hanya muncul saat game dari daftar dibuka
-ov_svc(){ am start-foreground-service --user 0 -n com.comatoze/.OverlayService "$@" >/dev/null 2>&1 || am startservice --user 0 -n com.comatoze/.OverlayService "$@" >/dev/null 2>&1; }
+ov_svc(){ _o=$(am start-foreground-service --user 0 -n com.comatoze/.OverlayService "$@" 2>&1)
+  case $_o in *rror*|*not\ allowed*|*denied*|*not\ found*) am startservice --user 0 -n com.comatoze/.OverlayService "$@" >/dev/null 2>&1;; esac; }
+ov_alive(){ dumpsys activity services com.comatoze/.OverlayService 2>/dev/null | grep -q ServiceRecord; }
 # Animasi pembuka game (layar penuh, ~2 dtk, tidak bisa disentuh). OV_ANIM: on (default) | off. "animonly" = animasi saja, tanpa overlay.
 ovanim(){ case $1 in
   on|off) setcfg OV_ANIM $1; echo "OK|animasi $1";;
@@ -2442,8 +2525,9 @@ crosshair(){ case $1 in
 esac; }
 ovnet(){ setcfg OV_NET "$1"; echo "OK|ping $1"; }
 overlay(){ case $1 in
-  on)  ov_perm; setcfg OV_ON on; game_sync
-       if ov_auto; then [ -f $DIR/ingame ] && ov_svc; echo "OK|overlay aktif (muncul saat game dibuka)"; else ov_svc; echo "OK|overlay aktif"; fi;;
+  on)  pm path com.comatoze >/dev/null 2>&1 || { echo "ERR|aplikasi Comatoze belum terpasang"; return; }
+       ov_perm; setcfg OV_ON on; game_sync; ov_svc   # langsung tampil; mode "hanya saat game" menutupnya sendiri setelah game keluar
+       if ov_auto; then echo "OK|overlay aktif (otomatis tiap game dibuka)"; else echo "OK|overlay aktif"; fi;;
   off) setcfg OV_ON off; am stopservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; game_sync; echo "OK|overlay mati";;
   close) am stopservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; echo "OK|ditutup";;
   auto) setcfg OV_AUTO "$2"; game_sync; if [ "$2" = off ]; then [ "$(getcfg OV_ON)" = on ] && ov_svc; else [ -f $DIR/ingame ] || am stopservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; fi; echo "OK|auto $2";;
@@ -2459,6 +2543,7 @@ status(){
   echo "OVL|$(getcfg OV_ON)|$([ -d /data/data/com.comatoze ] && echo 1 || echo 0)|$(getcfg OV_NET)|$(getcfg OV_AUTO)|$(getcfg REC_RES)|$(getcfg REC_BR)|$(getcfg REC_FPS)"
   echo "PROF|$([ -f $DIR/prof_on ] && echo on || echo off)"
   echo "UIRST|$(getcfg UI_RST)"
+  f2fs_status
   mt=0; ma=0; while IFS=' ' read -r _k _v _u; do case $_k in MemTotal:) mt=$_v;; MemAvailable:) ma=$_v; break;; esac; done < /proc/meminfo
   echo "RAM|$([ $mt -gt 0 ] && echo $(( (100*(mt-ma))/mt )) || echo 0)|$((mt/1024))|$((ma/1024))"
   idleram status; crosshair status
@@ -2467,7 +2552,8 @@ status(){
   echo "GPCFG|$(getcfg GP_MODE)|$(getcfg GP_HZ)"
   echo "GFX|$(getcfg GFX_SCALE)|$(getcfg GFX_DRV)|$(getcfg GFX_ANGLE)"
   echo "COLOR|$(getcfg COL_SAT)|$(getcfg COL_R)|$(getcfg COL_G)|$(getcfg COL_B)"
-  echo "ANGLE|$(getcfg ANGLE_STYLE)|$(angle_ok && echo yes || echo no)|$(cat $AAP 2>/dev/null | tr '\n' ';' | sed 's/;$//')"
+  tex_status
+  echo "ANGLE|x|$(angle_ok && echo yes || echo no)|$(cat $AAP 2>/dev/null | tr '\n' ';' | sed 's/;$//')"
   echo "DNS|$(getcfg DNS)|$(getcfg DNS_H)|$(sget global private_dns_mode)|$(sget global private_dns_specifier)"
   gfxa=""; for p in $(cat $DIR/games.txt 2>/dev/null); do v=$(getcfg "GFXS_$p"); [ -n "$v" ] && gfxa="$gfxa,$p:$v"; done
   echo "GFXA|${gfxa#,}"
@@ -2522,10 +2608,10 @@ boot(){
     [ "$g" != 100 ] && for p in $(cat $DIR/games.txt 2>/dev/null); do cmd game reset $p >/dev/null 2>&1; done
     grep -v '^GSCALE=' $CFG > $CFG.t; mv $CFG.t $CFG
   fi
-  rm -f $DIR/adoze.pid $DIR/c.* $TS.* $TB.* $PXV $PXV2 $EXV   # sysfs/props baru saja di-reset oleh boot: buang catatan lama
+  rm -f $DIR/adoze.pid $DIR/f2fs.pid $DIR/f2fs.run $DIR/c.* $TS.* $TB.* $PXV $PXV2 $EXV   # sysfs/props baru saja di-reset oleh boot: buang catatan lama
   [ "$(getcfg THERMAL)" = "off" ] && thermal off
   bgx thr_scan   # siapkan daftar node *throttling* di latar supaya klik Disable Thermal pertama sudah cepat
-  for f in doze datasaver wifilatency touchboost lessdbg bkt smooth fpsgooff gmslimit aggrdoze; do v=$(getcfg F_$f); [ -n "$v" ] && feat $f $v; done
+  for f in doze datasaver wifilatency touchboost lessdbg bkt smooth fpsgooff gmslimit aggrdoze f2fsgc; do v=$(getcfg F_$f); [ -n "$v" ] && feat $f $v; done
   [ -f $DIR/guard.pid ] && kill $(cat $DIR/guard.pid) 2>/dev/null
   [ -f $RHZW.pid ] && kill $(cat $RHZW.pid) 2>/dev/null
   [ -f $CPUW.pid ] && kill $(cat $CPUW.pid) 2>/dev/null
@@ -2540,6 +2626,7 @@ boot(){
   angle_boot
   color_boot
   dk=$(getcfg DNS); [ -n "$dk" ] && dns_set "$dk" "$(getcfg DNS_H)" >/dev/null
+  ( sleep 20; ov_perm ) >/dev/null 2>&1 &   # izin latar/overlay selalu dipasang ulang tiap boot
   [ "$(getcfg OV_ON)" = on ] && bg ov_boot
   setcfg CH_ON off   # crosshair selalu mati saat boot (anti burn-in)
   [ "$(getcfg IDLE_RAM)" = on ] && bg idleram_run
@@ -2585,7 +2672,8 @@ case "$1" in
   gfx_scale_reset) gfx_scale_reset $2;;
   gfx_driver) gfx_driver $2; ui_restart;;
   gfx_angle) gfx_angle $2; ui_restart;;
-  angle_style) angle_style $2; ui_restart;;
+  tex) tex $2 $3 $4 $5;;
+  texcur) tex cur $2;;
   angle_app) angle_app $2 $3; ui_restart;;
   ovanim) ovanim $2;;
   idleram) idleram $2 $3 $4;;
@@ -2617,6 +2705,9 @@ case "$1" in
   dexopt) case $2 in start) dexopt_start $3;; stop) dexopt_stop;; *) echo "ERR|perintah dexopt tidak dikenal";; esac;;
   dexopt_run) dexopt_run $2;;
   adoze_wd) adoze_wd;;
+  f2fs_wd) f2fs_wd;;
+  f2fs_run) f2fs_gc_run;;
+  f2fsgc) case $2 in run) bgx f2fs_run; echo "OK|GC dijalankan di latar";; *) f2fs_status;; esac;;
   iosched) case $2 in set) ios_set $3;; *) echo "IOS|$(ios_cur)|$(ios_list | tr ' ' ',')";; esac;;
   renderer) rend_apply $2; ui_restart;;
   zram) case $2 in start) zram_start $3;; *) echo "ERR|perintah zram tidak dikenal";; esac;;

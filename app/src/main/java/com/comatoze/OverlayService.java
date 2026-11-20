@@ -17,6 +17,8 @@ import android.graphics.PixelFormat;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -100,7 +102,8 @@ public class OverlayService extends Service {
     private final HashMap<String, LinearLayout> gridBox = new HashMap<String, LinearLayout>();
     private final HashMap<String, IconView> gridIc = new HashMap<String, IconView>();
     private final HashMap<String, TextView> gridLbl = new HashMap<String, TextView>();
-    private RingGauge fpsRing;
+    private TextView fpsCap;
+    private static final int[] PILL_C = {Color.parseColor("#4C8DFF"), Color.parseColor("#22E37E"), Color.parseColor("#2EDCFF"), Color.parseColor("#FF7A2B")};
     private LinearLayout cardNet, cardMem;
     private boolean xhOn;
     private IconView cardNetIc, cardMemIc;
@@ -254,20 +257,17 @@ public class OverlayService extends Service {
 
         root = new FrameLayout(this);
 
-        // chip FPS: kotak membulat hitam, angka putih
+        // chip FPS: kotak membulat hitam, hanya angka putih
         pill = new LinearLayout(this);
         pill.setOrientation(LinearLayout.VERTICAL);
         pill.setGravity(Gravity.CENTER);
-        pill.setPadding(dp(10), dp(6), dp(10), dp(6));
-        pillBg = rounded(Color.parseColor("#F2000000"), 12, alpha(accent, 150), 1);
+        pill.setPadding(dp(14), dp(9), dp(14), dp(9));
+        pillBg = rounded(Color.parseColor("#F2000000"), 18, 0, 0);
         pill.setBackground(pillBg);
-        pillNum = tv("--", 17, Color.WHITE, true);
+        pillNum = tv("--", 22, Color.WHITE, true);
         pillNum.setGravity(Gravity.CENTER);
-        TextView pl = tv("FPS", 8, Color.WHITE, false);
-        pl.setGravity(Gravity.CENTER);
         pill.addView(pillNum, new LinearLayout.LayoutParams(-2, -2));
-        pill.addView(pl, new LinearLayout.LayoutParams(-2, -2));
-        pill.setMinimumWidth(dp(46));
+        pill.setMinimumWidth(dp(60));
         root.addView(pill, new FrameLayout.LayoutParams(-2, -2));
 
         // panel
@@ -562,38 +562,44 @@ public class OverlayService extends Service {
     // ---------- Seksi 0: Fitur Dasar ----------
     private LinearLayout buildSec0() {
         LinearLayout c = section(0);
-        // hero: dial CPU | cincin FPS besar | dial GPU
+        // hero: dua dial (CPU | GPU) + kapsul FPS
         LinearLayout gr = new LinearLayout(this);
         gr.setOrientation(LinearLayout.HORIZONTAL);
         gr.setGravity(Gravity.CENTER);
         gauge[0] = new RingGauge(this); gauge[0].setSide(1);
-        fpsRing = new RingGauge(this);
         gauge[1] = new RingGauge(this); gauge[1].setSide(-1);
-        gr.addView(gauge[0], lpwt(1f, 0, 0, 0, 0));
-        gr.addView(fpsRing, lpwt(1.35f, -6, 0, -6, 0));
-        gr.addView(gauge[1], lpwt(1f, 0, 0, 0, 0));
-        gauge[0].getLayoutParams().height = dp(112);
-        fpsRing.getLayoutParams().height = dp(122);
-        gauge[1].getLayoutParams().height = dp(112);
+        gr.addView(gauge[0], lpwt(1f, 4, 0, 4, 0));
+        gr.addView(gauge[1], lpwt(1f, 4, 0, 4, 0));
+        gauge[0].getLayoutParams().height = dp(128);
+        gauge[1].getLayoutParams().height = dp(128);
         c.addView(gr, lpw(-1, -2, 0, 2, 0, 0));
+        fpsCap = tv("-- FPS   \u2022   -- Hz", 13, Color.WHITE, true);
+        fpsCap.setGravity(Gravity.CENTER);
+        fpsCap.setPadding(dp(12), dp(10), dp(12), dp(10));
+        fpsCap.setBackground(capsuleBg(accent));
+        c.addView(fpsCap, lpw(-1, -2, 4, 8, 4, 0));
         infoTv = tv("", 9, MUTED, false);
         infoTv.setGravity(Gravity.CENTER);
         c.addView(infoTv, lpw(-1, -2, 0, 2, 0, 0));
 
-        // mode (kontrol segmen, garis tepi)
+        // mode: empat tombol kapsul, yang aktif berpendar sesuai warna modenya
         LinearLayout seg = new LinearLayout(this);
         seg.setOrientation(LinearLayout.HORIZONTAL);
-        seg.setBackground(rounded(Color.parseColor("#0D1015"), 10, LINE, 1));
-        seg.setPadding(dp(2), dp(2), dp(2), dp(2));
+        GradientDrawable tray = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{Color.parseColor("#0B0D11"), Color.parseColor("#171A20")});
+        tray.setCornerRadius(dp(22));
+        tray.setStroke(Math.max(1, dp(1)), LINE);
+        seg.setBackground(tray);
+        seg.setPadding(dp(6), dp(7), dp(6), dp(7));
         for (int i = 0; i < 4; i++) {
             final int k = i;
-            TextView t = tv(MODE_NAMES[i], 10.5f, MUTED, true);
+            TextView t = tv(MODE_NAMES[i].toUpperCase(Locale.US), 9.5f, MUTED, true);
             t.setGravity(Gravity.CENTER);
             t.setSingleLine(true);
-            t.setPadding(dp(2), dp(10), dp(2), dp(10));
+            t.setPadding(dp(1), dp(11), dp(1), dp(11));
+            t.setBackground(pillBg(false, PILL_C[i]));
             t.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { setMode(k, v); } });
             modeTx[i] = t;
-            seg.addView(t, lpwt(1f, 0, 0, 0, 0));
+            seg.addView(t, lpwt(1f, i == 0 ? 0 : 5, 0, 0, 0));
         }
         c.addView(seg, lpw(-1, -2, 0, 10, 0, 0));
 
@@ -1000,8 +1006,7 @@ public class OverlayService extends Service {
 
     private void applyAccent(int a, int b) {
         accent = a; accent2 = b;
-        if (pillBg != null) pillBg.setStroke(Math.max(1, dp(1)), alpha(a, 150));
-        if (gauge[0] != null) { gauge[0].setAccent(a, b); gauge[1].setAccent(b, a); fpsRing.setAccent(a, b); }
+        if (gauge[0] != null) { gauge[0].setAccent(a, b); gauge[1].setAccent(b, a); if (fpsCap != null) fpsCap.setBackground(capsuleBg(a)); }
         if (logoView != null) logoView.setColors(a, b);
         if (bright != null) {
             bright.setProgressTintList(ColorStateList.valueOf(Color.WHITE));
@@ -1033,17 +1038,34 @@ public class OverlayService extends Service {
         }).start();
     }
 
+    /** Kapsul gelap bergradasi; bila aktif diberi cincin berpendar warna c. */
+    private Drawable pillBg(boolean sel, int c) {
+        GradientDrawable base = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                sel ? new int[]{Color.parseColor("#14171D"), Color.parseColor("#0C0E12")} : new int[]{Color.parseColor("#2E3138"), Color.parseColor("#1C1E24")});
+        base.setCornerRadius(dp(18));
+        base.setStroke(Math.max(1, dp(sel ? 2 : 1)), sel ? c : Color.parseColor("#26FFFFFF"));
+        if (!sel) return base;
+        GradientDrawable glow = new GradientDrawable();
+        glow.setCornerRadius(dp(21));
+        glow.setStroke(dp(3), alpha(c, 90));
+        LayerDrawable ld = new LayerDrawable(new Drawable[]{glow, base});
+        ld.setLayerInset(1, dp(3), dp(3), dp(3), dp(3));
+        return ld;
+    }
+
+    private Drawable capsuleBg(int c) {
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{Color.parseColor("#0D0F13"), Color.parseColor("#181B21")});
+        g.setCornerRadius(dp(22));
+        g.setStroke(Math.max(1, dp(1.5f)), alpha(c, 170));
+        return g;
+    }
+
     private void paintState() {
         if (modeTx[0] == null) return;
         for (int i = 0; i < 4; i++) {
             boolean sel = i == 0 ? curDef : (!curDef && MODE_KEYS[i].equals(curMode));
-            if (sel) {
-                modeTx[i].setBackground(rounded(alpha(accent, 38), 7, accent, 1.5f));
-                modeTx[i].setTextColor(accent2);
-            } else {
-                modeTx[i].setBackground(null);
-                modeTx[i].setTextColor(MUTED);
-            }
+            modeTx[i].setBackground(pillBg(sel, PILL_C[i]));
+            modeTx[i].setTextColor(sel ? Color.WHITE : Color.parseColor("#9AA1AE"));
         }
         int hz = parse(curHz);
         boolean[] act = new boolean[12];
@@ -1241,6 +1263,22 @@ public class OverlayService extends Service {
 
     private static String f(String[] a, int i) { return i < a.length ? a[i] : ""; }
 
+    /** Jaga chip/panel tetap di dalam layar (mis. setelah game memutar layar ke landscape, koordinat lama bisa di luar layar). */
+    private void clampPos() {
+        if (wm == null || lp == null || root == null) return;
+        try {
+            int w, h;
+            if (Build.VERSION.SDK_INT >= 30) { android.graphics.Rect b = wm.getCurrentWindowMetrics().getBounds(); w = b.width(); h = b.height(); }
+            else { android.util.DisplayMetrics m = new android.util.DisplayMetrics(); wm.getDefaultDisplay().getRealMetrics(m); w = m.widthPixels; h = m.heightPixels; }
+            if (w <= 0 || h <= 0) return;
+            scrW = w; scrH = h;
+            int vw = root.getWidth() > 0 ? root.getWidth() : dp(expanded ? PANEL_W : 64);
+            int vh = root.getHeight() > 0 ? root.getHeight() : dp(expanded ? PANEL_H : 44);
+            int nx = Math.max(0, Math.min(lp.x, Math.max(0, w - vw))), ny = Math.max(0, Math.min(lp.y, Math.max(0, h - vh)));
+            if (nx != lp.x || ny != lp.y) { lp.x = nx; lp.y = ny; wm.updateViewLayout(root, lp); }
+        } catch (Throwable ignored) { }
+    }
+
     private void onStat(String line) {
         if (root == null) return;
         // OV|fps|cpu|gpu|bat|batTemp|ram|cpuMHz|gpuMHz|ping|pkg|cpuTemp|cpuMax|gpuMax
@@ -1249,11 +1287,12 @@ public class OverlayService extends Service {
         String cm = f(a, 7), gm = f(a, 8), ping = f(a, 9), pkg = f(a, 10), ct = f(a, 11);
         curPkg = pkg;
         pillNum.setText(fps.isEmpty() ? "--" : fps);
+        clampPos();
         if (!expanded) return;
         tick++;
         int fv = parse(fps);
         int hzN = Math.max(60, parse(curHz));
-        fpsRing.set(fps.isEmpty() ? 0 : Math.min(100, fv * 100f / hzN), fps.isEmpty() ? "--" : fps, "", "FPS");
+        fpsCap.setText((fps.isEmpty() ? "--" : fps) + " FPS   \u2022   " + (curHz.isEmpty() ? "--" : curHz) + " Hz");
         if (timerRun && timerLbl != null) {
             long ts = (timerAcc + System.currentTimeMillis() - timerStart) / 1000;
             timerLbl.setText(String.format(Locale.US, "%02d:%02d", ts / 60, ts % 60));

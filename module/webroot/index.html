@@ -32,17 +32,25 @@ svg.i{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke
 .ib.spin svg{animation:spin .55s cubic-bezier(.3,.9,.3,1)}
 
 /* ---------- Beranda ---------- */
-.rb-bar{display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--ln);border-radius:20px;padding:10px 14px;margin-bottom:12px}
-.rb-bar .br{font-weight:800;letter-spacing:.14em;font-size:12.5px;font-style:italic;background:linear-gradient(90deg,var(--ac),var(--t-teal));-webkit-background-clip:text;background-clip:text;color:transparent}
-.rb-bar .led{width:8px;height:8px;border-radius:50%;background:var(--ok,#2ecc71);box-shadow:0 0 8px var(--ok,#2ecc71);margin-left:2px}
-.rb-bar .on{font-size:11px;color:var(--mu);font-weight:600}
-.rb-bar .sp{flex:1}
-.rb-bar .met{display:flex;flex-direction:column;gap:3px;min-width:44px}
-.rb-bar .met small{font-size:9.5px;color:var(--mu);font-weight:700;letter-spacing:.06em;display:flex;justify-content:space-between}
-.rb-bar .met i{display:block;height:4px;border-radius:3px;background:var(--s2);overflow:hidden}.rb-bar .met i b{display:block;height:100%;border-radius:3px;background:var(--ok,#2ecc71)}
-.rb-bar .met.am i b{background:#f5a524}.rb-bar .met.rd i b{background:#f0483e}
-.rb-bar .clk{font-weight:700;font-size:13px;font-variant-numeric:tabular-nums}
-.rb-bar .bt{font-size:11.5px;color:var(--mu);font-weight:600;white-space:nowrap}
+.rb-bar{position:relative;overflow:hidden;isolation:isolate;border-radius:22px;padding:12px 14px 13px;margin-bottom:12px;border:1px solid color-mix(in srgb,var(--ac) 28%,var(--ln));background:linear-gradient(135deg,color-mix(in srgb,var(--ac) 14%,var(--s1)),var(--s1) 55%,color-mix(in srgb,var(--t-teal) 10%,var(--s1)));box-shadow:0 6px 22px color-mix(in srgb,var(--ac) 16%,transparent),inset 0 1px 0 rgba(255,255,255,.06)}
+.rb-bar:before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(110deg,transparent 35%,color-mix(in srgb,var(--ac) 22%,transparent) 50%,transparent 65%);transform:translateX(-120%);animation:rbSheen 6s ease-in-out infinite}
+@keyframes rbSheen{0%,55%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+@keyframes rbPulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent)}50%{box-shadow:0 0 0 6px transparent}}
+.rb-bar .rbt{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.rb-bar .br{font-weight:900;letter-spacing:.16em;font-size:14px;font-style:italic;background:linear-gradient(90deg,var(--ac),var(--t-teal));-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap}
+.rb-bar .rbs{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;letter-spacing:.05em;color:var(--ok);padding:3px 9px 3px 7px;border-radius:99px;background:color-mix(in srgb,var(--ok) 14%,transparent);border:1px solid color-mix(in srgb,var(--ok) 30%,transparent)}
+.rb-bar .led{display:block;flex:none;width:7px;height:7px;border-radius:50%;background:var(--ok);animation:rbPulse 2s ease-out infinite}
+.rb-bar .sp{flex:1;min-width:0}
+.rb-bar .tmp{font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;background:var(--s2);color:var(--tx);border:1px solid var(--ln);white-space:nowrap}
+.rb-bar .clk{font-weight:800;font-size:15px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.rb-bar .rbm{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rb-bar .met{display:flex;flex-direction:column;gap:6px;min-width:0}
+.rb-bar .met small{display:flex;justify-content:space-between;align-items:baseline;font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--mu)}
+.rb-bar .met small span+span{font-size:13px;letter-spacing:0;color:var(--tx);font-variant-numeric:tabular-nums}
+.rb-bar .met i{display:block;height:7px;border-radius:5px;background:var(--s2);overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.3)}
+.rb-bar .met i b{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--t-teal),var(--ok));box-shadow:0 0 10px color-mix(in srgb,var(--ok) 60%,transparent);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.rb-bar .met.am i b{background:linear-gradient(90deg,#f5a524,#ffcf5a);box-shadow:0 0 10px rgba(245,165,36,.55)}.rb-bar .met.rd i b{background:linear-gradient(90deg,#f0483e,#ff7a6e);box-shadow:0 0 10px rgba(240,72,62,.6)}
+@media(prefers-reduced-motion:reduce){.rb-bar:before,.rb-bar .led{animation:none}}
 .rail{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 12px;margin:0 -2px;scrollbar-width:none;scroll-snap-type:x proximity}
 .rail::-webkit-scrollbar{display:none}
 .rail button{flex:none;scroll-snap-align:start;width:60px;display:flex;flex-direction:column;align-items:center;gap:5px;border:0;background:transparent;opacity:.55;transform:scale(.88);transition:all .18s;padding:0}
@@ -52,8 +60,9 @@ svg.i{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke
 .rail small{font-size:10.5px;font-weight:600;max-width:60px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--mu)}
 .rail .add .pl{width:56px;height:56px;border-radius:17px;border:2px dashed var(--ln);display:flex;align-items:center;justify-content:center;color:var(--mu)}
 .rhero{position:relative;overflow:hidden;border-radius:26px;border:1px solid var(--ln);background:var(--s1);padding:18px 16px 16px;margin-bottom:12px;isolation:isolate}
-.rhero .hbg{position:absolute;inset:-30%;width:160%;height:160%;object-fit:cover;filter:blur(34px) saturate(1.4);opacity:.5;z-index:-2}
+.rhero .hbg{position:absolute;inset:-30%;width:160%;height:160%;object-fit:cover;filter:blur(22px) saturate(1.5);opacity:.75;z-index:-2}
 .rhero:after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,color-mix(in srgb,var(--s1) 55%,transparent),var(--s1) 92%)}
+.rhero .hhead{display:flex;align-items:center;gap:14px;margin-bottom:12px}.rhero .hic{width:76px;height:76px;flex:none;border-radius:20px;object-fit:cover;box-shadow:0 8px 22px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.14)}.rhero .htx{min-width:0;flex:1}.rhero .htx .hp{margin-bottom:0}
 .rhero .hn{font-size:23px;font-weight:800;letter-spacing:-.4px;line-height:1.15;margin:0 0 3px}
 .rhero .hp{font-size:12px;color:var(--mu);margin-bottom:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rhero .pills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
@@ -226,6 +235,56 @@ nav button.pop svg{animation:pop .32s ease-out}
  transform:translateY(105%);visibility:hidden;transition:transform .34s cubic-bezier(.2,.9,.25,1),visibility 0s .34s;z-index:21;padding:0 18px calc(14px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.35)}
 .sheet.on{transform:none;visibility:visible;transition:transform .34s cubic-bezier(.2,.9,.25,1),visibility 0s}.sheet.drag{transition:none}
 .grab{padding:12px 0 10px;touch-action:none;flex:none}.grab i{display:block;width:44px;height:5px;border-radius:3px;background:var(--s3);margin:0 auto}
+.gs-hero{position:relative;overflow:hidden;isolation:isolate;border-radius:24px;border:1px solid var(--ln);background:var(--s1);padding:16px;margin-bottom:6px}
+.gs-hero .gs-bg{position:absolute;inset:-40%;width:180%;height:180%;object-fit:cover;filter:blur(26px) saturate(1.5);opacity:.5;z-index:-2}
+.gs-hero:after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,color-mix(in srgb,var(--s1) 40%,transparent),var(--s1))}
+.gs-id{display:flex;align-items:center;gap:14px}.gs-id .tx{min-width:0}.gs-id .tx b{display:block;font-size:19px;font-weight:800;letter-spacing:-.3px}.gs-id .tx span{display:block;font-size:12px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.gs-tile{position:relative;overflow:hidden;text-align:left;display:flex;flex-direction:column;gap:4px;min-height:128px;padding:14px 14px 12px;border-radius:22px;border:1px solid color-mix(in srgb,var(--tone,var(--ac)) 24%,var(--ln));background:linear-gradient(150deg,color-mix(in srgb,var(--tone,var(--ac)) 16%,var(--s1)),var(--s1) 70%);color:var(--tx);font:inherit;transition:transform .15s,box-shadow .2s}
+.gs-tile:active{transform:scale(.97)}.gs-tile:hover{box-shadow:0 6px 18px color-mix(in srgb,var(--tone,var(--ac)) 20%,transparent)}
+.gs-tile .gs-ic{width:40px;height:40px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--tone,var(--ac)) 20%,var(--s2));color:var(--tone,var(--ac));margin-bottom:8px}.gs-tile .gs-ic svg{width:21px;height:21px}
+.gs-tile b{font-size:14px;font-weight:800;line-height:1.2}.gs-tile .gs-v{font-size:11.5px;color:var(--mu);line-height:1.3}
+.gs-tile .gs-go{position:absolute;right:10px;top:12px;width:22px;height:22px;color:var(--mu);opacity:.7}.gs-tile .gs-go svg{width:100%;height:100%}
+.sheet .gsb{padding-bottom:10px}.sheet.gsh{height:auto;max-height:86vh;min-height:300px}
+.gp-sec{display:flex;align-items:center;gap:8px;margin:20px 6px 10px;font-size:14px;font-weight:800;letter-spacing:.02em;color:var(--tone,var(--ac))}.gp-sec span{width:22px;height:22px;display:inline-flex}.gp-sec svg{width:100%;height:100%}
+.gp-list{display:flex;flex-direction:column;gap:8px}
+.gp-row{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px 14px 14px 12px;border-radius:22px;border:1px solid color-mix(in srgb,var(--tone,var(--ac)) 18%,var(--ln));background:linear-gradient(120deg,color-mix(in srgb,var(--tone,var(--ac)) 11%,var(--s1)),var(--s1) 62%);color:var(--tx);font:inherit;transition:transform .15s,border-color .2s}
+.gp-row:before{content:"";position:absolute;left:0;top:18%;bottom:18%;width:3px;border-radius:0 3px 3px 0;background:var(--tone,var(--ac));opacity:.85}
+.gp-row:active{transform:scale(.985);border-color:var(--tone,var(--ac))}
+.gp-ic{flex:none;width:44px;height:44px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--tone,var(--ac)) 20%,var(--s2));color:var(--tone,var(--ac))}.gp-ic svg{width:22px;height:22px}
+.gp-tx{flex:1;min-width:0}.gp-tx b{display:block;font-size:15px;font-weight:700}.gp-tx small{display:block;margin-top:2px;font-size:12px;color:var(--mu);line-height:1.35}
+.gp-v{flex:none;max-width:42%;font-size:12px;font-weight:800;padding:6px 12px;border-radius:99px;color:var(--tone,var(--ac));background:color-mix(in srgb,var(--tone,var(--ac)) 16%,transparent);border:1px solid color-mix(in srgb,var(--tone,var(--ac)) 30%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlg.gd{padding:0;border:1px solid color-mix(in srgb,var(--tone,var(--ac)) 30%,var(--ln));background:linear-gradient(180deg,color-mix(in srgb,var(--tone,var(--ac)) 14%,var(--s2)),var(--s2) 150px);box-shadow:0 24px 60px rgba(0,0,0,.5),0 0 40px color-mix(in srgb,var(--tone,var(--ac)) 18%,transparent)}
+.gd-h{display:flex;align-items:center;gap:14px;padding:22px 20px 14px}.gd-h h3{margin:0;font-size:19px;font-weight:800;letter-spacing:-.2px}.gd-h p{margin:3px 0 0;font-size:12px;color:var(--mu);line-height:1.35}
+.gd-ic{flex:none;width:52px;height:52px;border-radius:18px;display:flex;align-items:center;justify-content:center;color:var(--tone,var(--ac));background:color-mix(in srgb,var(--tone,var(--ac)) 22%,var(--s2));box-shadow:0 0 22px color-mix(in srgb,var(--tone,var(--ac)) 35%,transparent)}.gd-ic svg{width:26px;height:26px}
+.gd-l{display:flex;flex-direction:column;gap:8px;padding:4px 14px 6px;max-height:52vh;overflow-y:auto;overscroll-behavior:contain}
+.gd-o{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:13px 14px;border-radius:18px;border:1.5px solid var(--ln);background:var(--s1);color:var(--tx);font:inherit;opacity:0;transform:translateY(10px);transition:transform .15s,border-color .2s,background .2s,box-shadow .25s}
+.dlg.on .gd-o{animation:gdIn .38s cubic-bezier(.2,.9,.25,1) both;animation-delay:calc(var(--i)*45ms + 80ms)}
+@keyframes gdIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+.gd-o:active{transform:scale(.97)}
+.gd-o .gd-t{flex:1;min-width:0}.gd-o b{display:block;font-size:16px;font-weight:700}.gd-o small{display:block;margin-top:1px;font-size:12px;color:var(--mu)}
+.gd-r{flex:none;order:-1;width:28px;height:28px;border-radius:50%;border:2.5px solid var(--mu);display:flex;align-items:center;justify-content:center;transition:all .22s}
+.gd-r svg{width:16px;height:16px;fill:none;stroke:var(--on);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:24;stroke-dashoffset:24;transition:stroke-dashoffset .3s .08s}
+.gd-o.on{border-color:var(--tone,var(--ac));background:linear-gradient(120deg,color-mix(in srgb,var(--tone,var(--ac)) 24%,var(--s1)),color-mix(in srgb,var(--tone,var(--ac)) 8%,var(--s1)));box-shadow:0 0 0 1px var(--tone,var(--ac)),0 6px 22px color-mix(in srgb,var(--tone,var(--ac)) 28%,transparent)}
+.gd-o.on .gd-r{background:var(--tone,var(--ac));border-color:var(--tone,var(--ac));animation:gdPop .4s cubic-bezier(.3,1.6,.5,1)}.gd-o.on .gd-r svg{stroke-dashoffset:0}
+@keyframes gdPop{0%{transform:scale(.6)}100%{transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.dlg.on .gd-o{animation:none;opacity:1;transform:none}}
+.dlg.gd .act{padding:10px 18px 14px}.dlg.gd .gd-h h3{margin:0}.dlg.gd .gd-h>div{min-width:0;text-align:left}
+.tx-page{display:flex;flex-direction:column;gap:12px}
+.tx-prev{position:relative;border-radius:24px;overflow:hidden;border:1px solid var(--ln);aspect-ratio:1.1;touch-action:none;background:#222;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.tx-prev canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.tx-b{position:absolute;top:14px;display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;font-size:12px;font-weight:900;letter-spacing:.08em;backdrop-filter:blur(8px);pointer-events:none}
+.tx-b i{width:8px;height:8px;border-radius:50%}.tx-b.l{left:14px;background:rgba(255,255,255,.78);color:#333}.tx-b.l i{background:#777}.tx-b.r{right:14px;background:var(--ac);color:var(--on)}.tx-b.r i{background:var(--on);animation:rbPulse 2s infinite}
+.tx-div{position:absolute;top:0;bottom:0;width:3px;margin-left:-1.5px;background:#fff;box-shadow:0 0 14px rgba(0,0,0,.5);pointer-events:none}
+.tx-h{position:absolute;top:50%;left:50%;width:46px;height:62px;margin:-31px 0 0 -23px;border-radius:23px;background:#fff;color:var(--ac);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.tx-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);white-space:nowrap;padding:7px 15px;border-radius:99px;font-size:12px;font-weight:700;background:rgba(255,255,255,.8);color:#333;pointer-events:none}
+.tx-ctl{padding:18px}.tx-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}.tx-row b{font-size:19px;font-weight:800}.tx-row span{font-size:16px;font-weight:800;color:var(--ac)}
+.tx-seg{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px}.tx-seg.two{grid-template-columns:1fr 1fr;margin:4px 0 0}
+.tx-seg button{height:54px;border-radius:99px;border:1px solid var(--ln);background:var(--s2);color:var(--tx);font:inherit;font-size:19px;font-weight:800;transition:all .2s}
+.tx-seg.two button{height:58px;font-size:20px}
+.tx-seg button.on{background:var(--ac);color:var(--on);border-color:var(--ac);box-shadow:0 6px 18px color-mix(in srgb,var(--ac) 40%,transparent);transform:scale(1.02)}
+.tx-info{display:flex;gap:14px;align-items:flex-start}.tx-i{flex:none;width:26px;height:26px;border-radius:50%;background:var(--ac);color:var(--on);font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:2px}.tx-info b{display:block;font-size:15px}.tx-info p{margin:2px 0 0;font-size:13px;color:var(--mu);line-height:1.45}
+.tx-act{display:grid;grid-template-columns:1fr 1.15fr;gap:12px}.tx-act .btn{height:56px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:17px}
 .sheet .head{margin:6px 0 14px}
 .sheet .head .ico{width:50px;height:50px;border-radius:50%;background:transparent;border:1.5px solid color-mix(in srgb,var(--ac) 40%,transparent)}
 .srch{position:relative;flex:none}
@@ -494,7 +553,8 @@ const FEATURES=[
  {id:'doze',group:'util',ic:'moon',tn:'blue',name:'Doze Mode',short:'Hemat baterai saat layar mati',desc:'Hemat baterai saat layar mati.'},
  {id:'datasaver',group:'util',ic:'data',tn:'teal',name:'Data Saver',short:'Batasi data latar belakang',desc:'Batasi data latar belakang.'},
  {id:'aggrdoze',group:'util',ic:'moon',tn:'blue',name:'Aggressive Doze',short:'Deep Sleep sesaat setelah layar mati',desc:'Memaksa perangkat masuk Deep Sleep sekitar 10 detik setelah layar mati, dan melepasnya saat layar menyala. Standby lebih hemat, tetapi notifikasi aplikasi non-prioritas bisa tertunda selama layar mati.'},
- {id:'gmslimit',group:'util',ic:'layers',tn:'amber',name:'GMS Battery Limiter',short:'Batasi wakelock Google Play Services',desc:'Membatasi aktivitas latar dan wakelock Google Play Services (appops RUN_IN_BACKGROUND dan WAKE_LOCK = ignore). Bisa menunda notifikasi atau sinkronisasi beberapa aplikasi; matikan bila ada yang telat. Saat dimatikan kembali ke default ROM.'},
+ {id:'gmslimit',group:'util',ic:'layers',tn:'amber',name:'GMS Doze',short:'Kurung Google Play Services habis-habisan',desc:'Mengeluarkan Google Play Services dari daftar putih hemat daya, memblokir jalan di latar, wakelock, auto-start saat boot, dan ubah pengaturan sistem, serta mematikan device admin GMS (Find My Device ikut nonaktif). Bisa menunda notifikasi; matikan bila ada yang telat. Saat dimatikan semuanya kembali ke default ROM.'},
+ {id:'f2fsgc',group:'util',ic:'cpu',tn:'teal',name:'F2FS GC',short:'Bersihkan penyimpanan saat layar mati',desc:'Menjalankan garbage collection paksa pada partisi F2FS lalu fstrim, otomatis saat layar mati dan tidak sedang main game (maksimal tiap 6 jam). Menjaga kecepatan baca-tulis penyimpanan tetap segar. Tidak aktif bila HP tidak memakai F2FS.'},
  {id:'bootapply',ic:'power',tn:'amber',name:'Terapkan saat boot',short:'Matikan jika bootloop',desc:'Matikan jika terjadi bootloop.'}
 ];
 const P=d=>d.map(x=>`<path d="${x}"/>`).join('');
@@ -588,6 +648,7 @@ function parse(t){
     else if(a[0]==='CHGM')s.chgm={m:a[1],held:a[2]==='1',fail:a[3],q:a[4]||''};
     else if(a[0]==='PROF')s.prof=a[1]==='on';
     else if(a[0]==='UIRST')s.uirst=a[1]!=='off';
+    else if(a[0]==='F2FS')s.f2fs={n:+a[1],t:+a[2],b:+a[3],a:+a[4]};
     else if(a[0]==='OVANIM')s.ovanim=a[1]!=='off';
     else if(a[0]==='RAM')s.ram={pct:+a[1]||0,tot:+a[2]||0,av:+a[3]||0};
     else if(a[0]==='IDLERAM')s.idle={on:a[1]==='on',min:+a[2]||1024,int:+a[3]||15,run:a[4]==='run',last:a[5]||''};
@@ -597,6 +658,7 @@ function parse(t){
     else if(a[0]==='GPROF'){s.gprof={};(a[1]||'').split(',').filter(Boolean).forEach(e=>{const f=e.split('~');if(f[0])s.gprof[f[0]]={mode:f[1]||'',hz:f[2]||''};});}
     else if(a[0]==='GPCFG')s.gpcfg={mode:a[1]||'perf',hz:parseInt(a[2])||120};
     else if(a[0]==='COLOR')s.color={sat:+a[1]||100,r:+a[2]||100,g:+a[3]||100,b:+a[4]||100};
+    else if(a[0]==='TEX'){s.tex={};(a[1]||'').split(';').filter(Boolean).forEach(x=>{const y=x.split('~');s.tex[y[0]]={l:+y[1]||4,s:y[2]==='pixel'?'pixel':'blur'};});}
     else if(a[0]==='ANGLE')s.ang={style:a[1]||'blok',ok:a[2]==='yes',apps:(a[3]||'').split(';').filter(Boolean)};
     else if(a[0]==='GFX')s.gfx={scale:+a[1]||100,drv:a[2]||'default',angle:a[3]||'default'};
     else if(a[0]==='GFXA'){s.gfxApp={};(a[1]||'').split(',').filter(Boolean).forEach(pair=>{const[pk,vv]=pair.split(':');if(pk)s.gfxApp[pk]=+vv;});}
@@ -677,22 +739,21 @@ function clockNow(){const d=new Date();return String(d.getHours()).padStart(2,'0
 setInterval(()=>{const e=document.getElementById('rbClk');if(e)e.textContent=clockNow();},20000);
 const meterCls=v=>v>=85?'rd':v>=65?'am':'';
 function rbBar(s){const b=s.bat||{},r=s.ram||{pct:0},lv=Math.max(0,Math.min(100,+b.lvl||0)),tp=b.temp?(b.temp/10).toFixed(0)+'°':'-';
-  return `<div class="rb-bar"><span class="br">COMATOZE</span><span class="led"></span><span class="on">Online</span><span class="sp"></span>
-   <div class="met ${meterCls(r.pct)}"><small><span>RAM</span><span>${r.pct}%</span></small><i><b style="width:${r.pct}%"></b></i></div>
-   <div class="met ${lv<=20&&b.st!=='Charging'?'rd':''}"><small><span>BAT</span><span>${lv}%</span></small><i><b style="width:${lv}%"></b></i></div>
-   <span class="bt">${b.st==='Charging'?'⚡ ':''}${tp}</span><span class="clk" id="rbClk">${clockNow()}</span></div>`;}
+  return `<div class="rb-bar"><div class="rbt"><span class="br">COMATOZE</span><span class="rbs"><b class="led"></b>ONLINE</span><span class="sp"></span><span class="tmp">${b.st==='Charging'?'⚡ ':''}${tp}</span><span class="clk" id="rbClk">${clockNow()}</span></div>
+   <div class="rbm"><div class="met ${meterCls(r.pct)}"><small><span>RAM</span><span>${r.pct}%</span></small><i><b style="width:${r.pct}%"></b></i></div>
+   <div class="met ${lv<=20&&b.st!=='Charging'?'rd':''}"><small><span>BATERAI</span><span>${lv}%</span></small><i><b style="width:${lv}%"></b></i></div></div></div>`;}
 function rbRail(g,sel){prefetchLabels(g);
   return `<div class="rail">${g.map(p=>`<button class="${p===sel?'on':''}" onclick="homeSel('${esc(p)}')">${appIcon(p)}<small>${esc(labelOf(p))}</small></button>`).join('')}<button class="add" onclick="openPick()" aria-label="Tambah game"><span class="pl">${IC.plus}</span><small>Tambah</small></button></div>`;}
 function rbHero(s,sel){
   if(!sel)return `<div class="rhero empty"><div class="hn">Belum ada game</div><div class="hp">Tambahkan game agar bisa dijalankan dan dioptimalkan dari sini.</div><button class="btn tonal" onclick="openPick()">${IC.plus} Tambah game</button></div>`;
   const gp=(s.gprof||{})[sel]||{},m=gp.mode||'',mn={perf:'Performa',balance:'Balance',eco:'Eco'}[m]||'Ikut global',sc=(s.gfxApp||{})[sel],tn=m==='perf'?'rose':m==='eco'?'teal':'blue';
   return `<div class="rhero tn-${tn}"><img class="hbg" src="ksu://icon/${esc(sel)}" alt="" onerror="this.style.display='none'">
-   <div class="hn">${esc(labelOf(sel))}</div><div class="hp">${esc(sel)}</div>
+   <div class="hhead"><img class="hic" src="ksu://icon/${esc(sel)}" alt="" onerror="this.style.display='none'"><div class="htx"><div class="hn">${esc(labelOf(sel))}</div><div class="hp">${esc(sel)}</div></div></div>
    <div class="pills"><span class="pill">${mn}</span><span class="pill">${sc&&sc!==100?'Res '+sc+'%':'Res Default'}</span>${gp.hz?`<span class="pill">${gp.hz} Hz</span>`:''}</div>
    <div class="acts"><button class="go" onclick="playGame('${esc(sel)}')">${IC.play} MULAI GAME</button>
     <button class="sq" aria-label="Opsi game" onclick="openSub('app:${esc(sel)}')">${IC.layers}</button></div></div>`;}
 function rbTools(){const T=[['RAM','activity','teal',"cleanNow()"],['Memory','cpu','purple',"openSub('mem')"],['Crosshair','plus','rose',"openSub('xh')"],['Baterai','battery','amber',"openSub('chg')"],
-  ['Overlay','layers','blue',"openSub('ovl')"],['Refresh','display','teal',"openSub('hz')"],['Perawatan','refresh','purple',"openSub('care')"],['Tweaks','bolt','blue',"showTab('tweaks')"]];
+  ['Overlay','layers','blue',"openSub('ovl')"],['Renderer','brush','teal',"rendDlg()"],['Perawatan','refresh','purple',"openSub('care')"],['Tweaks','bolt','blue',"showTab('tweaks')"]];
   return `<div class="sec">Alat cepat<button class="sech" onclick="tbToggle()" style="border:0;background:none;color:var(--mu);font-size:11px;font-weight:700">${TBOPEN?'Ciutkan':'Buka'}</button></div>${TBOPEN?`<div class="tbank">${T.map(([n,i,t,f])=>`<button class="tn-${t}" onclick="${f}"><span class="ti">${IC[i]||''}</span>${n}</button>`).join('')}</div>`:''}`;}
 async function cleanNow(){toast('Membersihkan RAM…');const r=await run('ovact clean');const o=((r&&r.out)||'').trim();toast(o.startsWith('OK')?'RAM dibersihkan':'Gagal membersihkan');load();}
 function pageHome(s){
@@ -818,8 +879,6 @@ function angleStyleCard(s){const g=s.ang||{style:'blok',ok:true,apps:[]},a=g.app
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px"><button class="chip" onclick="angAll()">+ Semua game di daftar</button>${a.length?`<button class="chip" onclick="angClear()">Matikan semua</button>`:''}</div>
   ${a.map(p=>`<div class="app">${appIcon(p)}<div class="n"><b>${esc(labelOf(p))}</b><span>${esc(p)}</span></div><button class="rm" onclick="angDel('${esc(p)}')" aria-label="Hapus">${IC.trash}</button></div>`).join('')}
   ${g.ok?'':'<p class="mu" style="margin:12px 2px 0">ANGLE tidak terdeteksi di perangkat ini.</p>'}</div>`;}
-async function angStyle(k,el){el.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===el));toast('Menerapkan…');
-  const r=await run('angle_style '+k);await load();toast((r.out||'').trim().startsWith('OK')?'Gaya diterapkan · UI dimuat ulang':'Gagal: '+((r.out||'').split('|')[1]||'tidak ada respon'));}
 async function angAll(){toast('Menerapkan…');const r=await run('angle_app all');await load();toast((r.out||'').trim().startsWith('OK')?'Semua game di daftar memakai ANGLE · buka ulang gamenya':'Gagal');}
 async function angClear(){toast('Menonaktifkan…');const r=await run('angle_app clear');await load();toast((r.out||'').trim().startsWith('OK')?'Dimatikan · buka ulang gamenya':'Gagal');}
 async function angDel(p){if(!/^[A-Za-z0-9._]+$/.test(p))return;await run('angle_app del '+p);await load();toast('Dihapus · buka ulang gamenya');}
@@ -1257,7 +1316,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.53.0';
+const VER='2.61.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1273,10 +1332,10 @@ const mrow=(ic,tn,t,d,on)=>`<button class="mrow" onclick="${on}">${ico(ic,tn)}<d
 const fmtZ=mb=>mb>=1024?(Math.round(mb/102.4)/10)+' GB':mb+' MB';
 /* ----- dialog radio ----- */
 let DLG=null;
-function openDlg(title,opts,cur,fn,note){DLG={fn};const d=$('#dlg');
+function openDlg(title,opts,cur,fn,note){DLG={fn};const d=$('#dlg');d.className='dlg';
   d.innerHTML=`<h3>${esc(title)}</h3>${note?`<p class="dn">${esc(note)}</p>`:''}${opts.map(([k,n])=>`<label class="${k===cur?'on':''}" data-k="${esc(k)}" onclick="dlgPick(this.dataset.k)"><i class="rad"></i><span>${esc(n)}</span></label>`).join('')}<div class="act"><button onclick="closeDlg()">Batal</button></div>`;
   $('#ov').classList.add('on');d.classList.add('on');}
-function closeDlg(){const d=$('#dlg');if(!d)return;d.classList.remove('on');DLG=null;if(!$('#sheet').classList.contains('on'))$('#ov').classList.remove('on');}
+function closeDlg(){const d=$('#dlg');if(!d)return;d.classList.remove('on');DLG=null;GD=null;setTimeout(()=>{if(!d.classList.contains('on'))d.className='dlg';},260);if(!$('#sheet').classList.contains('on'))$('#ov').classList.remove('on');}
 function dlgPick(k){const f=DLG&&DLG.fn;closeDlg();if(f)f(k);}
 const SAFEK=/^[A-Za-z0-9_.-]+$/;
 async function setRend(k){if(!SAFEK.test(k))return;toast('Menerapkan…');const r=await queueAct(()=>run('renderer '+k));load();const o=((r&&r.out)||'').trim();
@@ -1293,7 +1352,6 @@ function themeDlg(){openDlg('Pilih Tema',THEME_OPTS,curTheme(),k=>{applyTheme(k)
 /* ----- Tweaks ----- */
 function pageTweaks(s){const f=s.feat||{},z=s.zram,b=s.bat||{},tw=f.perfx?'Performa':f.ecox?'Eco':'Mati',io=s.ios;
  return `<div class="msec">Layar &amp; Grafis</div><div class="mlist">
-  ${mrow('activity','blue','Refresh Rate',hzFor(s,s.mode)+' • Mengikuti mode',"openSub('hz')")}
   ${mrow('brush','purple','Renderer',esc(rendName(s.rend))+' • Graphics',"rendDlg()")}
  </div>
  <div class="msec">Performa &amp; Termal</div><div class="mlist">
@@ -1316,38 +1374,76 @@ function pageTweaks(s){const f=s.feat||{},z=s.zram,b=s.bat||{},tw=f.perfx?'Perfo
 /* ----- Aplikasi ----- */
 function appFilter(v){v=(v||'').trim().toLowerCase();document.querySelectorAll('#alist2 .arow').forEach(e=>{e.style.display=!v||e.dataset.q.indexOf(v)>=0?'':'none';});}
 function pageApps(s){const g=s.games||[],ov=s.gprof||{};prefetchLabels(g);
- return `<div class="sbox">${IC.search}<input id="aq2" type="search" placeholder="Cari aplikasi atau paket…" autocomplete="off" oninput="appFilter(this.value)"></div>
- <div class="arow2"><button class="btn tonal" onclick="openPick()">${IC.plus} Tambah game</button></div>
- <div class="msec">Game dipantau${g.length?' ('+g.length+')':''}</div>
- ${g.length?`<div class="mlist" id="alist2">${g.map(p=>{const c=ov[p]||{mode:'',hz:''},st=c.mode==='skip'?['Nonaktif',0]:(c.mode||c.hz)?['Kustom',1]:['Global',1];
-   return `<div class="mrow arow" role="button" tabindex="0" data-q="${esc((labelOf(p)+' '+p).toLowerCase())}" onclick="openSub('app:${esc(p)}')">${appIcon(p)}<div class="tx"><b>${esc(labelOf(p))}</b><span class="pk">${esc(p)}</span><em class="abadge ${st[1]?'on':''}">${st[0]}</em></div><button class="playb" aria-label="Jalankan ${esc(labelOf(p))}" onclick="event.stopPropagation();playGame('${esc(p)}')">${IC.play}</button></div>`;}).join('')}</div>`:
-  `<div class="fnote"><b>Belum ada game.</b> Tekan <b>Tambah game</b>: game populer terdeteksi otomatis di daftar, jadi tinggal dipilih.</div>`}
- <div class="msec">Pengaturan game</div><div class="mlist">
+ return `<div class="msec first">Pengaturan game</div><div class="mlist">
   ${mrow('rocket','purple','Profil Game','Mode dan Hz saat game berjalan',"openSub('gglobal')")}
   ${mrow('flame','rose','Otomatisasi','Thermal, bypass charging, preload, DND',"openSub('gauto')")}
-  ${mrow('layers','purple','Grafis & Render','Gaya tekstur ANGLE',"openSub('ggfx')")}
   ${mrow('phone','blue','Spoof Perangkat','Buka opsi FPS per aplikasi (Zygisk)',"openSub('gspoof')")}
  </div>`;}
 async function angToggle(p,on){if(!/^[A-Za-z0-9._]+$/.test(p))return;toast('Menerapkan…');await run('angle_app '+(on?'add ':'del ')+p);await load();toast((on?'ANGLE aktif':'ANGLE mati')+' · UI dimuat ulang');}
 async function playGame(p){if(!/^[A-Za-z0-9._]+$/.test(p))return;toast('Membuka '+labelOf(p)+'…');
- try{await exec(`monkey -p ${p} -c android.intent.category.LAUNCHER 1 </dev/null >/dev/null 2>&1`);}catch(e){}}
+ try{await exec(`sh /data/adb/modules/ultrapower/system/bin/ultrapower texcur ${p} </dev/null >/dev/null 2>&1; monkey -p ${p} -c android.intent.category.LAUNCHER 1 </dev/null >/dev/null 2>&1`);}catch(e){}}
 async function appDel(p){await delGame(p);closeSub();}
-function appSub(p,s){const q=esc(p),c=(s.gprof||{})[p]||{mode:'',hz:''},sc=(s.gfxApp||{})[p]||100,idx=Math.max(0,SCALE_OPTS.indexOf(sc)),key='gs_'+p.replace(/[^a-zA-Z0-9]/g,'_');
- const ang=((s.ang||{}).apps||[]).indexOf(p)>=0,sp=(s.spoofApps||[]).find(x=>x.pkg===p),g=s.gfx||{drv:'default',angle:'default'};
- const mn=(PG_MODES.find(x=>x[0]===c.mode)||PG_MODES[0])[1];
- const prof=`<div class="lbl">Mode</div><div class="chips" style="margin-top:8px">${PG_MODES.map(([k,n])=>`<button class="chip ${c.mode===k?'on':''}" onclick="pgSet('${q}','mode','${k}')">${n}</button>`).join('')}</div>
-  ${c.mode==='skip'?'':`<div class="lbl" style="margin-top:16px">Refresh Rate</div><div class="chips" style="margin-top:8px"><button class="chip ${c.hz===''?'on':''}" onclick="pgSet('${q}','hz','')">Ikut global</button>${RT(s).map(v=>`<button class="chip ${String(c.hz)===String(v)?'on':''}" onclick="pgSet('${q}','hz','${v}')">${v} Hz</button>`).join('')}</div>`}`;
- const res=srow('Skala render',key,SCALE_OPTS,idx,scaleFmt,v=>gfxAppSet(p,v));
- const gfx=gfxChips(s)+`<div class="mrow" style="cursor:default;margin-top:16px">${ico('layers','purple')}<div class="tx"><b>ANGLE untuk game ini</b><span>${ang?'Aktif untuk game ini':'Memakai driver bawaan'}</span></div><label class="sw"><input type="checkbox" ${ang?'checked':''} onchange="angToggle('${q}',this.checked)"><i></i></label></div>
-  <p class="mu" style="margin:10px 2px 0">Driver dan API grafis berlaku untuk semua game di daftar; sakelar ANGLE hanya untuk game ini.</p>`;
- return `<div class="card"><div class="head">${appIcon(p)}<div class="tx"><b>${esc(labelOf(p))}</b><span>${q}</span></div></div></div>
- ${dcard('prof','rocket','purple','Profil Game',esc(mn)+(c.mode==='skip'?'':' · '+(c.hz===''?'Hz ikut global':c.hz+' Hz')),prof)}
- ${dcard('res','game','amber','Resolusi Render',scaleFmt(sc),res)}
- ${dcard('gfx','layers','teal','Driver & API Grafis',(DRV_N[g.drv]||'Default')+' · '+(API_N[g.angle]||'Default')+(ang?' · ANGLE aktif':''),gfx)}
- <div class="mlist">
-  <button class="mrow" onclick="spoofAppOpen()">${ico('phone','blue')}<div class="tx"><b>Spoof Perangkat</b><span>${sp?esc(spoofPresetName(sp))+(sp.on?'':' · nonaktif'):'Belum ada · pilih aplikasi ini di daftar'}</span></div><span class="chv">${IC.chev}</span></button>
- </div>
- <button class="btn ghost" style="color:var(--dg)" onclick="appDel('${q}')">${IC.trash} Hapus dari daftar game</button>`;}
+function gsSpec(p,s){const c=(s.gprof||{})[p]||{mode:'',hz:''},sc=(s.gfxApp||{})[p]||100,g=s.gfx||{drv:'default',angle:'default'},
+  ang=((s.ang||{}).apps||[]).indexOf(p)>=0,tx=(s.tex||{})[p],nm=(arr,k)=>(arr.find(x=>x[0]===k)||arr[0])[1];
+ const MS={'':'Ikut profil global',perf:'Clock maksimal, paling responsif',balance:'Seimbang untuk game',eco:'Hemat daya, suhu dingin',skip:'Comatoze tidak mengubah apa pun'};
+ const sec=[];
+ const perf=[{k:'mode',ic:'rocket',d:'Profil CPU/GPU saat game ini dibuka',t:'Mode Game',v:nm(PG_MODES,c.mode||''),opts:PG_MODES.map(([k,n])=>[k,n,MS[k]]),cur:c.mode||'',fn:v=>pgSet(p,'mode',v)}];
+ if(c.mode!=='skip')perf.push({k:'hz',ic:'display',d:'Kunci Hz layar khusus game ini',t:'Refresh Rate',v:c.hz===''||c.hz==null?'Global':c.hz+' Hz',opts:[['','Ikut global','Mengikuti Hz mode']].concat(RT(s).map(v=>[String(v),v+' Hz',v>=120?'Paling mulus':v>=90?'Mulus & irit':'Hemat baterai'])),cur:String(c.hz==null?'':c.hz),fn:v=>pgSet(p,'hz',v)});
+ sec.push({t:'Performa',tn:'rose',ic:'bolt',rows:perf});
+ sec.push({t:'Tampilan & Render',tn:'teal',ic:'brush',rows:[
+  {k:'res',ic:'game',d:'Turunkan resolusi untuk dongkrak FPS',t:'Resolusi Render',v:scaleFmt(sc),opts:SCALE_OPTS.map(v=>[String(v),scaleFmt(v),v===100?'Paling tajam':v>=70?'Seimbang':v>=40?'Ringan':'Ekstrem']),cur:String(sc),fn:v=>gfxAppSet(p,+v)},
+  {k:'drv',ic:'layers',d:'Driver Vulkan untuk semua game di daftar',t:'Driver Grafis',v:DRV_N[g.drv]||'Default',opts:[['default','Default','Bawaan sistem'],['driver','Game Driver','Driver khusus game'],['native','Driver Sistem','Driver native perangkat']],cur:g.drv||'default',fn:v=>gfxSet('drv',v)},
+  {k:'api',ic:'layers',d:'Backend OpenGL/Vulkan semua game di daftar',t:'API Grafis',v:API_N[g.angle]||'Default',opts:[['default','Default','Bawaan sistem'],['native','OpenGL Native','Langsung ke driver GPU'],['angle','ANGLE','OpenGL lewat Vulkan']],cur:g.angle||'default',fn:v=>gfxSet('angle',v)},
+  {k:'ang',ic:'game',d:'Pakai ANGLE hanya untuk game ini',t:'ANGLE Game Ini',v:ang?'Aktif':'Mati',opts:[['off','Mati','Driver bawaan'],['on','Aktif','Render lewat ANGLE']],cur:ang?'on':'off',fn:v=>angToggle(p,v==='on')},
+  {k:'tex',page:'tex',ic:'brush',d:'Level & gaya tekstur (Blur / Pixel) + pratinjau',t:'Kualitas Tekstur',v:tx?'Lv '+tx.l+' · '+(tx.s==='pixel'?'Pixel':'Blur'):'Default'}]});
+ sec.push({t:'Pengaturan Tambahan',tn:'amber',ic:'bolt',rows:[
+  {k:'uir',ic:'refresh',d:'Restart UI otomatis setelah ganti render',t:'Muat Ulang UI Otomatis',v:s.uirst!==false?'Aktif':'Mati',opts:[['on','Aktif','Terapkan tanpa reboot'],['off','Mati','Harus reboot manual']],cur:s.uirst!==false?'on':'off',fn:v=>setUirst(v==='on')}]});
+ return sec;}
+function appSub(p,s){const q=esc(p),sp=(s.spoofApps||[]).find(x=>x.pkg===p),sec=gsSpec(p,s);
+ return `<div class="gs-hero"><img class="gs-bg" src="ksu://icon/${q}" alt="" onerror="this.style.display='none'"><div class="gs-id">${appIcon(p)}<div class="tx"><b>${esc(labelOf(p))}</b><span>${q}</span></div></div></div>
+ ${sec.map(x=>`<div class="gp-sec tn-${x.tn}"><span>${IC[x.ic]||''}</span>${x.t}</div><div class="gp-list">${x.rows.map(r=>`<button class="gp-row tn-${x.tn}" onclick="${r.page?`openSub('${r.page}:${q}')`:`gdOpen('${q}','${r.k}')`}"><span class="gp-ic">${IC[r.ic]||''}</span><div class="gp-tx"><b>${r.t}</b><small>${r.d}</small></div><span class="gp-v">${r.v}</span></button>`).join('')}${x.t==='Pengaturan Tambahan'?`<button class="gp-row tn-amber" onclick="spoofAppOpen()"><span class="gp-ic">${IC.phone||''}</span><div class="gp-tx"><b>Spoof Perangkat</b><small>Tiru model HP untuk membuka opsi FPS</small></div><span class="gp-v">${sp?(sp.on?'Aktif':'Nonaktif'):'Belum'}</span></button>`:''}</div>`).join('')}
+ <button class="btn ghost" style="color:var(--dg);margin-top:18px" onclick="appDel('${q}')">${IC.trash} Hapus dari daftar game</button>`;}
+async function gfxSet(k,v){toast('Menerapkan…');const r=await run(`gfx_${k==='drv'?'driver':'angle'} ${v}`);await load();toast((r.out||'').trim().startsWith('OK')?'Diterapkan · UI dimuat ulang':'Gagal: '+((r.out||'').split('|')[1]||'tidak ada respon'));}
+/* ---- Kualitas Tekstur: pratinjau sebelum/sesudah ---- */
+const TX_N=['Tinggi','Sedang','Rendah','Terendah'],TX_F=[2,4,8,16];let TX={p:null,l:2,s:'blur',x:.5,art:null};
+function texSub(p,s){const c=(s.tex||{})[p];TX.p=p;TX.l=c?c.l:2;TX.s=c?c.s:'blur';TX.x=.5;
+ return `<div class="tx-page"><div class="tx-prev" id="txp"><canvas id="txc"></canvas><span class="tx-b l"><i></i>ASLI</span><span class="tx-b r"><i></i>AKTIF</span>
+  <div class="tx-div" id="txd"><span class="tx-h">${IC.swap||'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h12l-3-3M17 17H5l3 3"/></svg>'}</span></div><span class="tx-hint">Geser pemisah untuk membandingkan</span></div>
+  <div class="card tx-ctl"><div class="tx-row"><b>Texture level</b><span id="txv"></span></div>
+   <div class="tx-seg" id="txl">${[1,2,3,4].map(n=>`<button data-l="${n}" onclick="texLvl(${n})">${n}</button>`).join('')}</div>
+   <div class="tx-seg two" id="txs"><button data-s="blur" onclick="texSty('blur')">Blur</button><button data-s="pixel" onclick="texSty('pixel')">Pixel</button></div></div>
+  <div class="card tx-info"><span class="tx-i">i</span><div><b>Informasi</b><p>Game akan dimulai ulang agar berlaku. Level lebih tinggi = tekstur lebih kasar dan FPS lebih ringan. Memakai ANGLE; Android 14+, beberapa game mungkin tidak berubah.</p></div></div>
+  <div class="tx-act"><button class="btn ghost" onclick="texDef()">${IC.refresh||''} Default</button><button class="btn" onclick="texDone()">${IC.check||''} Selesai</button></div></div>`;}
+function texArt(){if(TX.art)return TX.art;const W=256,H=160,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+ g.fillStyle='#3a2a22';g.fillRect(0,0,W,H);
+ for(let r=0;r<10;r++){const y=r*9,off=(r%2)*14;for(let x=-28;x<W;x+=28){const k=((x*7+r*13)&15)/15;g.fillStyle=`rgb(${168+k*30|0},${74+k*20|0},${52+k*14|0})`;g.fillRect(x+off+1,y+1,26,7);g.fillStyle='rgba(0,0,0,.18)';g.fillRect(x+off+1,y+6,26,2);}}
+ g.fillStyle='#43b83c';g.fillRect(0,92,W,6);g.fillStyle='#2f8f2a';for(let x=0;x<W;x+=6)g.fillRect(x,96,3,3);
+ for(let y=98;y<H;y+=4)for(let x=0;x<W;x+=4){const k=((x*3+y*5)%7)/7;g.fillStyle=`rgb(${96+k*30|0},${64+k*18|0},${30+k*10|0})`;g.fillRect(x,y,4,4);}
+ for(let i=0;i<14;i++){g.strokeStyle='rgba(0,0,0,.16)';g.beginPath();g.moveTo(i*20,98);g.lineTo(i*20+30,H);g.stroke();}
+ TX.art=c;return c;}
+function texDraw(){const cv=$('#txc');if(!cv)return;const dpr=Math.min(window.devicePixelRatio||1,2),w=cv.clientWidth,h=cv.clientHeight;if(!w)return;cv.width=w*dpr;cv.height=h*dpr;
+ const g=cv.getContext('2d'),art=texArt(),f=TX_F[TX.l-1],sm=document.createElement('canvas');sm.width=Math.max(2,Math.round(art.width/f));sm.height=Math.max(2,Math.round(art.height/f));
+ const sg=sm.getContext('2d');sg.imageSmoothingEnabled=true;sg.drawImage(art,0,0,sm.width,sm.height);
+ const X=Math.round(TX.x*cv.width);
+ g.save();g.beginPath();g.rect(0,0,X,cv.height);g.clip();g.imageSmoothingEnabled=true;g.drawImage(art,0,0,cv.width,cv.height);g.restore();
+ g.save();g.beginPath();g.rect(X,0,cv.width-X,cv.height);g.clip();g.imageSmoothingEnabled=TX.s==='blur';g.imageSmoothingQuality='high';g.drawImage(sm,0,0,cv.width,cv.height);g.restore();
+ const d=$('#txd');if(d)d.style.left=(TX.x*100)+'%';}
+function texUi(){const v=$('#txv');if(v)v.textContent=TX.l+' · '+TX_N[TX.l-1];document.querySelectorAll('#txl button').forEach(b=>b.classList.toggle('on',+b.dataset.l===TX.l));document.querySelectorAll('#txs button').forEach(b=>b.classList.toggle('on',b.dataset.s===TX.s));texDraw();}
+function texInit(){texUi();const p=$('#txp');if(!p||p._b)return;p._b=1;let dn=false;const mv=ev=>{const r=p.getBoundingClientRect();TX.x=Math.min(.97,Math.max(.03,(ev.clientX-r.left)/r.width));texDraw();};
+ p.addEventListener('pointerdown',ev=>{dn=true;try{p.setPointerCapture(ev.pointerId);}catch(e){}mv(ev);});p.addEventListener('pointermove',ev=>{if(dn)mv(ev);});p.addEventListener('pointerup',()=>{dn=false;});p.addEventListener('pointercancel',()=>{dn=false;});}
+function texLvl(n){TX.l=n;texUi();}
+function texSty(s){TX.s=s;texUi();}
+async function texDone(){const p=TX.p;if(!/^[A-Za-z0-9._]+$/.test(p||''))return;toast('Menerapkan…');const r=await run(`tex set ${p} ${TX.l} ${TX.s}`);await load();toast((r.out||'').trim().startsWith('OK')?'Tekstur diterapkan · mulai ulang game':'Gagal: '+((r.out||'').split('|')[1]||'tidak ada respon'));closeSub();}
+async function texDef(){const p=TX.p;if(!/^[A-Za-z0-9._]+$/.test(p||''))return;toast('Mengembalikan…');await run('tex off '+p);await load();toast('Tekstur dikembalikan ke default');closeSub();}
+/* dialog pilihan (kartu radio beranimasi) */
+let GD=null;
+function gdOpen(p,k){const it=gsSpec(p,S).reduce((a,x)=>a.concat(x.rows),[]).find(r=>r.k===k),tn=(gsSpec(p,S).find(x=>x.rows.some(r=>r.k===k))||{}).tn||'blue';if(!it)return;GD={fn:it.fn};
+ const d=$('#dlg');d.className='dlg gd tn-'+tn;
+ d.innerHTML=`<div class="gd-h"><span class="gd-ic">${IC[it.ic]||''}</span><div><h3>Pilih ${it.t}</h3><p>${esc(labelOf(p))} · ${it.d}</p></div></div>
+  <div class="gd-l">${it.opts.map(([v,n,sub],i)=>`<button class="gd-o ${String(v)===String(it.cur)?'on':''}" style="--i:${i}" data-k="${esc(v)}" onclick="gdPick(this)"><span class="gd-r"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg></span><span class="gd-t"><b>${esc(n)}</b>${sub?`<small>${esc(sub)}</small>`:''}</span></button>`).join('')}</div>
+  <div class="act"><button onclick="closeDlg()">Tutup</button></div>`;
+ $('#ov').classList.add('on');requestAnimationFrame(()=>d.classList.add('on'));}
+function gdPick(el){const f=GD&&GD.fn;if(!f)return;GD=null;el.parentNode.querySelectorAll('.gd-o').forEach(x=>x.classList.toggle('on',x===el));const v=el.dataset.k;setTimeout(()=>{closeDlg();f(v);},280);}
 /* ----- Pengaturan ----- */
 const devName=d=>{const m=d.model||'',b=d.brand||'';return (b&&m.toLowerCase().indexOf(b.toLowerCase())===0?m:(b+' '+m)).trim();};
 const devCard=s=>{const d=s.dev||{};return `<div class="card"><div class="head">${ico('phone','blue')}<div class="tx"><b>${esc(devName(d))}</b><span>${esc(d.soc||'-')} · Android ${esc(d.android||'-')}</span></div></div>
@@ -1366,15 +1462,14 @@ function pageSet(s){const d=s.dev||{},th=THEME_OPTS.find(x=>x[0]===curTheme())||
 const TG_URL='https://t.me/ProjectComatoze';
 function openTg(){exec("am start --user 0 -a android.intent.action.VIEW -d '"+TG_URL+"' </dev/null >/dev/null 2>&1").catch(()=>{});try{toast&&toast('Membuka Telegram…');}catch(e){}}
 /* ----- sub-halaman ----- */
-const hzSub=s=>`<div class="fnote"><b>Refresh rate mengikuti mode.</b> Performa = tertinggi, Balance = 90 Hz, Eco = terendah. Dikunci lewat SurfaceFlinger, jadi benar-benar berubah di semua aplikasi.</div>
- <div class="card"><div class="kv">${MODES.map(([k,i,n])=>`<span>${n}</span><b>${hzFor(s,k)}</b>`).join('')}</div></div>
- <div class="sec">Saat bermain game</div>${gpCard(s)}`;
 const tmodeSub=s=>`<div class="card">${tweakSeg(s)}</div>
  <div class="fnote"><b>Performa:</b> scheduler tanpa bias hemat energi, thread app depan ke core besar, DRAM/vcore dan GPU Mali dikunci tinggi, pembatas sistem dimatikan. Lebih panas dan boros.<br><b>Eco:</b> cluster besar dibatasi, app latar dikurung ke core kecil, DRAM/vcore boleh turun, GPU boleh tidur. Lebih dingin dan hemat.<br>Otomatis mengikuti mode di Beranda; boleh dipilih manual di sini.</div>`;
 const thermalSub=s=>`<div class="card">${rowsById(['nothermal'])}</div>
  <div class="fnote"><b>Berisiko.</b> Mematikan mitigasi suhu membuat HP bisa sangat panas. Pakai Pendinginan di bawah bila perlu.</div>${coolCard(s)}`;
+const f2fsCard=s=>{const f=s.f2fs||{n:0,t:0,b:0,a:0};if(!f.n)return '<div class="fnote">Partisi F2FS tidak terdeteksi di HP ini.</div>';const last=f.t?new Date(f.t*1000).toLocaleString('id-ID'):'belum pernah';return `<div class="card"><div class="kv"><span>Terakhir GC</span><b>${last}</b><span>Segmen bebas</span><b>${f.t?f.b+' → '+f.a:'-'}</b></div><button class="btn" onclick="f2fsNow()">Jalankan GC sekarang</button></div>`;};
+async function f2fsNow(){toast('GC F2FS berjalan di latar (±2 menit)…');await run('f2fsgc run');setTimeout(load,130000);}
 const utilSub=s=>`<div class="fnote"><b>Optimasi latar belakang &amp; baterai.</b> Fitur lanjutan untuk mengurangi standby drain. Keduanya mati secara bawaan dan bisa menunda notifikasi bila aktif.</div>
- <div class="msec g">Konsumsi Daya &amp; Standby</div><div class="card">${rowsById(['aggrdoze','gmslimit','doze','datasaver'])}</div>`;
+ <div class="msec g">Konsumsi Daya &amp; Standby</div><div class="card">${rowsById(['aggrdoze','gmslimit','doze','datasaver','f2fsgc'])}</div>${f2fsCard(s)}`;
 async function ovToggle(on){toast('Menerapkan…');const r=await run('overlay '+(on?'on':'off'));await load();toast(on?'Overlay aktif · buka game untuk melihat FPS':'Overlay dimatikan');}
 async function ovAuto(on){await run('ovauto '+(on?'on':'off'));await load();toast(on?'Overlay muncul saat game dibuka':'Overlay selalu tampil');}
 async function recSet(k,v){const r=await run('ovrec set '+k+' '+v);await load();toast((r.out||'').indexOf('OK|')===0?'Tersimpan':'Gagal menyimpan');}
@@ -1461,7 +1556,6 @@ async function idleOn(on){S.idle=Object.assign({on:false,min:1024,int:15},S.idle
 async function idleSet(k,v){S.idle=Object.assign({on:false,min:1024,int:15},S.idle||{});S.idle[k]=+v;await run('idleram set '+k+' '+v);}
 const SUBS={
  xh:{t:'Crosshair',f:s=>xhCard(s)},
- hz:{t:'Refresh Rate',f:hzSub},
  cpu:{t:'CPU & GPU',f:s=>pageCpu(s)+gedCard(s)},
  tmode:{t:'Tweak Ekstra',f:tmodeSub},
  thermal:{t:'Disable Thermal',f:thermalSub},
@@ -1476,17 +1570,17 @@ const SUBS={
  dev:{t:'Perangkat',f:devCard},
  gglobal:{t:'Profil Game',f:s=>gpCard(s)+pgCard(s)},
  gauto:{t:'Otomatisasi Game',f:s=>`<div class="card">${rowsById(['gameprofile','gamethermal','gameclean','gamebypass','preload','gamednd'])}</div>`},
- ggfx:{t:'Grafis & Render',f:s=>`<div class="card"><div class="note"><b>Resolusi render, driver, dan API grafis</b> kini ada di profil tiap game: <b>Aplikasi → pilih game</b>. Di sini hanya pengaturan gaya tekstur ANGLE.</div></div>`+uirstCard(s)+angleStyleCard(s)},
  gspoof:{t:'Spoof Perangkat',f:s=>spoofAppCard(s)}
 };
 const TAB_T={home:'Comatoze',apps:'Aplikasi',tweaks:'Tweaks',set:'Pengaturan'};
-const subTitle=id=>id.indexOf('app:')===0?labelOf(id.slice(4)):((SUBS[id]||{}).t||'');
+const subTitle=id=>id.indexOf('app:')===0?labelOf(id.slice(4)):id.indexOf('tex:')===0?'Kualitas Tekstur':((SUBS[id]||{}).t||'');
 function setBar(){const b=$('#bar'),h=$('#barT'),bk=$('#back'),sb=$('#sub');if(!b)return;b.classList.toggle('subp',!!sub);bk.hidden=!sub;h.textContent=sub?subTitle(sub):TAB_T[tab];sb.style.display=(sub||tab!=='home')?'none':'';}
 function showPages(){document.querySelectorAll('.page').forEach(e=>e.classList.toggle('on',sub?e.id==='p-sub':e.id==='p-'+tab));}
 function renderSub(){if(!S||!sub)return;const e=$('#p-sub');let h='';NOFOLD=true;
-  try{h=sub.indexOf('app:')===0?appSub(sub.slice(4),S):(SUBS[sub]?SUBS[sub].f(S):'');}catch(err){h='<div class="card"><div class="note"><b class="dg">Gagal menampilkan halaman.</b> '+esc(String(err&&err.message||err))+'</div></div>';}
+  if(sub.indexOf('tex:')===0&&e.dataset.tx===sub&&e.firstChild)return;
+  try{h=sub.indexOf('tex:')===0?texSub(sub.slice(4),S):sub.indexOf('app:')===0?appSub(sub.slice(4),S):(SUBS[sub]?SUBS[sub].f(S):'');}catch(err){h='<div class="card"><div class="note"><b class="dg">Gagal menampilkan halaman.</b> '+esc(String(err&&err.message||err))+'</div></div>';}
   finally{NOFOLD=false;}
-  e.innerHTML=h;_sliderInit();_applyMark();}
+  e.innerHTML=h;_sliderInit();_applyMark();if(sub.indexOf('tex:')===0){e.dataset.tx=sub;texInit();}else delete e.dataset.tx;}
 function openSub(id){sub=id;try{history.pushState({sub:id},'');}catch(e){}renderSub();showPages();setBar();window.scrollTo({top:0});}
 function closeSub(fromPop){if(!sub)return;sub=null;if(!fromPop){try{if(history.state&&history.state.sub)history.back();}catch(e){}}
   showPages();if(_dirty[tab])renderPage(tab);setBar();}
