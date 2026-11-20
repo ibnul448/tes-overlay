@@ -261,19 +261,20 @@ public class OverlayService extends Service {
         pill = new LinearLayout(this);
         pill.setOrientation(LinearLayout.VERTICAL);
         pill.setGravity(Gravity.CENTER);
-        pill.setPadding(dp(14), dp(8), dp(14), dp(8));
+        pill.setPadding(dp(6), dp(12), dp(6), dp(12));
         pillBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{Color.parseColor("#E61E242D"), Color.parseColor("#E610141B")});
-        pillBg.setCornerRadius(dp(10));
+        pillBg.setCornerRadius(dp(13));
         pillBg.setStroke(Math.max(1, dp(1)), Color.parseColor("#33FFFFFF"));
         pill.setBackground(pillBg);
-        pillNum = tv("--", 21, Color.parseColor("#F1F1F1"), true);
+        pillNum = tv("--", 15.5f, Color.parseColor("#F1F1F1"), true);
         pillNum.setGravity(Gravity.CENTER);
         pillNum.setSingleLine(true);
         pill.addView(pillNum, new LinearLayout.LayoutParams(-2, -2));
-        TextView pillLbl = tv("FPS", 10, Color.parseColor("#A3A9B2"), false);
+        TextView pillLbl = tv("FPS", 9.5f, Color.parseColor("#A3A9B2"), false);
         pillLbl.setGravity(Gravity.CENTER);
         pill.addView(pillLbl, lpw(-2, -2, 0, 0, 0, 0));
-        pill.setMinimumWidth(dp(72));
+        pill.setMinimumWidth(dp(54));
+        pill.setMinimumHeight(dp(68));
         root.addView(pill, new FrameLayout.LayoutParams(-2, -2));
 
         // panel
@@ -529,7 +530,7 @@ public class OverlayService extends Service {
         final Sw sw = new Sw();
         sw.id = id;
         sw.view = new GlowSwitch(this);
-        r.addView(sw.view, lpw(dp(50), dp(26), 8, 0, 0, 0));
+        r.addView(sw.view, lpw(dp(58), dp(28), 8, 0, 0, 0));
         reg.add(sw);
         r.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { pulse(v); toggleFeat(id, label); } });
         parent.addView(r, lpw(-1, -2, 0, 0, 0, 8));
@@ -760,7 +761,7 @@ public class OverlayService extends Service {
     // ---------- Seksi 2: Anti-ganggu ----------
     private LinearLayout buildSec2() {
         LinearLayout c = section(150);
-        switchRow(c, "gamednd", "DND otomatis saat game", sws);
+        switchRow(c, "aggrdoze", "Doze agresif", sws);
         switchRow(c, "gmslimit", "Batasi Google Play Services", sws);
         switchRow(c, "datasaver", "Hemat Data", sws);
         navRow(c, "Pembatas Latar", "bg");
@@ -770,11 +771,7 @@ public class OverlayService extends Service {
     // ---------- Seksi 3: Gameplay Tambahan ----------
     private LinearLayout buildSec3() {
         LinearLayout c = section(150);
-        switchRow(c, "gameclean", "Bersihkan RAM otomatis", sws);
-        switchRow(c, "gameprofile", "Profil Game otomatis", sws);
-        switchRow(c, "gamebypass", "Pengisian Daya Bypass", sws);
-        switchRow(c, "gamethermal", "Thermal otomatis saat game", sws);
-        switchRow(c, "preload", "Preload game ke cache", sws);
+        switchRow(c, "bypass", "Bypass Charging", sws);
         navRow(c, "Daya & Pengisian", "chg");
         actionRow(c, "Tambah game yang sedang dibuka", new Runnable() { @Override public void run() { addCurrentGame(); } });
         return c;
@@ -892,10 +889,8 @@ public class OverlayService extends Service {
             subTitle.setText("Daya & Pengisian");
             switchRow(subBox, "fastcharge", "Fast Charging", subSws);
             switchRow(subBox, "autocut", "Auto Cut Charging", subSws);
-            switchRow(subBox, "bypass", "Bypass Charging", subSws);
         } else if ("bg".equals(key)) {
             subTitle.setText("Pembatas Latar");
-            switchRow(subBox, "aggrdoze", "Doze agresif", subSws);
             switchRow(subBox, "lessdbg", "Kurangi log debug", subSws);
             switchRow(subBox, "doze", "Doze Mode", subSws);
         } else {
