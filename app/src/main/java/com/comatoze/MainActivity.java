@@ -69,28 +69,16 @@ public class MainActivity extends Activity {
             @Override public void run() {
                 final boolean root = Root.available();
                 final boolean mod = root && Root.exec("test -f " + Root.MOD + "/webroot/index.html").code == 0;
-                if (root && mod) Root.exec(Root.BIN + " overlay perm");
+                if (root && mod) Root.exec(Root.BIN + " appperm");
                 ui.post(new Runnable() {
                     @Override public void run() {
                         if (!root) msg.setText("Aplikasi ini butuh akses root.\n\nBerikan izin Superuser ke Comatoze (KernelSU/Magisk) lalu buka lagi.");
                         else if (!mod) msg.setText("Modul Comatoze belum terpasang / belum aktif.\n\nFlash modulnya lalu reboot.");
-                        else { startWeb(); keepAlive(); }
+                        else startWeb();
                     }
                 });
             }
         });
-    }
-
-    // Cadangan bila izin dari root gagal: minta "Tanpa batasan" baterai dan "tampil di atas aplikasi lain" lewat layar sistem.
-    private void keepAlive() {
-        try {
-            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
-            if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
-                startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName())));
-            } else if (Build.VERSION.SDK_INT >= 23 && !android.provider.Settings.canDrawOverlays(this)) {
-                startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
-            }
-        } catch (Throwable t) { }
     }
 
     private int dp(int v) { return (int) (v * getResources().getDisplayMetrics().density + 0.5f); }

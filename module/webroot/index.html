@@ -496,14 +496,78 @@ body{padding:calc(env(safe-area-inset-top,0px) + 10px) 16px calc(112px + env(saf
 .dlg .act button{background:none;border:0;color:var(--ac);font-weight:600;font-size:17px;padding:8px 10px;border-radius:12px}
 .fnote{background:var(--s2);border-radius:20px;padding:14px 16px;font-size:13.5px;line-height:1.55;color:var(--mu);margin:0 0 12px}
 .fnote b{color:var(--tx)}
-nav{left:0;right:0;bottom:0;transform:none;width:100%;max-width:none;margin:0;border-radius:0;border:0;border-top:1px solid var(--ln);box-shadow:none;background:var(--bg);padding:10px 6px calc(10px + env(safe-area-inset-bottom,0px))}
+nav{left:50%;right:auto;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));width:auto;max-width:calc(100% - 24px);margin:0;border-radius:34px;border:1px solid var(--ln);background:color-mix(in srgb,var(--s1) 90%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:0 14px 34px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.35);padding:7px;gap:4px;align-items:center;justify-content:center}
 .nav-ind{display:none}
-nav button{padding:0;gap:5px;font-size:12.5px;font-weight:600;color:var(--tx)}
-nav .pl{width:64px;height:32px;border-radius:16px;transition:background .25s}
+nav button{flex:none;flex-direction:row;gap:0;height:48px;min-width:54px;padding:0 15px;border-radius:26px;justify-content:center;font-size:13.5px;font-weight:700;color:var(--mu);transition:background .35s,padding .35s cubic-bezier(.65,0,.35,1),color .25s,box-shadow .35s}
+nav .lb{display:block;max-width:0;overflow:hidden;white-space:nowrap;opacity:0;margin-left:0;transition:max-width .38s cubic-bezier(.65,0,.35,1),opacity .28s,margin-left .38s cubic-bezier(.65,0,.35,1)}
+nav button.on{background:color-mix(in srgb,var(--ac) 26%,var(--s2));color:var(--tx);padding:0 19px;box-shadow:0 0 20px color-mix(in srgb,var(--ac) 30%,transparent),inset 0 0 0 1px color-mix(in srgb,var(--ac) 45%,transparent)}
+nav button.on .lb{max-width:104px;opacity:1;margin-left:9px}
+nav .pl{width:24px;height:24px;border-radius:0;background:none;flex:none}
 nav svg{width:24px;height:24px}
-nav button.on{color:var(--tx);font-weight:700}
-nav button.on .pl{background:var(--ico);color:var(--icoc)}
+nav button.on .pl{background:none;color:var(--ac)}
+@media (prefers-reduced-motion:reduce){nav button,nav .lb{transition:none!important}}
 #toast{bottom:calc(98px + env(safe-area-inset-bottom,0px))}
+/* ---------- Beranda: HUD gaming ---------- */
+.brk{position:absolute;inset:5px;pointer-events:none;z-index:2;opacity:.9;
+ background:
+ linear-gradient(var(--ac),var(--ac)) 0 0/14px 2px no-repeat,linear-gradient(var(--ac),var(--ac)) 0 0/2px 14px no-repeat,
+ linear-gradient(var(--ac),var(--ac)) 100% 0/14px 2px no-repeat,linear-gradient(var(--ac),var(--ac)) 100% 0/2px 14px no-repeat,
+ linear-gradient(var(--ac),var(--ac)) 0 100%/14px 2px no-repeat,linear-gradient(var(--ac),var(--ac)) 0 100%/2px 14px no-repeat,
+ linear-gradient(var(--ac),var(--ac)) 100% 100%/14px 2px no-repeat,linear-gradient(var(--ac),var(--ac)) 100% 100%/2px 14px no-repeat}
+#p-home .sec{justify-content:flex-start;gap:10px;font-size:11.5px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--tx);margin:22px 4px 12px}
+#p-home .sec:before{content:"";flex:none;width:4px;height:15px;border-radius:2px;background:var(--ac);box-shadow:0 0 10px color-mix(in srgb,var(--ac) 70%,transparent);transform:skewX(-14deg)}
+#p-home .sec:after{content:"";flex:1;height:1px;background:linear-gradient(90deg,color-mix(in srgb,var(--ac) 55%,transparent),transparent)}
+.rb-bar{border-radius:16px}
+.rb-bar .met i{position:relative;height:8px;border-radius:3px}
+.rb-bar .met i b{border-radius:3px}
+.rb-bar .met i:after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 9px,var(--s1) 9px 11px);pointer-events:none}
+.rb-bar .htag{font-size:8.5px;font-weight:800;letter-spacing:.22em;color:var(--mu);margin:-6px 0 10px;opacity:.85}
+.dock{position:relative;margin:0 0 14px;padding:12px 8px 6px;border-radius:16px;border:1px solid var(--ln);background:linear-gradient(180deg,color-mix(in srgb,var(--ac) 7%,var(--s1)),var(--s1))}
+.dock .dk-h{display:flex;align-items:center;gap:10px;margin:0 8px 2px;font-size:9px;font-weight:800;letter-spacing:.2em}
+.dock .dk-h span{color:var(--ac)}
+.dock .dk-h i{flex:1;height:1px;background:repeating-linear-gradient(90deg,color-mix(in srgb,var(--ac) 45%,transparent) 0 5px,transparent 5px 9px)}
+.dock .dk-h b{font-variant-numeric:tabular-nums;color:var(--tx)}
+.dock .rail{padding:6px 2px 4px}
+.rail button{transition:opacity .3s,transform .35s cubic-bezier(.2,1.1,.3,1)}
+.rg{position:relative;width:60px;height:60px;border-radius:19px;padding:2px;overflow:hidden;background:var(--ln);transition:background .3s}
+.rg:before{content:"";position:absolute;inset:-60%;background:conic-gradient(var(--ac),transparent 25%,var(--t-teal) 50%,transparent 75%,var(--ac));opacity:0;transition:opacity .3s;animation:spin 3.2s linear infinite}
+.rail button.on .rg:before{opacity:1}
+.rg .ai{position:relative;width:100%;height:100%;border-radius:17px;border:0;box-shadow:none}
+.rail button.on .rg .ai{box-shadow:none;border:0}
+.rail button.on .rg{box-shadow:0 0 18px color-mix(in srgb,var(--ac) 45%,transparent)}
+.rail button{width:64px}
+.rail .add .pl{width:60px;height:60px;border-radius:19px}
+.rhero{border-radius:20px;padding:28px 16px 16px;border-color:color-mix(in srgb,var(--ac) 35%,var(--ln))}
+.rhero .htag{position:absolute;top:0;left:16px;z-index:3;display:flex;gap:8px;align-items:center;font-size:9px;font-weight:800;letter-spacing:.2em;color:var(--on);background:var(--ac);padding:3px 12px 3px 9px;clip-path:polygon(0 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+.rhero .htag b{font-variant-numeric:tabular-nums;opacity:.75}
+.rhero .hdiv{height:1px;margin:0 0 12px;background:repeating-linear-gradient(90deg,color-mix(in srgb,var(--ac) 50%,transparent) 0 6px,transparent 6px 11px)}
+.rhero .stats{display:grid;grid-template-columns:repeat(3,1fr);margin:0 0 14px;border:1px solid var(--ln);border-radius:12px;background:color-mix(in srgb,var(--s1) 70%,transparent);overflow:hidden}
+.rhero .stats>div{padding:8px 6px 8px 10px;min-width:0}
+.rhero .stats>div+div{border-left:1px dashed color-mix(in srgb,var(--ac) 35%,var(--ln))}
+.rhero .stats small{display:block;font-size:8.5px;font-weight:800;letter-spacing:.18em;color:var(--mu);margin-bottom:3px}
+.rhero .stats b{display:block;font-size:13px;font-weight:800;color:var(--tone,var(--ac));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rhero .go{border-radius:12px;transform:skewX(-8deg);box-shadow:0 8px 22px color-mix(in srgb,var(--ac) 35%,transparent)}
+.rhero .go>*{transform:skewX(8deg)}
+.rhero .sq{border-radius:12px;transform:skewX(-8deg)}
+.rhero .sq svg{transform:skewX(8deg)}
+@keyframes hOutL{to{opacity:0;transform:translateX(-30px) scale(.96);filter:blur(5px)}}
+@keyframes hOutR{to{opacity:0;transform:translateX(30px) scale(.96);filter:blur(5px)}}
+@keyframes hInR{from{opacity:0;transform:translateX(40px) scale(.96);filter:blur(6px)}}
+@keyframes hInL{from{opacity:0;transform:translateX(-40px) scale(.96);filter:blur(6px)}}
+@keyframes hIcPop{0%{opacity:0;transform:scale(.55) rotate(-10deg)}60%{transform:scale(1.1) rotate(3deg)}100%{opacity:1;transform:none}}
+@keyframes hRise{from{opacity:0;transform:translateY(10px)}}
+@keyframes hBg{from{opacity:0}}
+.rhero.out-l{animation:hOutL .17s ease-in forwards;pointer-events:none}
+.rhero.out-r{animation:hOutR .17s ease-in forwards;pointer-events:none}
+.rhero.in-r{animation:hInR .38s cubic-bezier(.2,.9,.3,1) both}
+.rhero.in-l{animation:hInL .38s cubic-bezier(.2,.9,.3,1) both}
+.rhero.in-r .hic,.rhero.in-l .hic{animation:hIcPop .55s cubic-bezier(.2,1.2,.3,1) .06s both}
+.rhero.in-r .hbg,.rhero.in-l .hbg{animation:hBg .7s ease both}
+.rhero.in-r .hn,.rhero.in-l .hn{animation:hRise .4s ease .12s both}
+.rhero.in-r .hp,.rhero.in-l .hp{animation:hRise .4s ease .17s both}
+.rhero.in-r .stats,.rhero.in-l .stats{animation:hRise .4s ease .22s both}
+.rhero.in-r .acts,.rhero.in-l .acts{animation:hRise .4s ease .28s both}
+@media(prefers-reduced-motion:reduce){.rg:before{animation:none}.rhero.in-r,.rhero.in-l,.rhero.out-l,.rhero.out-r,.rhero [class]{animation:none!important}}
 </style>
 </head>
 <body>
@@ -515,10 +579,10 @@ nav button.on .pl{background:var(--ico);color:var(--icoc)}
 <div id="p-sub" class="page"></div>
 <nav>
  <span class="nav-ind" id="navInd"></span>
- <button data-t="home" class="on"><span class="pl"><svg viewBox="0 0 24 24"><path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/></svg></span>Beranda</button>
- <button data-t="apps"><span class="pl"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/></svg></span>Aplikasi</button>
- <button data-t="tweaks"><span class="pl"><svg viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg></span>Tweaks</button>
- <button data-t="set"><span class="pl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1 -2.83 2.83l-.06 -.06a1.65 1.65 0 0 0 -1.82 -.33a1.65 1.65 0 0 0 -1 1.51V21a2 2 0 1 1 -4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0 -1.82 .33l-.06 .06a2 2 0 1 1 -2.83 -2.83l.06 -.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0 -1.51 -1H3a2 2 0 1 1 0 -4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0 -.33 -1.82l-.06 -.06a2 2 0 1 1 2.83 -2.83l.06 .06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1 -1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51a1.65 1.65 0 0 0 1.82 -.33l.06 -.06a2 2 0 1 1 2.83 2.83l-.06 .06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0 -1.51 1z"/></svg></span>Pengaturan</button>
+ <button data-t="home" class="on"><span class="pl"><svg viewBox="0 0 24 24"><path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/></svg></span><span class="lb">Beranda</span></button>
+ <button data-t="apps"><span class="pl"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/></svg></span><span class="lb">Aplikasi</span></button>
+ <button data-t="tweaks"><span class="pl"><svg viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg></span><span class="lb">Tweaks</span></button>
+ <button data-t="set"><span class="pl"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1 -2.83 2.83l-.06 -.06a1.65 1.65 0 0 0 -1.82 -.33a1.65 1.65 0 0 0 -1 1.51V21a2 2 0 1 1 -4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0 -1.82 .33l-.06 .06a2 2 0 1 1 -2.83 -2.83l.06 -.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0 -1.51 -1H3a2 2 0 1 1 0 -4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0 -.33 -1.82l-.06 -.06a2 2 0 1 1 2.83 -2.83l.06 .06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1 -1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51a1.65 1.65 0 0 0 1.82 -.33l.06 -.06a2 2 0 1 1 2.83 2.83l-.06 .06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0 -1.51 1z"/></svg></span><span class="lb">Pengaturan</span></button>
 </nav>
 <div class="ov" id="ov" onclick="closePick()"></div>
 <div class="sheet" id="sheet" aria-hidden="true"></div>
@@ -531,6 +595,7 @@ nav button.on .pl{background:var(--ico);color:var(--icoc)}
 /* ic = ikon (lihat IC), tn = warna (blue|purple|teal|amber|rose) */
 const FEATURES=[
  {id:'gamefps',group:'exp',ic:'bolt',tn:'purple',name:'Buka Batas 60 FPS Game',short:'Android 15+',desc:'Mematikan batas frame rate bawaan game (60 FPS) di Android 15. Dipulihkan saat dimatikan.',nope:'Butuh Android 15 atau lebih baru.',ok:s=>(+((s.dev||{}).android)||0)>=15},
+ {id:'framepace',hide:1,ic:'activity',tn:'blue',name:'Frame Pacing',short:'Penstabil FPS saat game',desc:'Saat game dari Daftar Game dibuka: clock CPU ditahan (tidak jatuh di tengah frame) tetapi naik cepat saat beban naik, GPU lebih cepat naik dan tidak cepat turun, serta CPU tidak masuk tidur dalam. Hasilnya waktu antar-frame lebih rata. Semua nilai dipulihkan saat keluar game.'},
  {id:'fpsgooff',group:'exp',ic:'activity',tn:'amber',name:'Matikan FPSGO',short:'FPS tidak diturunkan kernel',desc:'ON = FPSGO (scheduler frame kernel MediaTek) dimatikan lewat fpsgo_enable=0, jadi kernel tidak menurunkan clock/FPS secara dinamis. OFF = FPSGO bawaan ROM (1). Dijaga ulang tiap beberapa detik oleh pemantau bila sistem menyalakannya lagi. Bisa membuat HP lebih panas.',nope:'Node fpsgo_enable tidak ditemukan di kernel ini (bukan MediaTek, atau FPSGO tidak diekspos). Jalankan: ls /sys/kernel/fpsgo',ok:s=>s.fpsgoSup!==false},
  {id:'nothermal',hide:1,ic:'flame',tn:'rose',name:'Disable Thermal (Brutal)',short:'Hentikan service thermal',desc:'Hentikan SEMUA service thermal, matikan thermal zone & limit GPU/PPM, trip suhu 125°C. Risiko panas berlebih/baterai. Aktif/nonaktif langsung tanpa reboot.',danger:true},
  {id:'wifilatency',ic:'wifi',tn:'blue',name:'WiFi Low Latency',short:'Latensi rendah untuk game online',desc:'Mode performa & latensi rendah WiFi untuk game online, ditambah scan WiFi latar dimatikan dan WiFi tidak pernah tidur. Nilai asli dipulihkan saat dimatikan.'},
@@ -592,11 +657,11 @@ const IC={
  display:sv('<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 20h8M12 17v3"/>'),
  x:sv(P(['M18 6l-12 12','M6 6l12 12']))
 };
-const MODE_NAME={perf:'Performa',balance:'Balance',eco:'Eco',custom:'Manual'};
+const MODE_NAME={perf:'Performa',plite:'Performa Lite',balance:'Balance',eco:'Eco',custom:'Manual'};
 const hzFor=(s,m)=>{const r=(s.rates||[]).filter(x=>x>=60).sort((a,b)=>a-b);if(m==='custom')return '—';
-  if(!r.length)return ({perf:120,balance:90,eco:60}[m]||'')+' Hz';return (m==='perf'?r[r.length-1]:m==='eco'?r[0]:(r.includes(90)?90:r[0]))+' Hz';};
-const MODES=[['perf','rocket','Performa','rose'],['balance','scale','Balance','blue'],['eco','leaf','Eco','teal']];
-const MODE_DESC={perf:'Governor turbo / hino_turbo, frekuensi mentok tertinggi, refresh rate tertinggi + I/O scheduler ringan, CPU ramp-up lebih cepat, swappiness rendah, semua core online.',balance:'Governor default, frekuensi bebas, 90 Hz (jika layar mendukung).',eco:'Frekuensi dibatasi ±60% dan refresh rate 60 Hz.',custom:'Pengaturan manual aktif.'};
+  if(!r.length)return ({perf:120,plite:90,balance:90,eco:60}[m]||'')+' Hz';if(m==='plite'){const lo=r.filter(x=>x<=90);return (lo.length?lo[lo.length-1]:r[0])+' Hz';}return (m==='perf'?r[r.length-1]:m==='eco'?r[0]:(r.includes(90)?90:r[0]))+' Hz';};
+const MODES=[['perf','rocket','Performa','rose'],['plite','battery','Perf Lite','amber'],['balance','scale','Balance','blue'],['eco','leaf','Eco','teal']];
+const MODE_DESC={perf:'Governor turbo / hino_turbo, frekuensi mentok tertinggi, refresh rate tertinggi + I/O scheduler ringan, CPU ramp-up lebih cepat, swappiness rendah, semua core online.',plite:'Performa versi ringan: lantai clock dinaikkan supaya responsif, atap dibatasi ±80% (tidak brutal, lebih hemat daya dan lebih dingin), 90 Hz. Cukup untuk game ringan sampai sedang.',balance:'Governor default, frekuensi bebas, 90 Hz (jika layar mendukung).',eco:'Frekuensi dibatasi ±60% dan refresh rate 60 Hz.',custom:'Pengaturan manual aktif.'};
 const PERF_NOTE='Clock dipaksa mentok tiap 2 detik selama mode Performa aktif (watchdog), melawan balik thermal/PPM ROM yang suka nurunin sendiri. Baterai boros, suhu naik lebih cepat -- dipilih sadar demi performa maksimal.';
 
 const BIN='sh /data/adb/modules/ultrapower/system/bin/ultrapower';
@@ -649,13 +714,13 @@ function parse(t){
     else if(a[0]==='PROF')s.prof=a[1]==='on';
     else if(a[0]==='UIRST')s.uirst=a[1]!=='off';
     else if(a[0]==='F2FS')s.f2fs={n:+a[1],t:+a[2],b:+a[3],a:+a[4]};
-    else if(a[0]==='OVANIM')s.ovanim=a[1]!=='off';
     else if(a[0]==='RAM')s.ram={pct:+a[1]||0,tot:+a[2]||0,av:+a[3]||0};
     else if(a[0]==='IDLERAM')s.idle={on:a[1]==='on',min:+a[2]||1024,int:+a[3]||15,run:a[4]==='run',last:a[5]||''};
     else if(a[0]==='CH')s.ch={on:a[1]==='on',style:a[2]||'cross',color:a[3]||'FF3B30',size:+a[4],th:+a[5],gap:+a[6],op:+a[7],glow:+a[8],spd:+a[9],ox:+a[10],oy:+a[11],out:a[12]!=='0',dot:a[13]==='1'};
     else if(a[0]==='GWD')s.gwd={alive:a[1]==='1',ing:a[2]==='1',n:+a[3]||0,last:a[4]||''};
     else if(a[0]==='RATES')s.rates=list(a[1]).map(Number);
     else if(a[0]==='GPROF'){s.gprof={};(a[1]||'').split(',').filter(Boolean).forEach(e=>{const f=e.split('~');if(f[0])s.gprof[f[0]]={mode:f[1]||'',hz:f[2]||''};});}
+    else if(a[0]==='FP'){const n=x=>parseInt(x)||0;s.fp={on:a[1]==='on',act:a[2]==='1',tot:n(a[3]),cpu:n(a[4]),gpu:n(a[5]),idle:n(a[6]),sc:n(a[7]),sg:n(a[8]),si:n(a[9])};}
     else if(a[0]==='GPCFG')s.gpcfg={mode:a[1]||'perf',hz:parseInt(a[2])||120};
     else if(a[0]==='COLOR')s.color={sat:+a[1]||100,r:+a[2]||100,g:+a[3]||100,b:+a[4]||100};
     else if(a[0]==='TEX'){s.tex={};(a[1]||'').split(';').filter(Boolean).forEach(x=>{const y=x.split('~');s.tex[y[0]]={l:+y[1]||4,s:y[2]==='pixel'?'pixel':'blur'};});}
@@ -673,7 +738,6 @@ function parse(t){
     else if(a[0]==='SPOOFAPPS')s.spoofApps=(a[1]||'').split(';').filter(Boolean).map(e=>{const f=e.split('~');return{pkg:f[0],key:f[1],man:f[2],mod:f[3],on:f[4]!=='0',full:f[5]==='1',hw:f[6]||'',board:f[7]||'',sm:f[8]||'',smd:f[9]||''};});
     else if(a[0]==='COOL')s.cool=+a[1]||0;
     else if(a[0]==='IOS')s.ios={cur:a[1]||'',list:(a[2]||'').split(',').filter(Boolean)};
-    else if(a[0]==='OVL')s.ovl={on:a[1]==='on',app:a[2]==='1',net:a[3]!=='off',auto:a[4]!=='off',res:a[5]||'720',br:a[6]||'auto',fps:a[7]||'60'};
     else if(a[0]==='REND')s.rend=a[1]||'default';
     else if(a[0]==='GED')s.ged=a[1]==='yes'?{ok:true,lv:a[2]||'',cur:+a[3]||0}:{ok:false};
     else if(a[0]==='DRAM')s.dram=a[1]==='yes'?{ok:true,freqs:(a[2]||'').split(' ').filter(Boolean).map(Number),cur:+a[3]||0,min:+a[4]||0,max:+a[5]||0,lock:+a[6]||0,ram:+a[7]||0}:{ok:false};
@@ -715,7 +779,7 @@ const rows=g=>FEATURES.filter(f=>(f.group||'sys')===g&&!f.hide).map(row).join(''
 const rowsById=(ids,compact)=>ids.map(id=>FEATURES.find(f=>f.id===id)).filter(Boolean).map(f=>row(f,compact)).join('');
 
 /* ---------- BERANDA ---------- */
-const MODE_SHORT={perf:'Clock maksimal untuk game',balance:'Seimbang untuk harian',eco:'Hemat daya dan lebih dingin'};
+const MODE_SHORT={perf:'Clock maksimal untuk game',plite:'Responsif, lebih hemat dari Performa',balance:'Seimbang untuk harian',eco:'Hemat daya dan lebih dingin'};
 function activeChips(s){const f=s.feat||{},c=[],add=(t,tn)=>c.push(`<span class="ch2 tn-${tn}"><i></i>${t}</span>`);
   if(f.perfx)add('Tweak Ekstra Performa','rose');
   if(f.ecox)add('Tweak Ekstra Eco','teal');
@@ -732,34 +796,45 @@ function activeChips(s){const f=s.feat||{},c=[],add=(t,tn)=>c.push(`<span class=
   if(s.prof)add('Profil Game aktif','amber');
   return c.length?`<div class="chips2">${c.join('')}</div>`:`<p class="mu" style="margin:0 6px 12px">Belum ada fitur tambahan yang aktif.</p>`;}
 let HSEL='';try{HSEL=localStorage.getItem('rb_sel')||'';}catch(e){}
-let TBOPEN=true;try{TBOPEN=localStorage.getItem('rb_tb')!=='0';}catch(e){}
-function homeSel(p){HSEL=p;try{localStorage.setItem('rb_sel',p);}catch(e){}render();}
-function tbToggle(){TBOPEN=!TBOPEN;try{localStorage.setItem('rb_tb',TBOPEN?'1':'0');}catch(e){}render();}
+let HTOK=0;
+function homeSel(p){
+  if(p===HSEL)return;
+  const g=(S&&S.games)||[],d=g.indexOf(p)>g.indexOf(HSEL)?1:-1;
+  HSEL=p;try{localStorage.setItem('rb_sel',p);}catch(e){}
+  const old=document.querySelector('#p-home .rhero');
+  if(!old||!S){render();return;}
+  document.querySelectorAll('#p-home .rail button[data-p]').forEach(b=>{const on=b.dataset.p===p;b.classList.toggle('on',on);if(on)try{b.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});}catch(e){}});
+  const n=document.getElementById('dkn');if(n)n.textContent=pad2(g.indexOf(p)+1)+' / '+pad2(g.length);
+  const tok=++HTOK;old.classList.remove('out-l','out-r');old.classList.add(d>0?'out-l':'out-r');
+  setTimeout(()=>{if(tok!==HTOK)return;const cur=document.querySelector('#p-home .rhero');if(!cur){return;}
+    const t=document.createElement('div');t.innerHTML=rbHero(S,p,d>0?'in-r':'in-l');cur.replaceWith(t.firstElementChild);},175);
+}
 function clockNow(){const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 setInterval(()=>{const e=document.getElementById('rbClk');if(e)e.textContent=clockNow();},20000);
 const meterCls=v=>v>=85?'rd':v>=65?'am':'';
 function rbBar(s){const b=s.bat||{},r=s.ram||{pct:0},lv=Math.max(0,Math.min(100,+b.lvl||0)),tp=b.temp?(b.temp/10).toFixed(0)+'°':'-';
-  return `<div class="rb-bar"><div class="rbt"><span class="br">COMATOZE</span><span class="rbs"><b class="led"></b>ONLINE</span><span class="sp"></span><span class="tmp">${b.st==='Charging'?'⚡ ':''}${tp}</span><span class="clk" id="rbClk">${clockNow()}</span></div>
+  return `<div class="rb-bar"><i class="brk"></i><div class="rbt"><span class="br">COMATOZE</span><span class="rbs"><b class="led"></b>ONLINE</span><span class="sp"></span><span class="tmp">${b.st==='Charging'?'⚡ ':''}${tp}</span><span class="clk" id="rbClk">${clockNow()}</span></div><div class="htag">SYSTEM STATUS // MT6789</div>
    <div class="rbm"><div class="met ${meterCls(r.pct)}"><small><span>RAM</span><span>${r.pct}%</span></small><i><b style="width:${r.pct}%"></b></i></div>
    <div class="met ${lv<=20&&b.st!=='Charging'?'rd':''}"><small><span>BATERAI</span><span>${lv}%</span></small><i><b style="width:${lv}%"></b></i></div></div></div>`;}
-function rbRail(g,sel){prefetchLabels(g);
-  return `<div class="rail">${g.map(p=>`<button class="${p===sel?'on':''}" onclick="homeSel('${esc(p)}')">${appIcon(p)}<small>${esc(labelOf(p))}</small></button>`).join('')}<button class="add" onclick="openPick()" aria-label="Tambah game"><span class="pl">${IC.plus}</span><small>Tambah</small></button></div>`;}
-function rbHero(s,sel){
+const pad2=n=>String(n).padStart(2,'0');
+function rbRail(g,sel){prefetchLabels(g);const i=Math.max(0,g.indexOf(sel))+1;
+  return `<div class="dock"><div class="dk-h"><span>GAME LIBRARY</span><i></i><b id="dkn">${g.length?pad2(i)+' / '+pad2(g.length):'00'}</b></div><div class="rail">${g.map(p=>`<button data-p="${esc(p)}" class="${p===sel?'on':''}" onclick="homeSel('${esc(p)}')"><span class="rg">${appIcon(p)}</span><small>${esc(labelOf(p))}</small></button>`).join('')}<button class="add" onclick="openPick()" aria-label="Tambah game"><span class="pl">${IC.plus}</span><small>Tambah</small></button></div></div>`;}
+function rbHero(s,sel,anim){
   if(!sel)return `<div class="rhero empty"><div class="hn">Belum ada game</div><div class="hp">Tambahkan game agar bisa dijalankan dan dioptimalkan dari sini.</div><button class="btn tonal" onclick="openPick()">${IC.plus} Tambah game</button></div>`;
-  const gp=(s.gprof||{})[sel]||{},m=gp.mode||'',mn={perf:'Performa',balance:'Balance',eco:'Eco'}[m]||'Ikut global',sc=(s.gfxApp||{})[sel],tn=m==='perf'?'rose':m==='eco'?'teal':'blue';
-  return `<div class="rhero tn-${tn}"><img class="hbg" src="ksu://icon/${esc(sel)}" alt="" onerror="this.style.display='none'">
+  const g=(s.games||[]),ix=Math.max(0,g.indexOf(sel))+1;
+  const gp=(s.gprof||{})[sel]||{},m=gp.mode||'',mn={perf:'Performa',plite:'Perf Lite',balance:'Balance',eco:'Eco'}[m]||'Global',sc=(s.gfxApp||{})[sel],tn=m==='perf'?'rose':m==='eco'?'teal':'blue';
+  return `<div class="rhero tn-${tn} ${anim||''}"><i class="brk"></i><img class="hbg" src="ksu://icon/${esc(sel)}" alt="" onerror="this.style.display='none'">
+   <div class="htag">GAME AKTIF <b>${pad2(ix)}/${pad2(g.length)}</b></div>
    <div class="hhead"><img class="hic" src="ksu://icon/${esc(sel)}" alt="" onerror="this.style.display='none'"><div class="htx"><div class="hn">${esc(labelOf(sel))}</div><div class="hp">${esc(sel)}</div></div></div>
-   <div class="pills"><span class="pill">${mn}</span><span class="pill">${sc&&sc!==100?'Res '+sc+'%':'Res Default'}</span>${gp.hz?`<span class="pill">${gp.hz} Hz</span>`:''}</div>
-   <div class="acts"><button class="go" onclick="playGame('${esc(sel)}')">${IC.play} MULAI GAME</button>
+   <div class="hdiv"></div>
+   <div class="stats"><div><small>MODE</small><b>${mn}</b></div><div><small>RESOLUSI</small><b>${sc&&sc!==100?sc+'%':'Default'}</b></div><div><small>REFRESH</small><b>${gp.hz?gp.hz+' Hz':'Global'}</b></div></div>
+   <div class="acts"><button class="go" onclick="playGame('${esc(sel)}')"><span style="display:flex;align-items:center;justify-content:center;gap:8px">${IC.play} MULAI GAME</span></button>
     <button class="sq" aria-label="Opsi game" onclick="openSub('app:${esc(sel)}')">${IC.layers}</button></div></div>`;}
-function rbTools(){const T=[['RAM','activity','teal',"cleanNow()"],['Memory','cpu','purple',"openSub('mem')"],['Crosshair','plus','rose',"openSub('xh')"],['Baterai','battery','amber',"openSub('chg')"],
-  ['Overlay','layers','blue',"openSub('ovl')"],['Renderer','brush','teal',"rendDlg()"],['Perawatan','refresh','purple',"openSub('care')"],['Tweaks','bolt','blue',"showTab('tweaks')"]];
-  return `<div class="sec">Alat cepat<button class="sech" onclick="tbToggle()" style="border:0;background:none;color:var(--mu);font-size:11px;font-weight:700">${TBOPEN?'Ciutkan':'Buka'}</button></div>${TBOPEN?`<div class="tbank">${T.map(([n,i,t,f])=>`<button class="tn-${t}" onclick="${f}"><span class="ti">${IC[i]||''}</span>${n}</button>`).join('')}</div>`:''}`;}
-async function cleanNow(){toast('Membersihkan RAM…');const r=await run('ovact clean');const o=((r&&r.out)||'').trim();toast(o.startsWith('OK')?'RAM dibersihkan':'Gagal membersihkan');load();}
+async function cleanNow(){toast('Membersihkan RAM…');const r=await run('qact clean');const o=((r&&r.out)||'').trim();toast(o.startsWith('OK')?'RAM dibersihkan':'Gagal membersihkan');load();}
 function pageHome(s){
   const g=s.games||[];let sel=g.includes(HSEL)?HSEL:(g[0]||'');
   const cur=MODES.find(x=>x[0]===s.mode);
-  return rbBar(s)+rbRail(g,sel)+rbHero(s,sel)+rbTools()+
+  return rbBar(s)+rbRail(g,sel)+rbHero(s,sel)+
   `<div class="sec">Mode global</div>
   <div class="mtiles">${MODES.map(([k,i,n,t])=>`<button class="mt tn-${t} ${s.mode===k?'on':''}" data-m="${k}" onclick="setMode('${k}')">${IC[i]||''}<span>${n}</span></button>`).join('')}</div>
   <div class="mu" style="margin:4px 4px 10px" id="h2d">${cur?MODE_SHORT[s.mode]+' · '+hzFor(s,s.mode):'Pengaturan CPU/GPU kustom dari Tweaks › CPU & GPU'}</div>
@@ -851,7 +926,7 @@ function gpCard(s){const g=s.gpcfg||{mode:'perf',hz:120};
 /* ---------- Profil per game: mode & Hz sendiri tiap game ('' = ikut Profil Game global) ---------- */
 let PG_OPEN=null;
 function pgToggle(p){PG_OPEN=PG_OPEN===p?null:p;render();}
-const PG_MODES=[['','Ikut global'],['perf','Performa'],['balance','Seimbang'],['eco','Eco'],['skip','Jangan ubah']];
+const PG_MODES=[['','Ikut global'],['perf','Performa'],['plite','Performa Lite'],['balance','Seimbang'],['eco','Eco'],['skip','Jangan ubah']];
 function pgSummary(c){if(c.mode==='skip')return 'Jangan ubah apa pun';const m=c.mode?(MODE_NAME[c.mode]||c.mode):'Mode global',h=c.hz?c.hz+' Hz':'Hz global';return m+' · '+h;}
 function pgCard(s){const g=s.games||[],ov=s.gprof||{};
  if(!g.length)return '';
@@ -1316,7 +1391,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.64.0';
+const VER='2.67.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1354,6 +1429,7 @@ function pageTweaks(s){const f=s.feat||{},z=s.zram,b=s.bat||{},tw=f.perfx?'Perfo
  return `<div class="msec">Performa &amp; Termal</div><div class="mlist">
   ${mrow('cpu','blue','CPU & GPU',(MODE_NAME[s.mode]||'Manual')+' • Clock, governor, GPU Boost',"openSub('cpu')")}
   ${mrow('rocket','rose','Tweak Ekstra',tw+' • Performa / Eco',"openSub('tmode')")}
+  ${mrow('activity','blue','Frame Pacing',(s.fp&&s.fp.on?(s.fp.act?'Aktif di game • '+s.fp.tot+' parameter':'Siaga • menunggu game'):'Mati')+' • Penstabil FPS',"openSub('fpace')")}
   ${mrow('flame','rose','Disable Thermal',(f.nothermal?'Aktif':'Nonaktif')+' • Mitigasi suhu vendor',"openSub('thermal')")}
   ${mrow('battery','amber','Daya &amp; Charging',(b.lvl?b.lvl+'% • ':'')+(STS[b.st]||'Fast charge, auto cut, bypass'),"openSub('chg')")}
  </div>
@@ -1365,7 +1441,6 @@ function pageTweaks(s){const f=s.feat||{},z=s.zram,b=s.bat||{},tw=f.perfx?'Perfo
  </div>
  <div class="msec">Utilitas &amp; Diagnostik</div><div class="mlist">
   ${mrow('display','blue','Perawatan','DPI, bersihkan RAM, cache, dan warna layar',"openSub('care')")}
-  ${mrow('display','teal','Overlay In-Game',(s.ovl&&s.ovl.on?'Aktif':'Mati')+' • FPS, CPU, GPU, Record',"openSub('ovl')")}
   ${mrow('moon','blue','Utilitas','Aggressive Doze, GMS limiter, dan penghemat daya standby',"openSub('util')")}
  </div>`;}
 /* ----- Aplikasi ----- */
@@ -1382,7 +1457,7 @@ async function playGame(p){if(!/^[A-Za-z0-9._]+$/.test(p))return;toast('Membuka 
 async function appDel(p){await delGame(p);closeSub();}
 function gsSpec(p,s){const c=(s.gprof||{})[p]||{mode:'',hz:''},sc=(s.gfxApp||{})[p]||100,g=s.gfx||{drv:'default',angle:'default'},
   ang=((s.ang||{}).apps||[]).indexOf(p)>=0,tx=(s.tex||{})[p],nm=(arr,k)=>(arr.find(x=>x[0]===k)||arr[0])[1];
- const MS={'':'Ikut profil global',perf:'Clock maksimal, paling responsif',balance:'Seimbang untuk game',eco:'Hemat daya, suhu dingin',skip:'Comatoze tidak mengubah apa pun'};
+ const MS={'':'Ikut profil global',perf:'Clock maksimal, paling responsif',plite:'Responsif tapi lebih hemat, atap clock ±80%',balance:'Seimbang untuk game',eco:'Hemat daya, suhu dingin',skip:'Comatoze tidak mengubah apa pun'};
  const sec=[];
  const perf=[{k:'mode',ic:'rocket',d:'Profil CPU/GPU saat game ini dibuka',t:'Mode Game',v:nm(PG_MODES,c.mode||''),opts:PG_MODES.map(([k,n])=>[k,n,MS[k]]),cur:c.mode||'',fn:v=>pgSet(p,'mode',v)}];
  if(c.mode!=='skip')perf.push({k:'hz',ic:'display',d:'Kunci Hz layar khusus game ini',t:'Refresh Rate',v:c.hz===''||c.hz==null?'Global':c.hz+' Hz',opts:[['','Ikut global','Mengikuti Hz mode']].concat(RT(s).map(v=>[String(v),v+' Hz',v>=120?'Paling mulus':v>=90?'Mulus & irit':'Hemat baterai'])),cur:String(c.hz==null?'':c.hz),fn:v=>pgSet(p,'hz',v)});
@@ -1461,31 +1536,18 @@ function openTg(){exec("am start --user 0 -a android.intent.action.VIEW -d '"+TG
 /* ----- sub-halaman ----- */
 const tmodeSub=s=>`<div class="card">${tweakSeg(s)}</div>
  <div class="fnote"><b>Performa:</b> scheduler tanpa bias hemat energi, thread app depan ke core besar, DRAM/vcore dan GPU Mali dikunci tinggi, pembatas sistem dimatikan. Lebih panas dan boros.<br><b>Eco:</b> cluster besar dibatasi, app latar dikurung ke core kecil, DRAM/vcore boleh turun, GPU boleh tidur. Lebih dingin dan hemat.<br>Otomatis mengikuti mode di Beranda; boleh dipilih manual di sini.</div>`;
+const fpaceSub=s=>{const p=s.fp||{on:false,act:false,tot:0,cpu:0,gpu:0,idle:0,sc:0,sg:0,si:0},sup=p.sc+p.sg+p.si;
+ const st=!p.on?'Mati':p.act?'Aktif di game':'Siaga (menunggu game dibuka)';
+ const warn=sup===0?'<div class="fnote"><b>Tidak ada node yang didukung.</b> Kernel HP ini tidak menyediakan pengaturan yang dipakai Frame Pacing, jadi fitur ini tidak akan berefek.</div>':'';
+ return `<div class="fnote"><b>Penstabil FPS.</b> Membuat waktu antar-frame lebih rata: clock CPU tidak jatuh di tengah frame, GPU lebih cepat naik dan lambat turun, dan CPU tidak masuk tidur dalam. Aktif otomatis hanya saat game dari <b>Daftar Game</b> ada di depan, lalu dipulihkan saat keluar, jadi baterai di luar game aman. Pakai bersama Kunci Refresh Rate supaya Hz juga tetap.</div>
+ <div class="card">${rowsById(['framepace'])}</div>${warn}
+ <div class="card"><div class="kv"><span>Status</span><b>${st}</b><span>Parameter diterapkan</span><b>${p.act?p.tot+' (CPU '+p.cpu+' · GPU '+p.gpu+' · Idle '+p.idle+')':'-'}</b><span>Didukung HP ini</span><b>CPU ${p.sc} · GPU ${p.sg} · Idle ${p.si}</b></div></div>`;};
 const thermalSub=s=>`<div class="card">${rowsById(['nothermal'])}</div>
  <div class="fnote"><b>Berisiko.</b> Mematikan mitigasi suhu membuat HP bisa sangat panas. Pakai Pendinginan di bawah bila perlu.</div>${coolCard(s)}`;
 const f2fsCard=s=>{const f=s.f2fs||{n:0,t:0,b:0,a:0};if(!f.n)return '<div class="fnote">Partisi F2FS tidak terdeteksi di HP ini.</div>';const last=f.t?new Date(f.t*1000).toLocaleString('id-ID'):'belum pernah';return `<div class="card"><div class="kv"><span>Terakhir GC</span><b>${last}</b><span>Segmen bebas</span><b>${f.t?f.b+' → '+f.a:'-'}</b></div><button class="btn" onclick="f2fsNow()">Jalankan GC sekarang</button></div>`;};
 async function f2fsNow(){toast('GC F2FS berjalan di latar (±2 menit)…');await run('f2fsgc run');setTimeout(load,130000);}
 const utilSub=s=>`<div class="fnote"><b>Optimasi latar belakang &amp; baterai.</b> Fitur lanjutan untuk mengurangi standby drain. Keduanya mati secara bawaan dan bisa menunda notifikasi bila aktif.</div>
  <div class="msec g">Konsumsi Daya &amp; Standby</div><div class="card">${rowsById(['aggrdoze','gmslimit','doze','datasaver','f2fsgc'])}</div>${f2fsCard(s)}`;
-async function ovToggle(on){toast('Menerapkan…');const r=await run('overlay '+(on?'on':'off'));await load();toast(on?'Overlay aktif · buka game untuk melihat FPS':'Overlay dimatikan');}
-async function ovAuto(on){await run('ovauto '+(on?'on':'off'));await load();toast(on?'Overlay muncul saat game dibuka':'Overlay selalu tampil');}
-async function recSet(k,v){const r=await run('ovrec set '+k+' '+v);await load();toast((r.out||'').indexOf('OK|')===0?'Tersimpan':'Gagal menyimpan');}
-async function ovNet(on){await run('ovnet '+(on?'on':'off'));await load();}
-async function ovTest(){toast('Mengambil data…');const r=await run('ostat1');const a=(r.out||'').trim().split('|');if(a[0]!=='OV'){toast('Tidak ada data');return;}
- const e=document.getElementById('ovtest');if(e)e.textContent='FPS '+(a[1]||'--')+' • CPU '+a[2]+'% • GPU '+(a[3]||'n/a')+'% • Bat '+a[4]+'% '+a[5]+'° • RAM '+a[6]+'% • '+a[7]+'/'+(a[8]||'-')+' MHz • ping '+(a[9]||'-')+' • '+(a[10]||'-');toast('Data terbaca');}
-const ovlSub=s=>{const o=s.ovl||{on:false,app:false,net:true,auto:true,res:'720',br:'auto',fps:'60'};
- const seg=(k,cur,opts)=>`<div class="seg3 tn-teal">${opts.map(([v,n])=>`<button class="chip ${String(cur)===v?'on':''}" onclick="recSet('${k}','${v}')">${n}</button>`).join('')}</div>`;
- return `${o.app?'':'<div class="fnote"><b>Aplikasi Comatoze belum terpasang.</b></div>'}
- <div class="card"><div style="display:flex;align-items:center;gap:12px;margin:0 0 10px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Aktifkan overlay</b><span style="font-size:12px;opacity:.65">Aktif lagi setelah reboot</span></div><label class="sw"><input type="checkbox" ${o.on?'checked':''} onchange="ovToggle(this.checked)"><i></i></label></div>
- <div style="display:flex;align-items:center;gap:12px;margin:0 0 10px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Hanya saat game dibuka</b><span style="font-size:12px;opacity:.65">Muncul saat game dibuka</span></div><label class="sw"><input type="checkbox" ${o.auto?'checked':''} onchange="ovAuto(this.checked)"><i></i></label></div>
- <div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Ukur latensi (ping)</b><span style="font-size:12px;opacity:.65">Tampilkan ping</span></div><label class="sw"><input type="checkbox" ${o.net?'checked':''} onchange="ovNet(this.checked)"><i></i></label></div></div>
- <div class="msec g">Rekam Layar</div><div class="card">
-  <div class="lbl">Resolusi</div>${seg('res',o.res,[['native','Asli'],['1080','1080p'],['720','720p']])}
-  <div class="lbl" style="margin-top:12px">Bitrate</div>${seg('br',o.br,[['auto','Auto'],['8','8 Mbps'],['16','16 Mbps'],['24','24 Mbps']])}
-  <div class="lbl" style="margin-top:12px">Frame rate</div>${seg('fps',o.fps,[['30','30'],['60','60'],['90','90'],['120','120']])}
-  <div class="fnote" style="margin-top:12px">Hasil: <b>Movies/Comatoze_*.mp4</b>, dipotong tiap 3 menit.</div></div>
- <div class="card"><div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Animasi saat game dibuka</b><span style="font-size:12px;opacity:.65">Splash singkat ±2 detik</span></div><label class="sw"><input type="checkbox" ${s.ovanim!==false?'checked':''} onchange="setOvAnim(this.checked)"><i></i></label></div><button class="btn tonal" style="margin-top:12px;width:100%" onclick="ovAnimTest()">Coba animasi</button></div>
- <div class="card"><button class="btn tonal" onclick="ovTest()">Uji data overlay</button><div id="ovtest" style="font-size:12px;opacity:.8;margin-top:8px;word-break:break-word"></div></div>`;};
 
 /* ---------- CROSSHAIR ---------- */
 const XH_ST=[['dot','Dot'],['cross','Cross'],['crossdot','Cross + Dot'],['tcross','T-Cross'],['x','X'],['circle','Circle'],['brackets','Brackets'],['chevron','Chevron'],['diamond','Diamond']];
@@ -1556,13 +1618,13 @@ const SUBS={
  cpu:{t:'CPU & GPU',f:s=>pageCpu(s)+gedCard(s)},
  tmode:{t:'Tweak Ekstra',f:tmodeSub},
  thermal:{t:'Disable Thermal',f:thermalSub},
+ fpace:{t:'Frame Pacing',f:fpaceSub},
  chg:{t:'Daya & Charging',f:s=>pageChg(s)},
  mem:{t:'Memory & ZRAM',f:s=>memCard(s)+idleCard(s)+dramCard(s)},
  dns:{t:'Private DNS',f:s=>dnsCard(s)},
  exp:{t:'Eksperimental',f:s=>`<div class="card">${rows('exp')}</div>`},
  care:{t:'Perawatan',f:s=>dpiCard(s)+killCard()+cacheCard()+colorCard(s)},
  util:{t:'Utilitas',f:utilSub},
- ovl:{t:'Overlay & Manager',f:ovlSub},
  sys:{t:'Fitur Sistem',f:s=>`<div class="card">${rows('sys')}</div>`},
  dev:{t:'Perangkat',f:devCard},
  gglobal:{t:'Profil Game',f:s=>gpCard(s)+pgCard(s)},
@@ -1623,8 +1685,6 @@ let _aq=Promise.resolve();
 const queueAct=f=>{const p=_aq.then(f,f);_aq=p.catch(()=>{});return p;};
 async function setMode(m){animMode(m);toast('Menerapkan…');await queueAct(()=>run('mode '+m));toast('Mode '+(MODE_NAME[m]||m));load();}
 function uirstCard(s){return `<div class="card"><div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Muat ulang UI otomatis</b><span style="font-size:12px;opacity:.65">Setelah ganti renderer, driver, atau ANGLE (bukan reboot)</span></div><label class="sw"><input type="checkbox" ${s.uirst!==false?'checked':''} onchange="setUirst(this.checked)"><i></i></label></div><button class="btn tonal" style="margin-top:12px;width:100%" onclick="uiNow()">Muat ulang UI sekarang</button></div>`;}
-async function setOvAnim(on){S.ovanim=on;await run('ovanim '+(on?'on':'off'));toast(on?'Animasi game: aktif':'Animasi game: mati');}
-async function ovAnimTest(){toast('Memutar animasi…');const r=await run('ovanim test');const o=((r&&r.out)||'').trim();if(!o.startsWith('OK'))toast('Gagal: '+(o.split('|')[1]||'overlay belum diberi izin'));}
 async function setUirst(on){S.uirst=on;await run('uirst '+(on?'on':'off'));toast(on?'Muat ulang UI otomatis: aktif':'Muat ulang UI otomatis: mati');}
 async function uiNow(){toast('Memuat ulang UI…');await run('uirst now');}
 async function setFeat(id,on){const r=await queueAct(()=>run(`feat ${id} ${on?'on':'off'}`));load();const o=((r&&r.out)||'').trim();if(/^ERR/.test(o)){toast(o.split('|')[1]||'Gagal');return;}toast((on?'Aktif: ':'Nonaktif: ')+(FEATURES.find(f=>f.id===id)||{}).name+(id==='nothermal'?' · reboot untuk efek penuh':''));}

@@ -37,6 +37,7 @@ if [ -z "$GPU" ]; then
 fi
 
 # ---------- MODE ----------
+# Mode: perf (brutal) | plite (Performa Lite: lantai clock naik, atap ~82%, 90 Hz) | balance | eco
 # Clock tertinggi yang benar-benar ada: HP overclock menambah OPP di tabel (mis. 2810 MHz) sementara cpuinfo_max_freq tetap angka stok (2000 MHz).
 # Mengunci ke angka stok yang tidak ada di tabel membuat kernel jatuh ke OPP di bawahnya (1900 MHz), jadi mode Performa justru lebih lambat dari stok.
 # Hasil di-cache per policy sampai cpuinfo_max berubah atau reboot (c.* dibuang saat boot).
@@ -56,6 +57,7 @@ cpu_mode(){
     case $1 in
       perf) g=$(pick "$av" turbo performance schedutil walt); mx=$imax; mn=$imax;;
       eco)  g=$(pick "$av" schedutil walt interactive powersave); mx=$(cap $((ist*60/100)) $fr); mn=$imin;;   # Eco tetap dihitung dari batas stok
+      plite) g=$(pick "$av" schedutil walt interactive ondemand); mx=$(cap $((imax*82/100)) $fr); mn=$(cap $((imax*30/100)) $fr);;   # Performa Lite: lantai clock naik (responsif), atap 82% (tidak brutal, lebih hemat)
       *)    g=$(pick "$av" schedutil walt interactive ondemand); mx=$imax; mn=$imin;;
     esac
     [ -n "$g" ] && w $g $p/scaling_governor
@@ -79,6 +81,7 @@ gpu_mode(){
   case $1 in
     perf) g=$(pick "$av" hino_turbo turbo performance msm-adreno-tz); mn=$top; mx=$top;;
     eco)  g=$(pick "$av" msm-adreno-tz simple_ondemand mali_ondemand); mn=$low; mx=$(cap $((top*60/100)) $fr);;
+    plite) g=$(pick "$av" msm-adreno-tz simple_ondemand mali_ondemand); mn=$(cap $((top*30/100)) $fr); mx=$(cap $((top*80/100)) $fr);;
     *)    g=$(pick "$av" msm-adreno-tz simple_ondemand mali_ondemand); mn=$low; mx=$top;;
   esac
   [ -n "$g" ] && w $g $GPU/governor
@@ -143,6 +146,8 @@ perf_extra(){
   done
   for u in $CPU/policy*/schedutil/up_rate_limit_us; do pxw $u 500; done
   [ -f /proc/sys/vm/swappiness ] && pxw /proc/sys/vm/swappiness 10
+  pxw /proc/sys/kernel/sched_energy_aware 0   # tanpa penempatan hemat-energi: task berat langsung ke core besar
+  pxw /sys/module/workqueue/parameters/power_efficient N   # workqueue unbound tidak dikumpulkan demi hemat daya
   [ -n "$GPU" ] && [ -f $GPU/polling_interval ] && pxw $GPU/polling_interval 10
   for c in /sys/devices/system/cpu/cpu[1-9]*/online; do
     [ "$(rd $c)" = "0" ] && pxw $c 1
@@ -712,6 +717,7 @@ mode_hz(){ # Hz untuk tiap mode: perf=tertinggi, balance=90 (bila ada, jika tida
     perf) rlist | tail -1;;
     eco) rlist | head -1;;
     balance) if rlist | grep -qx 90; then echo 90; else rlist | head -1; fi;;
+    plite) hz_snap 90;;
   esac
 }
 refresh_apply(){ # terapkan Hz ke sistem (dipakai refresh() & watchdog refresh_wd, tanpa validasi -- harus sudah dicek)
@@ -1411,7 +1417,7 @@ wl_apply(){ # on|off: WiFi tanpa scan latar & tanpa tidur (nilai asli disimpan l
     setcfg WLO_set 0
   fi
 }
-FEATS="f2fsgc gamefps gamethermal nothermal doze datasaver wifilatency bootapply dnd fastcharge autocut bypass gamebypass preload gamednd gameprofile gameclean touchboost perfx ecox lessdbg fpsgooff gmslimit aggrdoze hzlock120 hzforce bkt smooth"
+FEATS="framepace f2fsgc gamefps gamethermal nothermal doze datasaver wifilatency bootapply dnd fastcharge autocut bypass gamebypass preload gamednd gameprofile gameclean touchboost perfx ecox lessdbg fpsgooff gmslimit aggrdoze hzlock120 hzforce bkt smooth"
 feat(){ # name on|off
   case $1 in
     nothermal) if [ "$2" = on ]; then thermal off; else thermal on; fi; return;;
@@ -1443,6 +1449,7 @@ feat(){ # name on|off
     gamebypass) setcfg "F_$1" $2; chg_sync; game_sync; return;;
     gamethermal) setcfg "F_$1" $2; if [ "$2" = on ]; then [ -f $DIR/ingame ] && gth_on; else gth_off; fi; game_sync; return;;
     gameprofile) setcfg "F_$1" $2; [ "$2" = on ] || gp_leave; game_sync; return;;
+    framepace) setcfg "F_$1" $2; if [ "$2" = on ]; then [ -f $DIR/ingame ] && fp_on; else fp_off; fi; game_sync; return;;
     gameclean) setcfg "F_$1" $2; game_sync; return;;
     wifilatency) if [ "$2" = on ]; then wm=enabled; else wm=disabled; fi; cmd wifi force-hi-perf-mode $wm >/dev/null 2>&1; cmd wifi force-low-latency-mode $wm >/dev/null 2>&1; wl_apply $2;;
     fastcharge|autocut|bypass) setcfg "F_$1" $2; chg_sync; return;;
@@ -1750,13 +1757,13 @@ preload(){ # apk/lib/oat/obb + aset non-media di Android/data/<pkg>/files -> pag
   rm -f $L
 }
 # Ide fitur game terinspirasi dari CMD-Tweaks (t.me/HoyoSlave); kode ditulis ulang.
-gclean(){ cmd activity kill-all >/dev/null 2>&1; for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || [ "$p" = com.comatoze ] || cmd activity kill --user 0 $p >/dev/null 2>&1; done; ov_alive || { [ "$(getcfg OV_ON)" = on ] && [ -f $DIR/ingame ] && ov_svc; }; }
+gclean(){ cmd activity kill-all >/dev/null 2>&1; for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || [ "$p" = com.comatoze ] || cmd activity kill --user 0 $p >/dev/null 2>&1; done; }
 mode_restore(){
   m=$(getcfg MODE); [ "$m" = auto ] && m=balance
   if [ "$m" = custom ]; then batsaver custom; while IFS='|' read -r k a; do [ -n "$a" ] && NOSAVE=1 sh $SELF $a; done < $CUS
   else set_mode $m temp; fi
 }
-# Profil per game: GPM_<paket> (perf|balance|eco|skip) dan GPH_<paket> (Hz); kosong = ikut profil global (GP_MODE/GP_HZ). skip = jangan ubah apa pun untuk game itu.
+# Profil per game: GPM_<paket> (perf|plite|balance|eco|skip) dan GPH_<paket> (Hz); kosong = ikut profil global (GP_MODE/GP_HZ). skip = jangan ubah apa pun untuk game itu.
 gp_enter(){ [ -f $DIR/prof_on ] && return
   gm=$(getcfg "GPM_$1"); gh=$(getcfg "GPH_$1")
   [ "$gm" = skip ] && return 0
@@ -1770,7 +1777,7 @@ hz_snap(){ # Hz yang tidak didukung layar -> Hz didukung terdekat di bawahnya (b
 }
 gp_game(){ # <paket> <mode|-> <hz|->  : simpan profil satu game ("-" = ikut global)
   case $1 in ''|*[!A-Za-z0-9_.]*) echo "ERR|nama paket tidak valid"; return 1;; esac
-  case $2 in -|perf|balance|eco|skip) ;; *) echo "ERR|mode tidak dikenal"; return 1;; esac
+  case $2 in -|perf|plite|balance|eco|skip) ;; *) echo "ERR|mode tidak dikenal"; return 1;; esac
   case $3 in -|[0-9]|[0-9][0-9]|[0-9][0-9][0-9]) ;; *) echo "ERR|Hz tidak valid"; return 1;; esac
   m=$2; h=$3; [ "$m" = - ] && m=; [ "$h" = - ] && h=
   setcfg "GPM_$1" "$m"; setcfg "GPH_$1" "$h"; echo OK
@@ -1781,9 +1788,51 @@ gp_leave(){ [ -f $DIR/prof_on ] || return; rm -f $DIR/prof_on; mode_restore; }
 # Penanda $DIR/gth_on = thermal sedang dimatikan oleh fitur ini (dibersihkan saat boot karena kondisi thermal ikut ter-reset).
 gth_on(){ [ -f $DIR/gth_on ] && return 0; [ "$(getcfg THERMAL)" = off ] && return 0; : > $DIR/gth_on; thermal off temp >/dev/null 2>&1; }
 gth_off(){ [ -f $DIR/gth_on ] || return 0; rm -f $DIR/gth_on; [ "$(getcfg THERMAL)" = off ] || thermal on temp >/dev/null 2>&1; }
+# ---------- FRAME PACING (penstabil FPS) ----------
+# Berlaku hanya saat game dari Daftar Game ada di depan (seperti Thermal Otomatis), dipulihkan saat keluar game -> tidak menguras baterai di luar game.
+# Yang diubah (hanya node yang benar-benar ada & berhasil ditulis; jumlahnya dilaporkan ke WebUI):
+#  - CPU schedutil: up_rate_limit_us 500 (naik clock cepat) + down_rate_limit_us 20000 (clock ditahan ~2 frame, tidak jatuh di tengah frame)
+#  - GPU devfreq: polling_interval cepat, upthreshold lebih rendah (naik lebih awal), downdifferential lebih lebar (tidak turun terlalu cepat)
+#  - CPU idle: state tidur dalam dimatikan (latensi bangun kecil = waktu frame lebih rata)
+# Nilai asli dicatat sekali per node di $FPV dan ditulis balik oleh fp_off.
+FPV=$DIR/fpvals
+CPUD=/sys/devices/system/cpu
+fpw(){ # node nilai
+  [ -e "$1" ] || return 0
+  _fo=$(cat "$1" 2>/dev/null); [ -n "$_fo" ] || return 0
+  grep -q "^$1|" $FPV 2>/dev/null || echo "$1|$_fo" >> $FPV
+  chmod 644 "$1" 2>/dev/null; echo "$2" > "$1" 2>/dev/null
+  [ "$(cat "$1" 2>/dev/null)" = "$2" ] && FPN=$((FPN+1))
+  return 0; }
+fp_on(){
+  FPN=0; mkdir -p $DIR
+  for _p in $CPU/policy*; do
+    for _g in schedutil sugov_ext walt; do [ -d $_p/$_g ] || continue
+      fpw $_p/$_g/up_rate_limit_us 500; fpw $_p/$_g/down_rate_limit_us 20000
+    done
+  done
+  _fc=$FPN
+  if [ -n "$GPU" ]; then
+    fpw $GPU/polling_interval 10; fpw $GPU/simple_ondemand/upthreshold 70; fpw $GPU/simple_ondemand/downdifferential 20
+  fi
+  _fg=$((FPN-_fc)); _f0=$FPN
+  for _cp in $CPUD/cpu[0-9]*; do for _st in $_cp/cpuidle/state[1-9]*; do fpw $_st/disable 1; done; done
+  echo "$FPN|$_fc|$_fg|$((FPN-_f0))" > $DIR/fp.res; : > $DIR/fp_on
+  glog "frame pacing aktif: $FPN parameter"; }
+fp_off(){
+  if [ -f $FPV ]; then
+    while IFS='|' read -r _n _v; do [ -n "$_n" ] && [ -e "$_n" ] && echo "$_v" > "$_n" 2>/dev/null; done < $FPV
+  fi
+  rm -f $FPV $DIR/fp_on $DIR/fp.res; }
+fp_later(){ sleep 5; [ -f $DIR/ingame ] && [ "$(getcfg F_framepace)" = on ] && fp_on; }   # setelah profil game & tweak performa terpasang (mereka menulis governor/tunable juga)
+fp_support(){ _sc=0; _sg=0; _si=0
+  for _p in $CPU/policy*; do for _g in schedutil sugov_ext walt; do [ -e $_p/$_g/up_rate_limit_us ] && _sc=$((_sc+1)); done; done
+  if [ -n "$GPU" ]; then for _n in polling_interval simple_ondemand/upthreshold simple_ondemand/downdifferential; do [ -e $GPU/$_n ] && _sg=$((_sg+1)); done; fi
+  for _cp in $CPUD/cpu[0-9]*; do for _st in $_cp/cpuidle/state[1-9]*; do [ -e $_st/disable ] && _si=$((_si+1)); done; done
+  echo "$_sc|$_sg|$_si"; }
 game_wd(){
   echo $$ > $DIR/game.pid; ing=0; dset=0; away=0; lastg=; gpid=
-  gp_leave; gth_off; rm -f $DIR/ingame   # sisa profil/thermal dari pemantau sebelumnya (mati mendadak) dipulihkan dulu; bila game masih jalan, loop memasangnya lagi
+  gp_leave; gth_off; fp_off; rm -f $DIR/ingame   # sisa profil/thermal dari pemantau sebelumnya (mati mendadak) dipulihkan dulu; bila game masih jalan, loop memasangnya lagi
   glog "pemantau mulai"
   [ "$(getcfg F_preload)" = on ] && ( sleep 30; for p in $(cat $DIR/games.txt 2>/dev/null); do preload $p; done ) &
   while :; do
@@ -1800,24 +1849,19 @@ game_wd(){
         [ "$(getcfg F_preload)" = on ] && preload $cur &
         lastg=$cur; glog "masuk $cur"; [ -s $AAP ] && tex_cur $cur
         [ -f $PXV2 ] && { sleep 4; perf_x_game; } &
-        _ax=; [ "$(getcfg OV_ANIM)" = off ] || _ax="--ez anim true --es pkg $cur"
-        if [ "$(getcfg OV_ON)" = on ] && ov_auto; then { setcfg OV_DEF on; ov_svc $_ax; } &
-        elif [ -n "$_ax" ]; then { ov_perm; ov_svc --ez animonly true $_ax; } & fi
         [ "$(getcfg F_gameprofile)" = on ] && gp_enter $cur
         [ "$(getcfg F_gamethermal)" = on ] && gth_on
+        [ "$(getcfg F_framepace)" = on ] && fp_later &
         if [ "$(getcfg F_gamednd)" = on ]; then cmd notification set_dnd priority; dset=1; fi
       elif [ "$cur" != "$lastg" ]; then   # pindah langsung ke game lain di daftar: terapkan profil game barunya
         lastg=$cur; [ -s $AAP ] && tex_cur $cur
         if [ "$(getcfg F_gameprofile)" = on ]; then gp_leave; gp_enter $cur; fi
-      else   # pengawas overlay: tiap ~15 dtk pastikan layanan overlay masih hidup (bisa mati karena memori/pembersihan)
-        wdc=$((wdc+1))
-        if [ $wdc -ge 5 ]; then wdc=0; [ "$(getcfg OV_ON)" = on ] && { ov_alive || ov_svc; }; fi
+        [ "$(getcfg F_framepace)" = on ] && fp_later &
       fi
     elif [ "$ing" = 1 ]; then
       away=$((away+1))
       if [ $away -ge 3 ]; then   # keluar game bila 3x cek berturut-turut (anti-flicker shade/dialog/pemuatan)
-        ing=0; rm -f $DIR/ingame; gp_leave; gth_off; glog "keluar ${lastg}"
-        [ "$(getcfg OV_ON)" = on ] && ov_auto && am stopservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1 &
+        ing=0; rm -f $DIR/ingame; gp_leave; gth_off; fp_off; glog "keluar ${lastg}"
         [ "$dset" = 1 ] && { cmd notification set_dnd off; dset=0; }
       fi
     fi
@@ -1825,11 +1869,10 @@ game_wd(){
   done
 }
 game_sync(){
-  on=0; for f in preload gamednd gameprofile gameclean gamebypass gamethermal fpsgooff; do [ "$(getcfg F_$f)" = on ] && on=1; done
-  [ "$(getcfg OV_ON)" = on ] && ov_auto && on=1   # overlay otomatis butuh pemantau game
+  on=0; for f in preload gamednd gameprofile gameclean gamebypass gamethermal fpsgooff framepace; do [ "$(getcfg F_$f)" = on ] && on=1; done
   alive=0; [ -f $DIR/game.pid ] && kill -0 $(cat $DIR/game.pid) 2>/dev/null && alive=1
   if [ $on = 1 ] && [ $alive = 0 ]; then bg game_wd
-  elif [ $on = 0 ] && [ $alive = 1 ]; then kill $(cat $DIR/game.pid); rm -f $DIR/game.pid; gp_leave; gth_off; fi
+  elif [ $on = 0 ] && [ $alive = 1 ]; then kill $(cat $DIR/game.pid); rm -f $DIR/game.pid; gp_leave; gth_off; fp_off; fi
 }
 # ---------- GRAFIS PER GAME: resolusi, driver (Game Driver), API (ANGLE) ----------
 # Referensi perilaku: CMD-Tweaks "Resolution Scale" & "Renderer/Angle" (t.me/HoyoSlave) - kode ditulis ulang,
@@ -2281,231 +2324,20 @@ cl(){ # baris status yang tetap selama HP hidup: hitung sekali, simpan sampai re
 }
 dev_line(){ echo "DEV|$(getprop ro.product.brand)|$(getprop ro.product.model)|$(soc)|$(uname -r)|$(getprop ro.build.version.release)|$(gpu_type)"; }
 chipz_line(){ echo "CHIPZ|$(grep -qa SOC_MODEL $MODD/zygisk/arm64-v8a.so 2>/dev/null && echo yes || echo no)"; }
-# ---------- OVERLAY / MANAGER: umpan data statistik (dipakai aplikasi Comatoze, v2.37) ----------
-# `ostat` mencetak satu baris per detik: OV|fps|cpu%|gpu%|baterai%|suhuBat|ram%|cpuMHz|gpuMHz|ping|paket|suhuCPU
-# Hampir semuanya builtin shell (read/case/aritmetika); fork hanya: sleep, dan (tiap 5 dtk) dumpsys/ping bila fitur dipakai.
-ov_num(){ OVN=; [ -r "$1" ] || return 1; read -r _t 2>/dev/null < "$1" || return 1; _t=${_t#"${_t%%[0-9]*}"}; OVN=${_t%%[!0-9]*}; [ -n "$OVN" ]; }
-ov_gpu_find(){ _OVGL=
-  for f in /sys/kernel/ged/hal/gpu_utilization /sys/kernel/ged/hal/current_loading /proc/mali/utilization /sys/class/kgsl/kgsl-3d0/gpu_busy_percentage /sys/kernel/gpu/gpu_busy /sys/class/devfreq/*mali*/load /sys/class/devfreq/*gpu*/load; do
-    [ -r "$f" ] && ov_num "$f" && _OVGL="$_OVGL $f"
-  done; [ -n "$_OVGL" ]; }
-ov_gpu_read(){ OVGV=; for f in $_OVGL; do ov_num "$f" || continue; OVGV=$OVN; [ "$OVN" -gt 0 ] && break; done; [ -n "$OVGV" ]; }
-ov_gfreq_find(){ _OVF=; _OVD=1000000
-  for f in /sys/class/devfreq/*mali*/cur_freq /sys/class/devfreq/*gpu*/cur_freq /sys/class/kgsl/kgsl-3d0/gpuclk; do
-    [ -r "$f" ] && { _OVF=$f; return 0; }
-  done; return 1; }
-ov_nm(){ # normalkan nama layer: Android 16 menulis "RequestedLayerState{hash NAMA parentId=..}", sedangkan --latency butuh NAMA saja
-  OVNM=$1
-  case $1 in "RequestedLayerState{"*) OVNM=${1#RequestedLayerState\{}; OVNM=${OVNM#* }; OVNM=${OVNM%% parentId=*}; OVNM=${OVNM%\}};; esac; }
-ov_layers(){ # <paket> -> OVLS: layer SurfaceFlinger milik paket (satu per baris); layer SurfaceView/BLAST (jalur render game) didahulukan
-  OVLS=; _lb=
-  while IFS= read -r l; do
-    case $l in *"$1"*) case $l in *ActivityRecord*|*"Background for"*|*Bounds*|*InputSink*) continue;; esac
-      ov_nm "$l"
-      case $OVNM in *SurfaceView*|*BLAST*) OVLS="$OVLS$OVNM
-";; *) _lb="$_lb$OVNM
-";; esac;; esac
-  done <<EOT
-$(dumpsys SurfaceFlinger --list 2>/dev/null)
-EOT
-  OVLS="$OVLS$_lb"
-}
-ov_cnt(){ OVC=0; _m=0; for t in $1; do [ "$t" -gt "$_m" ] && _m=$t; done; [ "$_m" -gt 0 ] || return 1
-  _lo=$((_m-1000000000)); for t in $1; do [ "$t" -gt "$_lo" ] && OVC=$((OVC+1)); done; return 0; }
-ov_fps(){ # <layer> -> OVFPS = frame dalam 1 detik terakhir layer itu (kolom desired/present/ready, ambil yang terbanyak)
-  OVFPS=; _t1=; _t2=; _t3=
-  while read -r a b c; do
-    case $a in ''|*[!0-9]*) ;; *) [ ${#a} -le 18 ] && [ "$a" -gt 0 ] && _t1="$_t1 $a";; esac
-    case $b in ''|*[!0-9]*) ;; *) [ ${#b} -le 18 ] && [ "$b" -gt 0 ] && _t2="$_t2 $b";; esac
-    case $c in ''|*[!0-9]*) ;; *) [ ${#c} -le 18 ] && [ "$c" -gt 0 ] && _t3="$_t3 $c";; esac
-  done <<EOT
-$(dumpsys SurfaceFlinger --latency "$1" 2>/dev/null | tail -n +2)
-EOT
-  _n=0; _ok=
-  ov_cnt "$_t2" && { _ok=1; _n=$OVC; }
-  ov_cnt "$_t3" && { _ok=1; [ $OVC -gt $_n ] && _n=$OVC; }
-  ov_cnt "$_t1" && { _ok=1; [ $OVC -gt $_n ] && _n=$OVC; }
-  [ -n "$_ok" ] || return 1
-  [ $_n -gt 240 ] && _n=240
-  OVFPS=$_n; return 0; }
-ov_gfx(){ # <paket> -> OVFPS dari gfxinfo framestats (app HWUI: manager, browser, dll). Cadangan bila layer SurfaceFlinger kosong
-  OVFPS=; _tg=; _in=0
-  while IFS= read -r l; do
-    case $l in ---PROFILEDATA---) _in=$((1-_in)); continue;; esac
-    [ $_in = 1 ] || continue
-    case $l in 0,*) _f=${l%,}; _f=${_f##*,}; case $_f in ''|*[!0-9]*) ;; *) [ ${#_f} -le 18 ] && _tg="$_tg $_f";; esac;; esac
-  done <<EOT
-$(dumpsys gfxinfo "$1" framestats 2>/dev/null)
-EOT
-  ov_cnt "$_tg" || return 1; OVFPS=$OVC; return 0; }
-ov_scan(){ # pindai daftar layer di $OVLS (maks 15) -> _lay/OVFPS terbaik
-  _lay=; _bn=-1; _c=0
-  while IFS= read -r l; do
-    [ -n "$l" ] || continue
-    _c=$((_c+1)); [ $_c -gt 15 ] && break
-    ov_fps "$l" && [ "$OVFPS" -gt "$_bn" ] && { _bn=$OVFPS; _lay=$l; }
-  done <<EOT
-$OVLS
-EOT
-  [ -n "$_lay" ] && OVFPS=$_bn; [ -n "$_lay" ]; }
-ov_layers_all(){ # semua layer kecuali bagian UI sistem / manager sendiri
-  OVLS=
-  while IFS= read -r l; do
-    case $l in ''|*StatusBar*|*NavigationBar*|*ScreenDecor*|*InputMethod*|*Wallpaper*|*com.comatoze*|*systemui*|*Background*|*Dim*|*Splash*|*Letterbox*|*Bounds*|*ImeContainer*|*Task=*|*Magnification*|*Pointer*|*Cursor*|*ActivityRecord*|*InputSink*) ;; *) ov_nm "$l"; OVLS="$OVLS$OVNM
-";; esac
-  done <<EOT
-$(dumpsys SurfaceFlinger --list 2>/dev/null)
-EOT
-}
-ov_best(){ # <paket> -> layer paket dengan FPS tertinggi; bila nama layer tak cocok, pindai semua layer non-sistem
-  ov_layers "$1"; ov_scan && return 0
-  ov_layers_all; ov_scan; }
-ostat(){
-  _CC=0; _CT=0; i=0; _pkg=; _lay=; _gf=; _ping=; _NETC=$(getcfg OV_NET); OVFPS=
-  ov_gpu_find; ov_gfreq_find
-  _cmax=0; for p in /sys/devices/system/cpu/cpufreq/policy*/cpuinfo_max_freq; do ov_num $p && [ "$OVN" -gt "$_cmax" ] && _cmax=$OVN; done; _cmax=$((_cmax/1000))
-  _gmax=; for f in /sys/class/devfreq/*mali*/max_freq /sys/class/devfreq/*gpu*/max_freq; do ov_num $f && { _gmax=$((OVN/1000000)); break; }; done
-  while :; do
-    # CPU %
-    read -r _x u n s id io ir so st _r < /proc/stat
-    _tot=$((u+n+s+id+io+ir+so+st)); _idl=$((id+io))
-    _dt=$((_tot-_CT)); _di=$((_idl-_CC)); cpu=0
-    [ $_dt -gt 0 ] && cpu=$(( (100*(_dt-_di))/_dt )); _CT=$_tot; _CC=$_idl
-    # CPU MHz (tertinggi antar policy)
-    mx=0; for p in /sys/devices/system/cpu/cpufreq/policy*/scaling_cur_freq; do ov_num $p && [ "$OVN" -gt "$mx" ] && mx=$OVN; done; cmhz=$((mx/1000))
-    # GPU
-    gpu=; ov_gpu_read && gpu=$OVGV; [ -n "$gpu" ] && [ "$gpu" -gt 100 ] && gpu=100
-    gmhz=; [ -n "$_OVF" ] && ov_num "$_OVF" && gmhz=$((OVN/_OVD))
-    # baterai, suhu, RAM
-    ov_num $BAT/capacity && bat=$OVN; ov_num $BAT/temp && bt=$((OVN/10))
-    ct=; ov_num ${OVTZ:-/sys/class/thermal/thermal_zone0/temp} && { ct=$OVN; [ $ct -gt 1000 ] && ct=$((ct/1000)); }
-    mt=0; ma=0; while IFS=' ' read -r k v _u; do case $k in MemTotal:) mt=$v;; MemAvailable:) ma=$v; break;; esac; done < /proc/meminfo
-    ram=0; [ $mt -gt 0 ] && ram=$(( (100*(mt-ma))/mt ))
-    # app depan + layer + FPS (resolusi paket tiap 5 dtk saja)
-    if [ $((i%5)) -eq 0 ]; then
-      set -- $(game_fgp); _np=$1
-      if [ -z "$_np" ]; then
-        _np=$(dumpsys window 2>/dev/null | grep -m1 mCurrentFocus); _np=${_np##* }; _np=${_np%%/*}; _np=${_np%\}}
-      fi
-      [ "$_np" != "$_pkg" ] && { _pkg=$_np; _lay=; }
-      if [ "$_NETC" != off ]; then _ping=; _p=$(ping -c1 -W1 1.1.1.1 2>/dev/null); case $_p in *time=*) _p=${_p#*time=}; _p=${_p%% *}; _ping=${_p%%.*};; esac; fi
-    fi
-    fps=
-    if [ -n "$_pkg" ]; then
-      if [ -n "$_lay" ] && ov_fps "$_lay"; then :; else _lay=; OVFPS=; fi
-      # layer belum ketemu / FPS rendah (mungkin layer salah): pindai ulang semua layer paket tiap 5 dtk
-      if [ -z "$_lay" ] || { [ "${OVFPS:-0}" -lt 20 ] && [ $((i%5)) -eq 0 ]; }; then ov_best "$_pkg"; fi
-      [ -n "$_lay" ] && fps=$OVFPS
-      # cadangan: layer SurfaceFlinger tak memberi data -> hitung dari gfxinfo (tiap 2 dtk, hasil dipakai ulang di antaranya)
-      if [ -z "$fps" ]; then
-        [ $((i%2)) -eq 0 ] && { ov_gfx "$_pkg" && _gf=$OVFPS || _gf=; }
-        fps=$_gf
-      fi
-    fi
-    echo "OV|$fps|$cpu|$gpu|$bat|$bt|$ram|$cmhz|$gmhz|$_ping|$_pkg|$ct|$_cmax|$_gmax"
-    i=$((i+1)); [ -n "$OVONCE" ] && [ $i -ge 2 ] && return 0; sleep 1
-  done
-}
-ov_perm(){ # beri izin overlay + notifikasi ke aplikasi Comatoze tanpa dialog (root)
+app_perm(){ # beri izin tampil-di-atas-app (crosshair) + notifikasi + latar ke aplikasi Comatoze tanpa dialog (root)
   appops set com.comatoze SYSTEM_ALERT_WINDOW allow >/dev/null 2>&1
   pm grant com.comatoze android.permission.POST_NOTIFICATIONS >/dev/null 2>&1
-  for _o in RUN_IN_BACKGROUND RUN_ANY_IN_BACKGROUND START_FOREGROUND SYSTEM_ALERT_WINDOW; do appops set com.comatoze $_o allow >/dev/null 2>&1; done
+  for _o in RUN_IN_BACKGROUND RUN_ANY_IN_BACKGROUND START_FOREGROUND; do appops set com.comatoze $_o allow >/dev/null 2>&1; done
   cmd deviceidle whitelist +com.comatoze >/dev/null 2>&1   # baterai: Tanpa batasan
   cmd deviceidle sys-whitelist +com.comatoze >/dev/null 2>&1
-  am set-standby-bucket com.comatoze active >/dev/null 2>&1
-  cmd appops set com.comatoze SYSTEM_ALERT_WINDOW allow >/dev/null 2>&1; }
-ov_auto(){ [ "$(getcfg OV_AUTO)" != off ]; }   # bawaan: overlay hanya muncul saat game dari daftar dibuka
-ov_svc(){ _o=$(am start-foreground-service --user 0 -n com.comatoze/.OverlayService "$@" 2>&1)
-  case $_o in *rror*|*not\ allowed*|*denied*|*not\ found*) am startservice --user 0 -n com.comatoze/.OverlayService "$@" >/dev/null 2>&1;; esac; }
-ov_alive(){ dumpsys activity services com.comatoze/.OverlayService 2>/dev/null | grep -q ServiceRecord; }
-# Animasi pembuka game (layar penuh, ~2 dtk, tidak bisa disentuh). OV_ANIM: on (default) | off. "animonly" = animasi saja, tanpa overlay.
-ovanim(){ case $1 in
-  on|off) setcfg OV_ANIM $1; echo "OK|animasi $1";;
-  test) ov_perm; if [ "$(getcfg OV_ON)" = on ]; then ov_svc --ez anim true; else ov_svc --ez animonly true --ez anim true; fi; echo "OK|animasi dicoba";;
-  *) echo "OVANIM|$(getcfg OV_ANIM)";;
-esac; }
-ov_boot(){ sleep 30; ov_perm; if ov_auto; then game_sync; else ov_svc; fi; }
-# ---------- REKAM LAYAR (dipakai tombol REC overlay; pengaturan di WebUI: resolusi / bitrate / fps) ----------
-# Resolusi: native | 1080 | 720 (sisi pendek). Bitrate: auto(=16) | 8 | 16 | 24 Mbps. FPS: dipakai bila screenrecord mendukung --max-fps.
-# Rekaman dipotong per 180 dtk (batas screenrecord) dan disambung otomatis sampai tombol Stop ditekan.
-ovrec_size(){ # <sisi pendek target> -> OVSZ "WxH" sesuai orientasi layar saat ini (kosong = pakai ukuran asli)
-  OVSZ=; _s=$(wm size 2>/dev/null | tail -n 1); _s=${_s##* }
-  case $_s in *x*) ;; *) return 1;; esac
-  _w=${_s%x*}; _h=${_s#*x}
-  case $_w$_h in *[!0-9]*|'') return 1;; esac
-  if [ $_w -lt $_h ]; then _sh=$_w; _lo=$_h; else _sh=$_h; _lo=$_w; fi
-  [ "$1" -lt "$_sh" ] || return 1
-  _nl=$(( (_lo*$1/_sh)/2*2 ))
-  _r=$(dumpsys window displays 2>/dev/null | grep -m1 -o 'mCurrentRotation=ROTATION_[0-9]*')
-  case $_r in *_90|*_270) OVSZ=${_nl}x$1;; *) OVSZ=$1x${_nl};; esac; }
-ovrec(){ case $1 in
-  set) case $2 in
-    res) case $3 in native|720|1080) setcfg REC_RES $3; echo "OK|resolusi $3";; *) echo "ERR|nilai tidak valid";; esac;;
-    br)  case $3 in auto|8|16|24) setcfg REC_BR $3; echo "OK|bitrate $3";; *) echo "ERR|nilai tidak valid";; esac;;
-    fps) case $3 in 30|60|90|120) setcfg REC_FPS $3; echo "OK|fps $3";; *) echo "ERR|nilai tidak valid";; esac;;
-    *) echo "ERR|kunci tidak dikenal";; esac;;
-  start)
-    cfgv REC_RES; _res=${CV:-720}; cfgv REC_BR; _br=${CV:-auto}; cfgv REC_FPS; _fp=${CV:-60}
-    [ "$_br" = auto ] && _br=16
-    _args="--bit-rate $((_br*1000000))"
-    [ "$_res" != native ] && ovrec_size $_res && _args="$_args --size $OVSZ"
-    screenrecord --help 2>&1 | grep -q -- '--max-fps' && _args="$_args --max-fps $_fp"
-    mkdir -p /sdcard/Movies; rm -f $DIR/recstop; _base=/sdcard/Movies/Comatoze_$(date +%Y%m%d_%H%M%S); _n=1; _first=
-    while [ ! -f $DIR/recstop ]; do
-      if [ $_n -eq 1 ]; then _f=$_base.mp4; else _f=${_base}_$_n.mp4; fi
-      [ -n "$_first" ] || _first=$_f
-      screenrecord $_args --time-limit 180 "$_f" >/dev/null 2>&1 || { [ -f "$_f" ] || { echo "ERR|screenrecord gagal"; return 1; }; }
-      _n=$((_n+1))
-    done
-    rm -f $DIR/recstop; echo "OK|$_first";;
-  stop) touch $DIR/recstop; pkill -2 screenrecord; echo "OK|stop";;
-  *) echo "REC|$(getcfg REC_RES)|$(getcfg REC_BR)|$(getcfg REC_FPS)";;
-esac; }
-ovstate(){ # status ringan untuk panel overlay: OVS|mode|hz|fpsgooff|nothermal|touchboost|gamednd|gamebypass|perfx|gmslimit|gameclean|gameprofile|aggrdoze|dnd|wifilatency|hzforce|lessdbg|datasaver|def|bkt|smooth|preload|gamethermal|doze|gamefps|fastcharge|autocut|bypass|ecox
-  cfgv MODE; _m=$CV; cfgv RHZ; _h=$CV; _o="OVS|$_m|$_h"
-  for _k in fpsgooff nothermal touchboost gamednd gamebypass perfx gmslimit gameclean gameprofile aggrdoze dnd wifilatency hzforce lessdbg datasaver; do _o="$_o|$(fstate $_k)"; done
-  cfgv OV_DEF; [ "$CV" = off ] && _o="$_o|off" || _o="$_o|on"
-  for _k in bkt smooth preload gamethermal doze gamefps fastcharge autocut bypass ecox; do _o="$_o|$(fstate $_k)"; done
-  echo "$_o"; }
-# Mode overlay: "default" = ikut setelan manager (profil per-game GPM_/GPH_ lalu profil global GP_MODE/GP_HZ, Hz per mode dari manager)
-ovmode(){ case $1 in
-  default) set -- $(game_fgp); _p=$1; _m=; _h=
-    [ -n "$_p" ] && { cfgv "GPM_$_p"; _m=$CV; cfgv "GPH_$_p"; _h=$CV; }
-    [ -n "$_m" ] || { cfgv GP_MODE; _m=$CV; }; [ -n "$_h" ] || { cfgv GP_HZ; _h=$CV; }
-    case $_m in perf|balance|eco) ;; *) _m=balance;; esac
-    set_mode $_m; game_sync
-    case $_h in ""|*[!0-9]*) ;; *) refresh $_h q >/dev/null 2>&1;; esac
-    setcfg OV_DEF on; echo "OK|default -> $_m";;
-  eco|balance|perf) setcfg OV_DEF off; set_mode $1; game_sync; echo "OK|$1";;
-  *) echo "ERR|mode tidak dikenal";;
-esac; }
-# Jendela mengambang (freeform) untuk sebuah app. Bergantung ROM: butuh dukungan freeform window.
-ovfloat(){ case $1 in ""|*[!A-Za-z0-9_.]*) echo "ERR|nama paket tidak valid"; return 1;; esac
-  sput global enable_freeform_support 1; sput global force_resizable_activities 1; sput global enable_non_resizable_multi_window 1
-  _a=$(cmd package resolve-activity --brief -c android.intent.category.LAUNCHER "$1" 2>/dev/null | tail -n 1)
-  case $_a in */*) ;; *) echo "ERR|activity peluncur tidak ketemu"; return 1;; esac
-  am start --windowingMode 5 -n "$_a" >/dev/null 2>&1 || cmd activity start-activity --windowingMode 5 -n "$_a" >/dev/null 2>&1 || { echo "ERR|ROM menolak jendela mengambang"; return 1; }
-  echo "OK|jendela mengambang $1"; }
-ovact(){ case $1 in
+  am set-standby-bucket com.comatoze active >/dev/null 2>&1; }
+qact(){ case $1 in
   clean) _g=$(game_fg); gclean "$_g"; am kill-all >/dev/null 2>&1; cmd activity kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory
     pm trim-caches 16G >/dev/null 2>&1; echo "OK|RAM dibersihkan";;
   trim) pm trim-caches 16G >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; cmd package bg-dexopt-job >/dev/null 2>&1 & echo "OK|cache dipangkas";;
   killbg) gclean "$(game_fg)"; am kill-all >/dev/null 2>&1; echo "OK|aplikasi latar dihentikan";;
-  shot) f=/sdcard/Pictures/Comatoze_$(date +%Y%m%d_%H%M%S).png; mkdir -p /sdcard/Pictures; screencap -p $f && echo "OK|tersimpan $f" || echo "ERR|gagal";;
   *) echo "ERR|aksi tidak dikenal";;
 esac; }
-ovdiag(){ # laporan untuk debugging overlay: kirim hasilnya bila FPS/GPU tidak terbaca
-  echo "== node GPU"; ov_gpu_find; for f in $_OVGL; do echo "$f = $(head -c 120 $f 2>/dev/null | tr '\n' ' ')"; done; [ -n "$_OVGL" ] || ls /sys/kernel/ged/hal /sys/class/devfreq 2>&1 | head -30
-  set -- $(game_fgp); p=$1
-  if [ -z "$p" ]; then p=$(dumpsys window 2>/dev/null | grep -m1 mCurrentFocus); p=${p##* }; p=${p%%/*}; p=${p%\}}; fi
-  echo "== paket depan: $p"; ov_layers "$p"; echo "== layer:"; echo "$OVLS"
-  echo "== hasil FPS per layer:"
-  while IFS= read -r l; do [ -n "$l" ] || continue; ov_fps "$l" && echo "fps=$OVFPS  <- $l" || echo "kosong <- $l"; done <<EOT
-$OVLS
-EOT
-  echo "== gfxinfo framestats ($p):"; if ov_gfx "$p"; then echo "fps=$OVFPS"; else echo "kosong"; fi
-  echo "== fpsgo_status:"; head -n 12 /sys/kernel/fpsgo/fstb/fpsgo_status 2>&1
-  echo "== contoh --latency layer pertama:"; l=$(echo "$OVLS" | head -n 1); dumpsys SurfaceFlinger --latency "$l" 2>&1 | head -n 6; }
 # ---------- IDLE RAM saat TIDAK ada game aktif, bila RAM bebas < batas -> padatkan memori + buang cache bersih ----------
 # Config: IDLE_RAM on|off, IDLE_MIN (MB, 128-8192, bawaan 1024), IDLE_INT (menit, 1-120, bawaan 15)
 idleram_run(){ echo $$ > $DIR/idleram.pid
@@ -2532,7 +2364,7 @@ esac; }
 ch_svc(){ am start-foreground-service --user 0 -n com.comatoze/.CrosshairService "$@" >/dev/null 2>&1 || am startservice --user 0 -n com.comatoze/.CrosshairService "$@" >/dev/null 2>&1; }
 ch_get(){ _v=$(getcfg "$1"); echo "${_v:-$2}"; }
 crosshair(){ case $1 in
-  on) ov_perm; setcfg CH_ON on; ch_svc --ez reload true; echo "OK|crosshair aktif";;
+  on) app_perm; setcfg CH_ON on; ch_svc --ez reload true; echo "OK|crosshair aktif";;
   off) setcfg CH_ON off; am stopservice --user 0 -n com.comatoze/.CrosshairService >/dev/null 2>&1; echo "OK|crosshair mati";;
   next) case $2 in
       style) _l="dot cross crossdot tcross x circle brackets chevron diamond pulse spin"; _k=CH_STYLE; _c=$(ch_get CH_STYLE cross);;
@@ -2554,31 +2386,18 @@ crosshair(){ case $1 in
     setcfg "CH_$(echo $_k | tr a-z A-Z)" "$_v"; [ "$(getcfg CH_ON)" = on ] && ch_svc --ez reload true; echo "OK|tersimpan";;
   *) echo "CH|$(getcfg CH_ON)|$(ch_get CH_STYLE cross)|$(ch_get CH_COLOR FF3B30)|$(ch_get CH_SIZE 30)|$(ch_get CH_TH 2)|$(ch_get CH_GAP 6)|$(ch_get CH_OP 90)|$(ch_get CH_GLOW 50)|$(ch_get CH_SPD 1)|$(ch_get CH_OX 0)|$(ch_get CH_OY 0)|$(ch_get CH_OUT 1)|$(ch_get CH_DOT 0)";;
 esac; }
-ovnet(){ setcfg OV_NET "$1"; echo "OK|ping $1"; }
-overlay(){ case $1 in
-  on)  pm path com.comatoze >/dev/null 2>&1 || { echo "ERR|aplikasi Comatoze belum terpasang"; return; }
-       ov_perm; setcfg OV_ON on; game_sync; ov_svc   # langsung tampil; mode "hanya saat game" menutupnya sendiri setelah game keluar
-       if ov_auto; then echo "OK|overlay aktif (otomatis tiap game dibuka)"; else echo "OK|overlay aktif"; fi;;
-  off) setcfg OV_ON off; am stopservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; game_sync; echo "OK|overlay mati";;
-  close) am stopservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; echo "OK|ditutup";;
-  auto) setcfg OV_AUTO "$2"; game_sync; if [ "$2" = off ]; then [ "$(getcfg OV_ON)" = on ] && ov_svc; else [ -f $DIR/ingame ] || am stopservice --user 0 -n com.comatoze/.OverlayService >/dev/null 2>&1; fi; echo "OK|auto $2";;
-  perm) ov_perm; echo "OK|izin diberikan";;
-  *) echo "OV_ON|$(getcfg OV_ON)|$(pm path com.comatoze 2>/dev/null | head -n 1)";;
-esac; }
-
 status(){
   SC=1
   echo "MODE|$(getcfg MODE)"
   echo "BAT|$(rd $BAT/capacity)|$(rd $BAT/status)|$(rd $BAT/current_now)|$(rd $BAT/temp)|$(rd $BAT/voltage_now)|$(chg_ready && grep -c . $DIR/chgn)|$(getcfg CUT)"
   echo "CHGM|$(cut -d'|' -f1 $DIR/chgm 2>/dev/null | sed 's#.*/\([^/]*/[^/]*\)$#\1#' | tr '\n' ',')|$(cat $DIR/chgheld 2>/dev/null)|$(cat $DIR/chgfail 2>/dev/null)|$(cat $DIR/chgq 2>/dev/null | tr '|' ':')"
-  echo "OVL|$(getcfg OV_ON)|$([ -d /data/data/com.comatoze ] && echo 1 || echo 0)|$(getcfg OV_NET)|$(getcfg OV_AUTO)|$(getcfg REC_RES)|$(getcfg REC_BR)|$(getcfg REC_FPS)"
   echo "PROF|$([ -f $DIR/prof_on ] && echo on || echo off)"
+  echo "FP|$(fstate framepace)|$([ -f $DIR/fp_on ] && echo 1 || echo 0)|$(cat $DIR/fp.res 2>/dev/null || echo 0\|0\|0\|0)|$(fp_support)"
   echo "UIRST|$(getcfg UI_RST)"
   f2fs_status
   mt=0; ma=0; while IFS=' ' read -r _k _v _u; do case $_k in MemTotal:) mt=$_v;; MemAvailable:) ma=$_v; break;; esac; done < /proc/meminfo
   echo "RAM|$([ $mt -gt 0 ] && echo $(( (100*(mt-ma))/mt )) || echo 0)|$((mt/1024))|$((ma/1024))"
   idleram status; crosshair status
-  echo "OVANIM|$(getcfg OV_ANIM)"
   echo "RATES|$(rates)"
   echo "GPCFG|$(getcfg GP_MODE)|$(getcfg GP_HZ)"
   echo "GFX|$(getcfg GFX_SCALE)|$(getcfg GFX_DRV)|$(getcfg GFX_ANGLE)"
@@ -2646,7 +2465,7 @@ boot(){
   [ -f $DIR/guard.pid ] && kill $(cat $DIR/guard.pid) 2>/dev/null
   [ -f $RHZW.pid ] && kill $(cat $RHZW.pid) 2>/dev/null
   [ -f $CPUW.pid ] && kill $(cat $CPUW.pid) 2>/dev/null
-  rm -f $DIR/guard.pid $DIR/guard_hot $DIR/chgn $DIR/chgd $DIR/nonodes $DIR/chgsave $DIR/ingame $DIR/prof_on $DIR/gth_on $COOL.pid $COOL.end $COOL.cancel $RHZW.pid $CPUW.pid
+  rm -f $DIR/guard.pid $DIR/guard_hot $DIR/chgn $DIR/chgd $DIR/nonodes $DIR/chgsave $DIR/ingame $DIR/prof_on $DIR/gth_on $DIR/fp_on $DIR/fpvals $DIR/fp.res $COOL.pid $COOL.end $COOL.cancel $RHZW.pid $CPUW.pid
   chg_sync; game_sync; gfx_apply_all
   ios_boot; rend_boot
   [ -n "$(getcfg GED_LV)" ] && ged_set "$(getcfg GED_LV)" >/dev/null 2>&1
@@ -2657,8 +2476,10 @@ boot(){
   angle_boot
   color_boot
   dk=$(getcfg DNS); [ -n "$dk" ] && dns_set "$dk" "$(getcfg DNS_H)" >/dev/null
-  ( sleep 20; ov_perm ) >/dev/null 2>&1 &   # izin latar/overlay selalu dipasang ulang tiap boot
-  [ "$(getcfg OV_ON)" = on ] && bg ov_boot
+  ( sleep 20; app_perm ) >/dev/null 2>&1 &   # izin latar/crosshair selalu dipasang ulang tiap boot
+  # Migrasi: fitur overlay sudah dihapus. Bersihkan sisa config lama.
+  grep -v -e "^OV_" -e "^REC_" $CFG > $CFG.t 2>/dev/null && mv $CFG.t $CFG
+  rm -f $DIR/ovdiag.txt $DIR/recstop
   setcfg CH_ON off   # crosshair selalu mati saat boot (anti burn-in)
   [ "$(getcfg IDLE_RAM)" = on ] && bg idleram_run
   # Migrasi: fitur overlay FPS (aplikasi UltraFPS) sudah dihapus. Bersihkan sisa lama bila ada.
@@ -2683,7 +2504,7 @@ case "$1" in
   *) rm -f $DIR/c.t.* 2>/dev/null;;
 esac
 case "$1" in
-  mode) setcfg OV_DEF on; set_mode $2; game_sync;;
+  mode) set_mode $2; [ -f $DIR/fp_on ] && fp_on; game_sync;;
   thermal) thermal $2;;
   thermal_check) for a in $(thermal_svcs); do echo "$a $(getprop init.svc.$a)"; done;;
   feat) feat $2 $3;;
@@ -2706,7 +2527,6 @@ case "$1" in
   tex) tex $2 $3 $4 $5;;
   texcur) tex cur $2;;
   angle_app) angle_app $2 $3; ui_restart;;
-  ovanim) ovanim $2;;
   idleram) idleram $2 $3 $4;;
   idleram_run) idleram_run;;
   crosshair) crosshair $2 $3 $4;;
@@ -2721,18 +2541,8 @@ case "$1" in
   chgreset) chg_reset;;
   game_wd) game_wd;;
   probe) probe;;
-  ostat) ostat;;
-  ostat1) OVONCE=1 ostat | tail -n 1;;
-  overlay) overlay $2;;
-  ov_boot) ov_boot;;
-  ovnet) ovnet $2;;
-  ovauto) overlay auto $2;;
-  ovrec) ovrec $2 $3 $4;;
-  ovstate) ovstate;;
-  ovact) ovact $2;;
-  ovmode) ovmode $2;;
-  ovfloat) ovfloat $2;;
-  ovdiag) ovdiag 2>&1 | tee $DIR/ovdiag.txt;;
+  qact) qact $2;;
+  appperm) app_perm;;
   dexopt) case $2 in start) dexopt_start $3;; stop) dexopt_stop;; *) echo "ERR|perintah dexopt tidak dikenal";; esac;;
   dexopt_run) dexopt_run $2;;
   adoze_wd) adoze_wd;;
@@ -2755,5 +2565,5 @@ case "$1" in
   cool_wd) cool_wd;;
   killall) killall_apps;;
   spoofapp) case $2 in add) spoofapp_add "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}";; chip) spoofapp_chip "$3" "$4" "$5" "$6" "$7";; flag) spoofapp_flag "$3" "$4" "$5";; test) spoofapp_test "$3";; del) spoofapp_del "$3";; *) echo "ERR|perintah spoofapp tidak dikenal";; esac;;
-  *) echo "usage: ultrapower {mode perf|balance|eco | thermal on|off | feat <nama> on|off | refresh 60|90|120 | feat hzforce on|off (bawaan on) | rlearn snap <Hz>|build|show [all]|add <ns> <kunci>|clear | gpu_fix <kHz|0> | cpu_gov <policyN|all> <gov> | cpu_freq <policyN> <min> <max> | gpu_gov <gov> | gpu_freq <min> <max> | spoofapp add <paket> <key> <manufacturer> <model> [0|1] | spoofapp flag <paket> on|full 0|1 | spoofapp test <paket> | spoofapp del <paket> | status}";;
+  *) echo "usage: ultrapower {mode perf|plite|balance|eco | thermal on|off | feat <nama> on|off | refresh 60|90|120 | feat hzforce on|off (bawaan on) | rlearn snap <Hz>|build|show [all]|add <ns> <kunci>|clear | gpu_fix <kHz|0> | cpu_gov <policyN|all> <gov> | cpu_freq <policyN> <min> <max> | gpu_gov <gov> | gpu_freq <min> <max> | spoofapp add <paket> <key> <manufacturer> <model> [0|1] | spoofapp flag <paket> on|full 0|1 | spoofapp test <paket> | spoofapp del <paket> | status}";;
 esac
