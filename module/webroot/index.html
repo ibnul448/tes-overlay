@@ -360,17 +360,6 @@ button:active{transform:scale(.97)}
 @keyframes iconSway{0%,100%{transform:rotate(0deg) scale(1)}50%{transform:rotate(-3deg) scale(1.05)}}
 @media (prefers-reduced-motion:reduce){.hero2 .ring:before,.hero2 .core,.hero2 .core svg,.mt.on:before,.mt.on svg{animation:none!important}}
 
-/* ---------- efek loading ringan (hanya tampilan): bar tipis di atas + kontrol redup & terkunci saat sibuk (tanpa spinner, tanpa tanda hasil) ---------- */
-@keyframes tbar{0%{transform:translateX(-100%)}100%{transform:translateX(230%)}}
-#topbar{position:fixed;top:0;left:0;right:0;height:3px;z-index:90;overflow:hidden;opacity:0;pointer-events:none;transition:opacity .18s}
-#topbar.on{opacity:1}
-#topbar i{display:block;width:45%;height:100%;border-radius:3px;background:linear-gradient(90deg,transparent,var(--ac),transparent)}
-#topbar.on i{animation:tbar 1s ease-in-out infinite}
-.sw.busy,.btn.busy,.chip.busy,.mt.busy{pointer-events:none}
-.btn.busy,.chip.busy,.mt.busy{position:relative;opacity:.72}
-.sw.busy i{opacity:.7}
-@media (prefers-reduced-motion:reduce){#topbar.on i{animation-duration:2.4s}}
-
 /* ---------- kartu Perawatan baru: slider warna layar ---------- */
 input[type=range].sl{width:100%;height:28px;margin:0;accent-color:var(--tone,var(--ac))}
 .app .n .cl{display:block;white-space:normal;font-size:12px;font-weight:600;margin-top:2px;color:var(--tone,var(--ac))}
@@ -568,9 +557,179 @@ nav button.on .pl{background:none;color:var(--ac)}
 .rhero.in-r .stats,.rhero.in-l .stats{animation:hRise .4s ease .22s both}
 .rhero.in-r .acts,.rhero.in-l .acts{animation:hRise .4s ease .28s both}
 @media(prefers-reduced-motion:reduce){.rg:before{animation:none}.rhero.in-r,.rhero.in-l,.rhero.out-l,.rhero.out-r,.rhero [class]{animation:none!important}}
+/* ---------- SPLASH pembuka: ketuk layar untuk masuk manager ---------- */
+#splash{
+    --bg: #050406;
+    --ink: #f3f4f8;
+    --dim: #5a5d6e;
+    --accent: #ff2b46;
+    --cyan: #27e0ff;
+    --void: #090305;
+    
+  }
+#splash{
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px));
+    background:
+      radial-gradient(ellipse at center, rgba(255,43,70,.06), transparent 60%),
+      radial-gradient(ellipse at 50% 120%, rgba(0,0,0,.9), transparent 55%),
+      var(--bg);
+  }
+#splash .grain{
+    position:absolute; inset:0; pointer-events:none;
+    opacity:.05; mix-blend-mode: overlay;
+    background-image: repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 2px);
+    background-size: 3px 3px;
+    z-index: 1;
+  }
+#splash .vignette{
+    position:absolute; inset:0; pointer-events:none;
+    background: radial-gradient(ellipse at center, transparent 38%, rgba(0,0,0,.72) 100%);
+    z-index: 1;
+  }
+#splash .sweep{ position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+#splash .sweep::before{
+    content:"";
+    position:absolute; top:-20%; left:-60%; width:40%; height:160%;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.1) 45%, rgba(255,43,70,.3) 50%, rgba(255,255,255,.1) 55%, transparent);
+    transform: translateX(-100%) skewX(-12deg);
+  }
+#splash.play .sweep::before{ animation: sp_sweepAcross 1s cubic-bezier(.2,.7,.1,1) forwards; }
+@keyframes sp_sweepAcross{ to{ transform: translateX(340%) skewX(-12deg); } }
+#splash .reveal{
+    position: relative; z-index: 2;
+    display:flex; flex-direction: column; align-items:center; justify-content:center;
+    gap: 1.9rem;
+  }
+#splash .wordwrap{ display:flex; align-items:center; gap: 1rem; }
+#splash .accent-rule{ height:1px; width:0; background: linear-gradient(90deg, transparent, var(--dim)); opacity:0; }
+#splash .accent-rule.right{ background: linear-gradient(90deg, var(--dim), transparent); }
+#splash.play .accent-rule{ animation: sp_ruleGrow .7s ease forwards 1.85s; }
+@keyframes sp_ruleGrow{ to{ width: 34px; opacity:1; } }
+#splash .wordmark{
+    position: relative; margin:0;
+    font-family:'Orbitron','Space Grotesk',sans-serif;
+    font-weight:800; font-size: clamp(2rem, 8.5vw, 3rem);
+    letter-spacing:.16em; display:flex;
+  }
+#splash .ch{ position:relative; display:inline-block; opacity:0; transform: translateY(14px); }
+#splash.play .ch:not(.crack-letter){ animation: sp_chIn .5s cubic-bezier(.2,.8,.2,1) forwards; animation-delay: var(--d); }
+@keyframes sp_chIn{ to{ opacity:1; transform:translateY(0); } }
+#splash.play .wordmark{ animation: sp_wordGlitch .78s ease forwards 2.6s; }
+@keyframes sp_wordGlitch{
+    0%,100%{ transform: translate(0,0); text-shadow:none; opacity:1; filter:none; }
+    6%{ transform: translate(-6px,1px) skewX(-3deg); text-shadow: 3px 0 var(--accent), -3px 0 var(--cyan); opacity:.2; }
+    12%{ transform: translate(5px,-1px) skewX(2deg); text-shadow: -4px 0 var(--accent), 4px 0 var(--cyan); opacity:1; }
+    18%{ transform: translate(0,0) skewX(0); text-shadow:none; }
+    34%{ transform: translate(-8px,0) skewX(-5deg); text-shadow: 5px 0 var(--accent), -5px 0 var(--cyan); opacity:.15; filter: brightness(2.2); }
+    40%{ transform: translate(6px,1px) skewX(3deg); text-shadow: -3px 0 var(--accent), 3px 0 var(--cyan); opacity:1; filter:none; }
+    48%{ transform: translate(0,0) skewX(0); text-shadow:none; }
+    66%{ transform: translate(-3px,-2px); text-shadow: 4px 0 var(--accent); opacity:.18; }
+    72%{ transform: translate(3px,2px); text-shadow:none; opacity:1; }
+    80%{ transform: translate(0,0); }
+  }
+#splash .ch::before,#splash .ch::after{ content: attr(data-c); position:absolute; left:0; top:0; opacity:0; }
+#splash.play .ch::before{ color: var(--accent); animation: sp_glitchR .15s steps(2) 1; animation-delay: calc(var(--d) + .22s); }
+#splash.play .ch::after{ color: var(--cyan); animation: sp_glitchC .15s steps(2) 1; animation-delay: calc(var(--d) + .22s); }
+@keyframes sp_glitchR{ 0%{opacity:.8; transform:translate(2px,0);} 100%{opacity:0; transform:translate(0,0);} }
+@keyframes sp_glitchC{ 0%{opacity:.7; transform:translate(-2px,0);} 100%{opacity:0; transform:translate(0,0);} }
+#splash .o-accent{ color: var(--accent); }
+#splash .crack-letter{ color: var(--ink); }
+#splash.play .crack-letter{ animation: sp_crackPop .55s cubic-bezier(.3,0,.2,1) forwards; animation-delay: var(--d); }
+@keyframes sp_crackPop{
+    0%{ opacity:0; transform: scale(1.9) rotate(-8deg); text-shadow: 0 0 0 rgba(255,60,40,0); }
+    22%{ opacity:1; transform: scale(.9) rotate(5deg); text-shadow: 0 0 28px rgba(255,70,40,1); }
+    48%{ transform: scale(1.1) rotate(-3deg); }
+    72%{ transform: scale(.97) rotate(1deg); text-shadow: 0 0 14px rgba(255,43,70,.7); }
+    100%{ opacity:1; transform: scale(1) rotate(0); text-shadow: 0 0 6px rgba(255,43,70,.4); }
+  }
+#splash .crack-svg{
+    position:absolute; left:-15%; top:-15%; width:130%; height:130%;
+    overflow: visible; pointer-events:none;
+  }
+#splash .crack-svg path{
+    fill:none; stroke:#fff; stroke-width:2.4; stroke-linecap:round;
+    stroke-dasharray: 60; stroke-dashoffset: 60; opacity:0;
+    filter: drop-shadow(0 0 4px rgba(255,80,50,.9));
+  }
+#splash.play .crack-svg path{ animation: sp_crackDraw .4s ease-out forwards; animation-delay: var(--d); }
+@keyframes sp_crackDraw{
+    0%{ opacity:0; stroke-dashoffset: 60; }
+    25%{ opacity:1; }
+    60%{ stroke-dashoffset: 0; opacity:1; }
+    100%{ stroke-dashoffset: 0; opacity:0; }
+  }
+#splash .tagline{
+    font-family:'Inter',sans-serif; font-weight:500; font-size:.68rem;
+    letter-spacing:.5em; color: var(--dim); text-transform:uppercase;
+    opacity:0; transform: translateY(6px);
+  }
+#splash.play .tagline{ animation: sp_tagIn .6s ease forwards 3.5s; }
+@keyframes sp_tagIn{ to{ opacity:1; transform:translateY(0); } }
+#splash .prompt{
+    position:absolute; bottom: max(28px, env(safe-area-inset-bottom, 0px)); left:0; right:0;
+    text-align:center; font-size:.6rem; letter-spacing:.3em; color: var(--dim);
+    opacity:0; text-transform:uppercase; z-index: 2;
+  }
+#splash.play .prompt{ animation: sp_promptIn .6s ease forwards 3.9s, sp_blink 1.6s ease-in-out 4.5s infinite; }
+@keyframes sp_promptIn{ to{ opacity:.7; } }
+@keyframes sp_blink{ 50%{ opacity:.25; } }
+@media (prefers-reduced-motion: reduce){#splash.play *{ animation-duration: .01s !important; animation-delay: 0s !important; }}
+#splash{position:fixed;inset:0;z-index:1000;height:auto;width:auto;font-family:'Inter',-apple-system,'Segoe UI',sans-serif;color:var(--ink);overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none;transition:opacity .45s ease,transform .45s ease,filter .45s ease}
+#splash.out{opacity:0;transform:scale(1.06);filter:blur(4px);pointer-events:none}
+
 </style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&family=Inter:wght@400;500;600&display=swap">
 </head>
 <body>
+<div id="splash" aria-label="Comatoze – ketuk untuk masuk">
+  <div class="grain"></div>
+  <div class="sweep"></div>
+  <div class="reveal">
+    <div class="wordwrap">
+      <div class="accent-rule left"></div>
+      <h1 class="wordmark" id="spWord"></h1>
+      <div class="accent-rule right"></div>
+    </div>
+    <div class="tagline">Manager</div>
+  </div>
+  <div class="prompt">Tap to enter</div>
+  <div class="vignette"></div>
+</div>
+<script>
+(function(){try{
+  var sp=document.getElementById('splash'),word=document.getElementById('spWord');if(!sp||!word)return;
+  var letters='COMATOZE',delays=[0.55];
+  for(var i=1;i<letters.length;i++)delays.push(1.1+(i-1)*0.07);
+  letters.split('').forEach(function(ch,i){
+    var span=document.createElement('span'),cls='ch';
+    if(i===0)cls+=' crack-letter';if(i===1)cls+=' o-accent';
+    span.className=cls;span.textContent=ch;span.setAttribute('data-c',ch);span.style.setProperty('--d',delays[i]+'s');
+    if(i===0){
+      var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      svg.setAttribute('class','crack-svg');svg.setAttribute('viewBox','0 0 60 70');
+      ['M30,4 L22,26 L34,30 L18,52 L26,66','M22,26 L8,34','M34,30 L48,22','M18,52 L6,58'].forEach(function(d){
+        var p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',d);svg.appendChild(p);});
+      span.appendChild(svg);
+    }
+    word.appendChild(span);
+  });
+  sp.classList.add('play');
+  var done=false;
+  function enter(){if(done)return;done=true;sp.classList.add('out');setTimeout(function(){if(sp.parentNode)sp.parentNode.removeChild(sp);},520);}
+  sp.addEventListener('click',enter);
+  sp.addEventListener('touchend',function(e){e.preventDefault();enter();},{passive:false});
+}catch(e){var x=document.getElementById('splash');if(x&&x.parentNode)x.parentNode.removeChild(x);}})();
+</script>
 <header class="bar" id="bar"><button class="ib back" id="back" hidden onclick="closeSub()" aria-label="Kembali"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M11 6l-6 6l6 6"/></svg></button><div class="tt"><h1 id="barT">Comatoze</h1><div class="sub-t" id="sub">Memuat…</div></div><button class="ib" id="btnRefresh" onclick="spinRefresh();load()" aria-label="Segarkan"><svg class="i" viewBox="0 0 24 24"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg></button></header>
 <div id="p-home" class="page on"></div>
 <div id="p-apps" class="page"></div>
@@ -587,7 +746,6 @@ nav button.on .pl{background:none;color:var(--ac)}
 <div class="ov" id="ov" onclick="closePick()"></div>
 <div class="sheet" id="sheet" aria-hidden="true"></div>
 <div class="dlg" id="dlg" role="dialog" aria-modal="true"></div>
-<div id="topbar"><i></i></div>
 <div id="toast"></div>
 
 <script>
@@ -595,8 +753,8 @@ nav button.on .pl{background:none;color:var(--ac)}
 /* ic = ikon (lihat IC), tn = warna (blue|purple|teal|amber|rose) */
 const FEATURES=[
  {id:'gamefps',group:'exp',ic:'bolt',tn:'purple',name:'Buka Batas 60 FPS Game',short:'Android 15+',desc:'Mematikan batas frame rate bawaan game (60 FPS) di Android 15. Dipulihkan saat dimatikan.',nope:'Butuh Android 15 atau lebih baru.',ok:s=>(+((s.dev||{}).android)||0)>=15},
- {id:'framepace',hide:1,ic:'activity',tn:'blue',name:'Frame Pacing',short:'Penstabil FPS saat game',desc:'Saat game dari Daftar Game dibuka: clock CPU ditahan (tidak jatuh di tengah frame) tetapi naik cepat saat beban naik, GPU lebih cepat naik dan tidak cepat turun, serta CPU tidak masuk tidur dalam. Hasilnya waktu antar-frame lebih rata. Semua nilai dipulihkan saat keluar game.'},
- {id:'fpsgooff',group:'exp',ic:'activity',tn:'amber',name:'Matikan FPSGO',short:'FPS tidak diturunkan kernel',desc:'ON = FPSGO (scheduler frame kernel MediaTek) dimatikan lewat fpsgo_enable=0, jadi kernel tidak menurunkan clock/FPS secara dinamis. OFF = FPSGO bawaan ROM (1). Dijaga ulang tiap beberapa detik oleh pemantau bila sistem menyalakannya lagi. Bisa membuat HP lebih panas.',nope:'Node fpsgo_enable tidak ditemukan di kernel ini (bukan MediaTek, atau FPSGO tidak diekspos). Jalankan: ls /sys/kernel/fpsgo',ok:s=>s.fpsgoSup!==false},
+ {id:'framepace',hide:1,ic:'activity',tn:'blue',name:'Frame Pacing',short:'Penstabil FPS saat game',desc:'Saat game dari Daftar Game dibuka: clock CPU ditahan (tidak jatuh di tengah frame) tetapi naik cepat saat beban naik, GPU lebih cepat naik dan tidak cepat turun, serta CPU tidak masuk tidur dalam. Ditambah lantai clock GPU ~55%, DRAM/DVFSRC mode performance, boost GED/PerfMgr, dan SurfaceFlinger tanpa backpressure. Ditegaskan ulang tiap ~30 dtk bila ROM menimpa. Hasilnya waktu antar-frame lebih rata. Semua nilai dipulihkan saat keluar game.'},
+ {id:'fpsgooff',group:'exp',ic:'activity',tn:'amber',name:'Matikan FPSGO',short:'FPS tidak diturunkan kernel',desc:'ON = FPSGO (scheduler frame kernel MediaTek) dimatikan lewat fpsgo_enable=0, jadi kernel tidak menurunkan clock/FPS secara dinamis. OFF = FPSGO bawaan ROM (1). Dijaga ulang tiap beberapa detik oleh pemantau bila sistem menyalakannya lagi. Kernel custom tanpa FPSGO (atau yang menolak tulisan): otomatis memakai mode pengganti saat game di depan, yaitu boost GED/PerfMgr, matikan syslimiter, backpressure SurfaceFlinger, dan lantai clock GPU. Bisa membuat HP lebih panas.'},
  {id:'nothermal',hide:1,ic:'flame',tn:'rose',name:'Disable Thermal (Brutal)',short:'Hentikan service thermal',desc:'Hentikan SEMUA service thermal, matikan thermal zone & limit GPU/PPM, trip suhu 125°C. Risiko panas berlebih/baterai. Aktif/nonaktif langsung tanpa reboot.',danger:true},
  {id:'wifilatency',ic:'wifi',tn:'blue',name:'WiFi Low Latency',short:'Latensi rendah untuk game online',desc:'Mode performa & latensi rendah WiFi untuk game online, ditambah scan WiFi latar dimatikan dan WiFi tidak pernah tidur. Nilai asli dipulihkan saat dimatikan.'},
  {id:'perfx',hide:1,ic:'activity',tn:'rose',name:'Tweak Ekstra Performa',desc:'Otomatis aktif saat mode Performa dan mati saat pindah mode. Tidak bisa bersamaan dengan Tweak Ekstra Eco (pilih salah satu). Isinya: scheduler tanpa bias hemat energi, thread app di depan dipaksa ke core besar, I/O lebih lancar. Tambahan MediaTek: DRAM/vcore dikunci tinggi (governor DVFSRC performance), GPU Mali selalu menyala (power_policy always_on), pembatas sistem & mode CCI cepat, kompaksi memori dimatikan. Idle dalam CPU hanya dimatikan bila PERF_IDLE=on di config. Dipulihkan persis saat keluar mode Performa. Lebih panas & boros.'},
@@ -674,30 +832,9 @@ function exec(cmd){return new Promise(res=>{
   const cb='cb_'+Date.now()+Math.floor(Math.random()*1e6);
   window[cb]=(c,o)=>{delete window[cb];res({code:c,out:o||''});};
   ksu.exec(cmd,'{}',cb);});}
-const run=a=>busyWrap(exec(BIN+' '+a+' </dev/null'));
-/* ---------- efek loading (hanya tampilan): spinner mini di kontrol yang barusan diketuk + bar tipis di atas + tanda ✓/✕ saat selesai.
-   Penanda disimpan per kontrol (kunci dari atribut onclick/onchange) supaya tetap tampil walau halaman digambar ulang oleh status terbaru. ---------- */
-let _lastCtl=null,_lastT=0,_mark=null,_pend=0,_inf=0;
-document.addEventListener('pointerdown',e=>{const c=e.target&&e.target.closest&&e.target.closest('.sw,.btn,.mt,.chip');if(c){_lastCtl=c;_lastT=Date.now();}},true);
-const ctlKey=el=>{const i=el.querySelector&&el.querySelector('input');return (el.getAttribute('onclick')||'')+'|'+(i?(i.getAttribute('onchange')||''):'');};
-function topBar(d){_inf=Math.max(0,_inf+d);const b=$('#topbar');if(b)b.classList.toggle('on',_inf>0);}
+const run=a=>exec(BIN+' '+a+' </dev/null');
 function _sliderInit(){document.querySelectorAll('input[type=range].sl').forEach(e=>{const mn=+e.min||0,mx=+e.max||100;e.style.setProperty('--p',(mx>mn?(e.value-mn)/(mx-mn)*100:0)+'%');});}
 document.addEventListener('input',e=>{const x=e.target;if(x&&x.type==='range'&&x.classList&&x.classList.contains('sl')&&!(x.parentNode&&x.parentNode.classList&&x.parentNode.classList.contains('sl'))){const mn=+x.min||0,mx=+x.max||100;x.style.setProperty('--p',(mx>mn?(x.value-mn)/(mx-mn)*100:0)+'%');}},true);
-function _applyMark(){
-  if(!_mark)return;
-  document.querySelectorAll('.sw,.btn,.mt,.chip').forEach(e=>{if(ctlKey(e)===_mark.key){e.classList.remove('busy','ok','bad');e.classList.add(_mark.cls);}});
-}
-function busyWrap(p){ // mengembalikan p yang SAMA; hanya mengatur kelas tampilan (redup + bar atas selama berjalan)
-  const el=_lastCtl;if(!el||Date.now()-_lastT>1500)return p;
-  const key=ctlKey(el);if(key==='|')return p;
-  if(!_mark||_mark.key!==key){_pend=0;_mark={key,cls:'busy'};}
-  _pend++;topBar(1);_applyMark();const t0=Date.now();
-  const fin=()=>setTimeout(()=>{
-    topBar(-1);if(--_pend>0)return;
-    _mark=null;document.querySelectorAll('.busy').forEach(e=>e.classList.remove('busy'));
-  },Math.max(0,250-(Date.now()-t0)));
-  p.then(fin,fin);return p;
-}
 
 let tTo;function toast(t){const e=$('#toast');e.textContent=t;e.className='show';clearTimeout(tTo);tTo=setTimeout(()=>e.className='',Math.max(1800,String(t).length*60));}
 const list=s=>(s||'').trim().split(/\s+/).filter(Boolean);
@@ -715,7 +852,7 @@ function parse(t){
     else if(a[0]==='UIRST')s.uirst=a[1]!=='off';
     else if(a[0]==='F2FS')s.f2fs={n:+a[1],t:+a[2],b:+a[3],a:+a[4]};
     else if(a[0]==='RAM')s.ram={pct:+a[1]||0,tot:+a[2]||0,av:+a[3]||0};
-    else if(a[0]==='IDLERAM')s.idle={on:a[1]==='on',min:+a[2]||1024,int:+a[3]||15,run:a[4]==='run',last:a[5]||''};
+    else if(a[0]==='IDLERAM')s.idle={on:a[1]==='on',min:+a[2]||2048,int:+a[3]||5,run:a[4]==='run',last:a[5]||''};
     else if(a[0]==='CH')s.ch={on:a[1]==='on',style:a[2]||'cross',color:a[3]||'FF3B30',size:+a[4],th:+a[5],gap:+a[6],op:+a[7],glow:+a[8],spd:+a[9],ox:+a[10],oy:+a[11],out:a[12]!=='0',dot:a[13]==='1'};
     else if(a[0]==='GWD')s.gwd={alive:a[1]==='1',ing:a[2]==='1',n:+a[3]||0,last:a[4]||''};
     else if(a[0]==='RATES')s.rates=list(a[1]).map(Number);
@@ -1112,7 +1249,7 @@ function dramCard(s){const d=s.dram;if(!d)return '';
   <div class="chips" data-grp="dram">${d.freqs.map(f=>`<button class="chip ${d.lock===f?'on':''}" onclick="dramPick(${f})">${mhz(f)}</button>`).join('')}</div>`);}
 async function dramPick(f){const d=(S&&S.dram)||{};if(!d.ok)return;d.lock=f;render();
   const r=await queueAct(()=>run('dram set '+(f||'auto')));const o=((r&&r.out)||'').trim();load();
-  if(/^ERR/.test(o)){toast(o.split('|')[1]||'Gagal');return;}
+  if(/^ERR/.test(o)){toast(o.split('|')[1]||'Gagal');return;}if(id==='fpsgooff'&&/^OK\|/.test(o)){toast(o.split('|')[1]);return;}
   if(!f){toast('DRAM kembali otomatis');return;}
   const cur=+(o.split('|')[1])||0;toast(cur&&cur<f?`Dikunci ${mhz(f)} MHz, tetapi DRAM sekarang ${mhz(cur)} MHz`:`DRAM dikunci minimal ${mhz(f)} MHz`);}
 function memCard(s){
@@ -1379,7 +1516,7 @@ const _dirty={};
 function renderPage(t){ // gambar satu halaman dari status terbaru
   if(!S)return;const e=$('#p-'+t);if(!e)return;
   const inp=t==='apps'?$('#aq2'):null,q=inp?inp.value:'',foc=!!inp&&document.activeElement===inp;
-  e.innerHTML=({home:()=>pageHome(S),apps:()=>pageApps(S),tweaks:()=>pageTweaks(S),set:()=>pageSet(S)})[t]();_dirty[t]=false;_sliderInit();_applyMark();
+  e.innerHTML=({home:()=>pageHome(S),apps:()=>pageApps(S),tweaks:()=>pageTweaks(S),set:()=>pageSet(S)})[t]();_dirty[t]=false;_sliderInit();
   if(t==='apps'&&q){const n=$('#aq2');if(n){n.value=q;appFilter(q);if(foc)n.focus();}}
 }
 function render(){
@@ -1391,7 +1528,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.67.0';
+const VER='2.70.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1604,15 +1741,15 @@ async function xhSet(k,v){S.ch=Object.assign({},XH_DEF,S.ch||{});S.ch[k]=(k==='o
   const wire=(k==='out'||k==='dot')?(v?1:0):v;await run('crosshair set '+k+' '+wire);}
 async function xhReset(){S.ch=Object.assign({},XH_DEF,{on:(S.ch||{}).on});await run('crosshair reset');renderSub();toast('Crosshair kembali ke bawaan');}
 /* ---------- IDLE RAM ---------- */
-function idleCard(s){const d=s.idle||{on:false,min:1024,int:15};
+function idleCard(s){const d=s.idle||{on:false,min:2048,int:5};
   const body=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Bersihkan saat idle</b><span style="font-size:12px;opacity:.65">Saat tidak ada game, bersihkan bila RAM bebas rendah</span></div>
    <label class="sw"><input type="checkbox" ${d.on?'checked':''} onchange="idleOn(this.checked)"><i></i></label></div>
    <div style="${d.on?'':'opacity:.45;pointer-events:none'}">${srow('Minimum RAM bebas','idle_min',rng(128,8192,128),nearest(rng(128,8192,128),d.min),v=>v+' MB',v=>idleSet('min',v))}
    ${srow('Interval cek','idle_int',rng(1,120,1),nearest(rng(1,120,1),d.int),v=>v+' mnt',v=>idleSet('int',v))}</div>
    ${d.last?`<div class="mu" style="margin-top:8px">Terakhir: ${esc(d.last)}</div>`:''}`;
   return dcard('idle','cpu','teal','Idle RAM',d.on?`Aktif · &lt; ${d.min} MB · tiap ${d.int} mnt`:'Mati',body);}
-async function idleOn(on){S.idle=Object.assign({on:false,min:1024,int:15},S.idle||{},{on});await run('idleram '+(on?'on':'off'));renderSub();toast(on?'Idle RAM aktif':'Idle RAM mati');}
-async function idleSet(k,v){S.idle=Object.assign({on:false,min:1024,int:15},S.idle||{});S.idle[k]=+v;await run('idleram set '+k+' '+v);}
+async function idleOn(on){S.idle=Object.assign({on:false,min:2048,int:5},S.idle||{},{on});await run('idleram '+(on?'on':'off'));renderSub();toast(on?'Idle RAM aktif':'Idle RAM mati');}
+async function idleSet(k,v){S.idle=Object.assign({on:false,min:2048,int:5},S.idle||{});S.idle[k]=+v;await run('idleram set '+k+' '+v);}
 const SUBS={
  xh:{t:'Crosshair',f:s=>xhCard(s)},
  cpu:{t:'CPU & GPU',f:s=>pageCpu(s)+gedCard(s)},
@@ -1639,7 +1776,7 @@ function renderSub(){if(!S||!sub)return;const e=$('#p-sub');let h='';NOFOLD=true
   if(sub.indexOf('tex:')===0&&e.dataset.tx===sub&&e.firstChild)return;
   try{h=sub.indexOf('tex:')===0?texSub(sub.slice(4),S):sub.indexOf('app:')===0?appSub(sub.slice(4),S):(SUBS[sub]?SUBS[sub].f(S):'');}catch(err){h='<div class="card"><div class="note"><b class="dg">Gagal menampilkan halaman.</b> '+esc(String(err&&err.message||err))+'</div></div>';}
   finally{NOFOLD=false;}
-  e.innerHTML=h;_sliderInit();_applyMark();if(sub.indexOf('tex:')===0){e.dataset.tx=sub;texInit();}else delete e.dataset.tx;}
+  e.innerHTML=h;_sliderInit();if(sub.indexOf('tex:')===0){e.dataset.tx=sub;texInit();}else delete e.dataset.tx;}
 function openSub(id){sub=id;try{history.pushState({sub:id},'');}catch(e){}renderSub();showPages();setBar();window.scrollTo({top:0});}
 function closeSub(fromPop){if(!sub)return;sub=null;if(!fromPop){try{if(history.state&&history.state.sub)history.back();}catch(e){}}
   showPages();if(_dirty[tab])renderPage(tab);setBar();}
@@ -1687,7 +1824,7 @@ async function setMode(m){animMode(m);toast('Menerapkan…');await queueAct(()=>
 function uirstCard(s){return `<div class="card"><div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Muat ulang UI otomatis</b><span style="font-size:12px;opacity:.65">Setelah ganti renderer, driver, atau ANGLE (bukan reboot)</span></div><label class="sw"><input type="checkbox" ${s.uirst!==false?'checked':''} onchange="setUirst(this.checked)"><i></i></label></div><button class="btn tonal" style="margin-top:12px;width:100%" onclick="uiNow()">Muat ulang UI sekarang</button></div>`;}
 async function setUirst(on){S.uirst=on;await run('uirst '+(on?'on':'off'));toast(on?'Muat ulang UI otomatis: aktif':'Muat ulang UI otomatis: mati');}
 async function uiNow(){toast('Memuat ulang UI…');await run('uirst now');}
-async function setFeat(id,on){const r=await queueAct(()=>run(`feat ${id} ${on?'on':'off'}`));load();const o=((r&&r.out)||'').trim();if(/^ERR/.test(o)){toast(o.split('|')[1]||'Gagal');return;}toast((on?'Aktif: ':'Nonaktif: ')+(FEATURES.find(f=>f.id===id)||{}).name+(id==='nothermal'?' · reboot untuk efek penuh':''));}
+async function setFeat(id,on){const r=await queueAct(()=>run(`feat ${id} ${on?'on':'off'}`));load();const o=((r&&r.out)||'').trim();if(/^ERR/.test(o)){toast(o.split('|')[1]||'Gagal');return;}if(id==='fpsgooff'&&/^OK\|/.test(o)){toast(o.split('|')[1]);return;}toast((on?'Aktif: ':'Nonaktif: ')+(FEATURES.find(f=>f.id===id)||{}).name+(id==='nothermal'?' · reboot untuk efek penuh':''));}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function spinRefresh(){const b=$('#btnRefresh');if(!b)return;b.classList.remove('spin');void b.offsetWidth;b.classList.add('spin');}
 function animMode(m){

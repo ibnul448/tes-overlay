@@ -295,7 +295,7 @@ PXF=$DIR/pxfeat; PXG=$DIR/pxgame
 px_feat(){ [ "$(fstate $1)" = on ] && return 0; feat $1 on >/dev/null 2>&1; [ "$(fstate $1)" = on ] && echo $1 >> $PXF; return 0; }
 perf_x_boost(){
   if [ ! -f $DIR/pxclean ]; then : > $DIR/pxclean
-    ( gclean "$(game_fg)"; am kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; pm trim-caches 16G >/dev/null 2>&1 ) </dev/null >/dev/null 2>&1 &
+    ( gclean "$(game_fg)"; am kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; pm trim-caches 999G >/dev/null 2>&1 ) </dev/null >/dev/null 2>&1 &
   fi
   for _f in touchboost wifilatency lessdbg smooth fpsgooff; do px_feat $_f; done
   [ -f $DIR/pxfpm ] || { cmd power set-fixed-performance-mode-enabled true >/dev/null 2>&1 && : > $DIR/pxfpm; }
@@ -930,6 +930,9 @@ if [ ! -e "$FPSGO_N" ]; then
   done
 fi
 fpsgo_supported(){ [ -n "$FPSGO_N" ] && [ -e "$FPSGO_N" ] && echo yes || echo no; }
+# Kernel custom sering membuang FPSGO (tanpa fpsgo_enable). Saat itu "Matikan FPSGO" tidak diam: ia memakai MODE PENGGANTI yang
+# bekerja lewat knob lain (GED/PerfMgr MediaTek, boost foreground, SurfaceFlinger) di fp_alt, dipasang saat game aktif & dipulihkan fp_off.
+fpsgo_alt(){ [ -f $DIR/fpsgo_ro ] && return 0; [ "$(fpsgo_supported)" = yes ] && return 1; return 0; }   # fpsgo_ro: node ada tapi kernel menolak/menimpa tulisan
 fpsgo_set(){ # <on|off>: on = matikan FPSGO (tulis 0), off = nyalakan lagi (tulis 1). Tulis, baca balik, ulangi bila dikembalikan.
   v=1; [ "$1" = on ] && v=0; i=0; FPSGO_ERR=
   while [ $i -lt 3 ]; do
@@ -1441,15 +1444,20 @@ feat(){ # name on|off
       else [ "$(getcfg MODE)" = eco ] && { eco_x_off; cpu_mode eco; }; fi
       return;;
     gamefps) if [ "$2" = on ]; then r=$(gfps_on); case $r in ERR*) echo "$r"; return;; esac; else gfps_off >/dev/null; fi;;
-    fpsgooff) if [ "$(fpsgo_supported)" != yes ]; then echo "ERR|node FPSGO tidak ditemukan di kernel ini"; return; fi
+    fpsgooff) if fpsgo_alt; then   # tanpa node FPSGO: pakai mode pengganti (aktif saat game di depan)
+        setcfg "F_$1" $2; if [ "$2" = on ]; then [ -f $DIR/ingame ] && fp_on; else [ "$(getcfg F_framepace)" = on ] || fp_off; fi; game_sync
+        [ "$2" = on ] && echo "OK|FPSGO tidak ada di kernel ini, mode pengganti aktif saat game"; return
+      fi
       setcfg "F_$1" $2
-      fpsgo_set $2 || echo "ERR|FPSGO tidak bisa diubah: $(echo "${FPSGO_ERR:-nilai ditimpa lagi oleh sistem}" | tr -d '|' | tr '\n' ' ' | cut -c1-90) [nilai sekarang: $(rd "$FPSGO_N")]"
+      if fpsgo_set $2; then rm -f $DIR/fpsgo_ro
+      elif [ "$2" = on ]; then touch $DIR/fpsgo_ro; [ -f $DIR/ingame ] && fp_on; echo "OK|FPSGO ditolak kernel, mode pengganti aktif saat game"; game_sync
+      else echo "ERR|FPSGO tidak bisa diubah: $(echo "${FPSGO_ERR:-nilai ditimpa lagi oleh sistem}" | tr -d '|' | tr '\n' ' ' | cut -c1-90) [nilai sekarang: $(rd "$FPSGO_N")]"; fi
       return;;
     dnd) if [ "$2" = on ]; then cmd notification set_dnd priority; else cmd notification set_dnd off; fi; return;;
     gamebypass) setcfg "F_$1" $2; chg_sync; game_sync; return;;
     gamethermal) setcfg "F_$1" $2; if [ "$2" = on ]; then [ -f $DIR/ingame ] && gth_on; else gth_off; fi; game_sync; return;;
     gameprofile) setcfg "F_$1" $2; [ "$2" = on ] || gp_leave; game_sync; return;;
-    framepace) setcfg "F_$1" $2; if [ "$2" = on ]; then [ -f $DIR/ingame ] && fp_on; else fp_off; fi; game_sync; return;;
+    framepace) setcfg "F_$1" $2; if [ "$2" = on ]; then [ -f $DIR/ingame ] && fp_on; else fp_off; fp_want && [ -f $DIR/ingame ] && fp_on; fi; game_sync; return;;
     gameclean) setcfg "F_$1" $2; game_sync; return;;
     wifilatency) if [ "$2" = on ]; then wm=enabled; else wm=disabled; fi; cmd wifi force-hi-perf-mode $wm >/dev/null 2>&1; cmd wifi force-low-latency-mode $wm >/dev/null 2>&1; wl_apply $2;;
     fastcharge|autocut|bypass) setcfg "F_$1" $2; chg_sync; return;;
@@ -1488,7 +1496,7 @@ feat(){ # name on|off
 fstate(){
   case $1 in
     nothermal) [ "$(getcfg THERMAL)" = off ] && echo on || echo off;;
-    fpsgooff) [ "$(fpsgo_supported)" = yes ] || { echo off; return; }; v=$(rd "$FPSGO_N"); [ "$v" = 0 ] && echo on || echo off;;
+    fpsgooff) fpsgo_alt && { v=$(getcfg F_fpsgooff); echo ${v:-off}; return; }; v=$(rd "$FPSGO_N"); [ "$v" = 0 ] && echo on || echo off;;
     gamefps) [ "$(getprop debug.graphics.game_default_frame_rate.disabled)" = true ] && echo on || echo off;;
     dnd) case "$(sget global zen_mode)" in 0|null|"") echo off;; *) echo on;; esac;;
     bootapply) [ -f $DIR/skip ] && echo off || echo on;;
@@ -1757,7 +1765,7 @@ preload(){ # apk/lib/oat/obb + aset non-media di Android/data/<pkg>/files -> pag
   rm -f $L
 }
 # Ide fitur game terinspirasi dari CMD-Tweaks (t.me/HoyoSlave); kode ditulis ulang.
-gclean(){ cmd activity kill-all >/dev/null 2>&1; for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || [ "$p" = com.comatoze ] || cmd activity kill --user 0 $p >/dev/null 2>&1; done; }
+gclean(){ cmd activity kill-all >/dev/null 2>&1; am kill-all >/dev/null 2>&1; for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || [ "$p" = com.comatoze ] || { cmd activity kill --user 0 $p >/dev/null 2>&1; am force-stop $p >/dev/null 2>&1; }; done; }   # brutal: kill + force-stop semua app pihak ketiga selain game & Comatoze
 mode_restore(){
   m=$(getcfg MODE); [ "$m" = auto ] && m=balance
   if [ "$m" = custom ]; then batsaver custom; while IFS='|' read -r k a; do [ -n "$a" ] && NOSAVE=1 sh $SELF $a; done < $CUS
@@ -1796,6 +1804,7 @@ gth_off(){ [ -f $DIR/gth_on ] || return 0; rm -f $DIR/gth_on; [ "$(getcfg THERMA
 #  - CPU idle: state tidur dalam dimatikan (latensi bangun kecil = waktu frame lebih rata)
 # Nilai asli dicatat sekali per node di $FPV dan ditulis balik oleh fp_off.
 FPV=$DIR/fpvals
+FPP=$DIR/fpprops
 CPUD=/sys/devices/system/cpu
 fpw(){ # node nilai
   [ -e "$1" ] || return 0
@@ -1804,27 +1813,51 @@ fpw(){ # node nilai
   chmod 644 "$1" 2>/dev/null; echo "$2" > "$1" 2>/dev/null
   [ "$(cat "$1" 2>/dev/null)" = "$2" ] && FPN=$((FPN+1))
   return 0; }
+fpp(){ # prop nilai: simpan nilai asli sekali ($FPP), lalu set
+  grep -q "^$1|" $FPP 2>/dev/null || echo "$1|$(getprop $1)" >> $FPP
+  setprop "$1" "$2" 2>/dev/null; }
+fp_alt(){ # knob pengganti FPSGO + penstabil tambahan (node tidak ada = dilewati)
+  for _n in /sys/module/ged/parameters/ged_boost_enable /sys/module/ged/parameters/gx_game_mode /sys/module/ged/parameters/gx_boost_on /sys/module/ged/parameters/enable_game_self_frc_detect; do fpw $_n 1; done
+  fpw /proc/perfmgr/syslimiter/syslimiter_force_disable 1
+  fpw /proc/perfmgr/boost_ctrl/eas_ctrl/perfserv_fg_boost 60
+  fpw /proc/perfmgr/boost_ctrl/cpu_ctrl/cfp_enable 0
+  fpw /sys/module/mtk_fpsgo/parameters/boost_affinity 1
+  fpw /sys/module/mtk_fpsgo/parameters/boost_LR 1
+  fpw /sys/kernel/ged/hal/dcs_mode 0
+  for _p in /sys/module/*fpsgo*/parameters; do [ -d $_p ] && fpw $_p/fbt_enable 1; done; }
 fp_on(){
   FPN=0; mkdir -p $DIR
   for _p in $CPU/policy*; do
     for _g in schedutil sugov_ext walt; do [ -d $_p/$_g ] || continue
-      fpw $_p/$_g/up_rate_limit_us 500; fpw $_p/$_g/down_rate_limit_us 20000
+      fpw $_p/$_g/up_rate_limit_us 250; fpw $_p/$_g/down_rate_limit_us 30000
+      fpw $_p/$_g/hispeed_load 60; fpw $_p/$_g/rate_limit_us 500
     done
   done
+  fpw /dev/cpuctl/top-app/cpu.uclamp.latency_sensitive 1
   _fc=$FPN
   if [ -n "$GPU" ]; then
-    fpw $GPU/polling_interval 10; fpw $GPU/simple_ondemand/upthreshold 70; fpw $GPU/simple_ondemand/downdifferential 20
+    fpw $GPU/polling_interval 8; fpw $GPU/simple_ondemand/upthreshold 55; fpw $GPU/simple_ondemand/downdifferential 30
+    # lantai clock GPU ~55% dari maksimum: GPU tidak jatuh ke OPP bawah di tengah adegan ringan -> waktu frame rata
+    _gf=$(rd $GPU/available_frequencies); _gx=0; for _f in $_gf; do [ "$_f" -gt "$_gx" ] 2>/dev/null && _gx=$_f; done
+    if [ "$_gx" -gt 0 ]; then _gm=$_gx; _lim=$((_gx*55/100)); for _f in $_gf; do [ "$_f" -ge "$_lim" ] && [ "$_f" -lt "$_gm" ] && _gm=$_f; done; fpw $GPU/min_freq $_gm; fi
   fi
   _fg=$((FPN-_fc)); _f0=$FPN
   for _cp in $CPUD/cpu[0-9]*; do for _st in $_cp/cpuidle/state[1-9]*; do fpw $_st/disable 1; done; done
-  echo "$FPN|$_fc|$_fg|$((FPN-_f0))" > $DIR/fp.res; : > $DIR/fp_on
+  _fi=$((FPN-_f0))
+  _dv=$(ls -d /sys/class/devfreq/*dvfsrc* 2>/dev/null | head -1)
+  if [ -n "$_dv" ]; then case " $(rd $_dv/available_governors) " in *" performance "*) fpw $_dv/governor performance;; esac; fi
+  fp_alt
+  fpp debug.sf.disable_backpressure 1; fpp debug.sf.latch_unsignaled 1
+  echo "$FPN|$_fc|$_fg|$_fi" > $DIR/fp.res; : > $DIR/fp_on
   glog "frame pacing aktif: $FPN parameter"; }
 fp_off(){
   if [ -f $FPV ]; then
     while IFS='|' read -r _n _v; do [ -n "$_n" ] && [ -e "$_n" ] && echo "$_v" > "$_n" 2>/dev/null; done < $FPV
   fi
-  rm -f $FPV $DIR/fp_on $DIR/fp.res; }
-fp_later(){ sleep 5; [ -f $DIR/ingame ] && [ "$(getcfg F_framepace)" = on ] && fp_on; }   # setelah profil game & tweak performa terpasang (mereka menulis governor/tunable juga)
+  if [ -f $FPP ]; then while IFS='|' read -r _n _v; do [ -n "$_n" ] && setprop "$_n" "$_v" 2>/dev/null; done < $FPP; fi
+  rm -f $FPV $FPP $DIR/fp_on $DIR/fp.res; }
+fp_want(){ [ "$(getcfg F_framepace)" = on ] && return 0; [ "$(getcfg F_fpsgooff)" = on ] && fpsgo_alt && return 0; return 1; }
+fp_later(){ sleep 5; [ -f $DIR/ingame ] && fp_want && fp_on; }   # setelah profil game & tweak performa terpasang (mereka menulis governor/tunable juga)
 fp_support(){ _sc=0; _sg=0; _si=0
   for _p in $CPU/policy*; do for _g in schedutil sugov_ext walt; do [ -e $_p/$_g/up_rate_limit_us ] && _sc=$((_sc+1)); done; done
   if [ -n "$GPU" ]; then for _n in polling_interval simple_ondemand/upthreshold simple_ondemand/downdifferential; do [ -e $GPU/$_n ] && _sg=$((_sg+1)); done; fi
@@ -1841,22 +1874,23 @@ game_wd(){
       set -- $(game_fgp); cur=$1; gpid=$2
     fi
     cfgv F_fpsgooff; [ "$CV" = on ] && fpsgo_keep
+    fpn=$((${fpn:-0}+1)); [ $((fpn % 10)) = 0 ] && [ "$ing" = 1 ] && [ -f $DIR/fp_on ] && ( fp_on ) >/dev/null 2>&1 &   # ROM/kernel sering menimpa balik: tegaskan lagi tiap ~30 dtk
     if [ -n "$cur" ]; then
       away=0
       if [ "$ing" = 0 ]; then
         ing=1; touch $DIR/ingame
-        [ "$(getcfg F_gameclean)" = on ] && gclean $cur &
+        [ "$(getcfg F_gameclean)" = on ] && { gclean $cur; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; } &
         [ "$(getcfg F_preload)" = on ] && preload $cur &
         lastg=$cur; glog "masuk $cur"; [ -s $AAP ] && tex_cur $cur
         [ -f $PXV2 ] && { sleep 4; perf_x_game; } &
         [ "$(getcfg F_gameprofile)" = on ] && gp_enter $cur
         [ "$(getcfg F_gamethermal)" = on ] && gth_on
-        [ "$(getcfg F_framepace)" = on ] && fp_later &
+        fp_want && fp_later &
         if [ "$(getcfg F_gamednd)" = on ]; then cmd notification set_dnd priority; dset=1; fi
       elif [ "$cur" != "$lastg" ]; then   # pindah langsung ke game lain di daftar: terapkan profil game barunya
         lastg=$cur; [ -s $AAP ] && tex_cur $cur
         if [ "$(getcfg F_gameprofile)" = on ]; then gp_leave; gp_enter $cur; fi
-        [ "$(getcfg F_framepace)" = on ] && fp_later &
+        fp_want && fp_later &
       fi
     elif [ "$ing" = 1 ]; then
       away=$((away+1))
@@ -2332,23 +2366,27 @@ app_perm(){ # beri izin tampil-di-atas-app (crosshair) + notifikasi + latar ke a
   cmd deviceidle sys-whitelist +com.comatoze >/dev/null 2>&1
   am set-standby-bucket com.comatoze active >/dev/null 2>&1; }
 qact(){ case $1 in
-  clean) _g=$(game_fg); gclean "$_g"; am kill-all >/dev/null 2>&1; cmd activity kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory
-    pm trim-caches 16G >/dev/null 2>&1; echo "OK|RAM dibersihkan";;
-  trim) pm trim-caches 16G >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; cmd package bg-dexopt-job >/dev/null 2>&1 & echo "OK|cache dipangkas";;
-  killbg) gclean "$(game_fg)"; am kill-all >/dev/null 2>&1; echo "OK|aplikasi latar dihentikan";;
+  clean) _g=$(game_fg); _b=$(meminfo_kb MemAvailable)
+    gclean "$_g"; am kill-all >/dev/null 2>&1; cmd activity kill-all >/dev/null 2>&1
+    for _p in $(pm list packages -3 2>/dev/null | sed 's/^package://'); do [ "$_p" = "$_g" ] || [ "$_p" = com.comatoze ] || am force-stop $_p >/dev/null 2>&1; done
+    pm trim-caches 999G >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory
+    w 3 /proc/sys/vm/drop_caches; _a=$(meminfo_kb MemAvailable); _f=$(( (_a-_b)/1024 )); [ "$_f" -lt 0 ] && _f=0
+    echo "OK|RAM dibersihkan (+${_f} MB)";;
+  trim) pm trim-caches 999G >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; cmd package bg-dexopt-job >/dev/null 2>&1 & echo "OK|cache dipangkas";;
+  killbg) _g=$(game_fg); gclean "$_g"; am kill-all >/dev/null 2>&1; for _p in $(pm list packages -3 2>/dev/null | sed 's/^package://'); do [ "$_p" = "$_g" ] || [ "$_p" = com.comatoze ] || am force-stop $_p >/dev/null 2>&1; done; echo "OK|aplikasi latar dihentikan";;
   *) echo "ERR|aksi tidak dikenal";;
 esac; }
 # ---------- IDLE RAM saat TIDAK ada game aktif, bila RAM bebas < batas -> padatkan memori + buang cache bersih ----------
-# Config: IDLE_RAM on|off, IDLE_MIN (MB, 128-8192, bawaan 1024), IDLE_INT (menit, 1-120, bawaan 15)
+# Config: IDLE_RAM on|off, IDLE_MIN (MB, 128-8192, bawaan 2048), IDLE_INT (menit, 1-120, bawaan 5)
 idleram_run(){ echo $$ > $DIR/idleram.pid
   while :; do
-    _i=$(getcfg IDLE_INT); case $_i in ""|*[!0-9]*) _i=15;; esac; [ "$_i" -lt 1 ] && _i=1; [ "$_i" -gt 120 ] && _i=120
+    _i=$(getcfg IDLE_INT); case $_i in ""|*[!0-9]*) _i=5;; esac; [ "$_i" -lt 1 ] && _i=1; [ "$_i" -gt 120 ] && _i=120
     sleep $((_i*60))
     [ "$(getcfg IDLE_RAM)" = on ] || break
     [ -f $DIR/ingame ] && continue
-    _m=$(getcfg IDLE_MIN); case $_m in ""|*[!0-9]*) _m=1024;; esac
+    _m=$(getcfg IDLE_MIN); case $_m in ""|*[!0-9]*) _m=2048;; esac
     _fa=$(meminfo_kb MemAvailable); _fa=$((_fa/1024))
-    if [ "$_fa" -lt "$_m" ]; then sync; w 1 /proc/sys/vm/compact_memory; w 1 /proc/sys/vm/drop_caches; echo "$(date +%H:%M:%S) bebas ${_fa}MB < ${_m}MB -> dibersihkan" > $DIR/idleram.last; fi
+    if [ "$_fa" -lt "$_m" ]; then am kill-all >/dev/null 2>&1; cmd activity kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; echo "$(date +%H:%M:%S) bebas ${_fa}MB < ${_m}MB -> dibersihkan" > $DIR/idleram.last; fi
   done
   rm -f $DIR/idleram.pid; }
 idleram(){ case $1 in
@@ -2465,7 +2503,7 @@ boot(){
   [ -f $DIR/guard.pid ] && kill $(cat $DIR/guard.pid) 2>/dev/null
   [ -f $RHZW.pid ] && kill $(cat $RHZW.pid) 2>/dev/null
   [ -f $CPUW.pid ] && kill $(cat $CPUW.pid) 2>/dev/null
-  rm -f $DIR/guard.pid $DIR/guard_hot $DIR/chgn $DIR/chgd $DIR/nonodes $DIR/chgsave $DIR/ingame $DIR/prof_on $DIR/gth_on $DIR/fp_on $DIR/fpvals $DIR/fp.res $COOL.pid $COOL.end $COOL.cancel $RHZW.pid $CPUW.pid
+  rm -f $DIR/guard.pid $DIR/guard_hot $DIR/chgn $DIR/chgd $DIR/nonodes $DIR/chgsave $DIR/ingame $DIR/prof_on $DIR/gth_on $DIR/fp_on $DIR/fpvals $DIR/fpprops $DIR/fpsgo_ro $DIR/fp.res $COOL.pid $COOL.end $COOL.cancel $RHZW.pid $CPUW.pid
   chg_sync; game_sync; gfx_apply_all
   ios_boot; rend_boot
   [ -n "$(getcfg GED_LV)" ] && ged_set "$(getcfg GED_LV)" >/dev/null 2>&1
