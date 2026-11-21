@@ -1528,7 +1528,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.70.0';
+const VER='2.71.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1584,7 +1584,6 @@ function pageTweaks(s){const f=s.feat||{},z=s.zram,b=s.bat||{},tw=f.perfx?'Perfo
 function appFilter(v){v=(v||'').trim().toLowerCase();document.querySelectorAll('#alist2 .arow').forEach(e=>{e.style.display=!v||e.dataset.q.indexOf(v)>=0?'':'none';});}
 function pageApps(s){const g=s.games||[],ov=s.gprof||{};prefetchLabels(g);
  return `<div class="msec first">Pengaturan game</div><div class="mlist">
-  ${mrow('rocket','purple','Profil Game','Mode dan Hz saat game berjalan',"openSub('gglobal')")}
   ${mrow('flame','rose','Otomatisasi','Thermal, bypass charging, preload, DND',"openSub('gauto')")}
   ${mrow('phone','blue','Spoof Perangkat','Buka opsi FPS per aplikasi (Zygisk)',"openSub('gspoof')")}
  </div>`;}
@@ -1605,12 +1604,11 @@ function gsSpec(p,s){const c=(s.gprof||{})[p]||{mode:'',hz:''},sc=(s.gfxApp||{})
   {k:'api',ic:'layers',d:'Backend OpenGL/Vulkan semua game di daftar',t:'API Grafis',v:API_N[g.angle]||'Default',opts:[['default','Default','Bawaan sistem'],['native','OpenGL Native','Langsung ke driver GPU'],['angle','ANGLE','OpenGL lewat Vulkan']],cur:g.angle||'default',fn:v=>gfxSet('angle',v)},
   {k:'ang',ic:'game',d:'Pakai ANGLE hanya untuk game ini',t:'ANGLE Game Ini',v:ang?'Aktif':'Mati',opts:[['off','Mati','Driver bawaan'],['on','Aktif','Render lewat ANGLE']],cur:ang?'on':'off',fn:v=>angToggle(p,v==='on')},
   {k:'tex',page:'tex',ic:'brush',d:'Level & gaya tekstur (Blur / Pixel) + pratinjau',t:'Kualitas Tekstur',v:tx?'Lv '+tx.l+' · '+(tx.s==='pixel'?'Pixel':'Blur'):'Default'}]});
- sec.push({t:'Pengaturan Tambahan',tn:'amber',ic:'bolt',rows:[
-  {k:'uir',ic:'refresh',d:'Restart UI otomatis setelah ganti render',t:'Muat Ulang UI Otomatis',v:s.uirst!==false?'Aktif':'Mati',opts:[['on','Aktif','Terapkan tanpa reboot'],['off','Mati','Harus reboot manual']],cur:s.uirst!==false?'on':'off',fn:v=>setUirst(v==='on')}]});
+ sec.push({t:'Pengaturan Tambahan',tn:'amber',ic:'bolt',rows:[]});
  return sec;}
 function appSub(p,s){const q=esc(p),sp=(s.spoofApps||[]).find(x=>x.pkg===p),sec=gsSpec(p,s);
  return `<div class="gs-hero"><img class="gs-bg" src="ksu://icon/${q}" alt="" onerror="this.style.display='none'"><div class="gs-id">${appIcon(p)}<div class="tx"><b>${esc(labelOf(p))}</b><span>${q}</span></div></div></div>
- ${sec.map(x=>`<div class="gp-sec tn-${x.tn}"><span>${IC[x.ic]||''}</span>${x.t}</div><div class="gp-list">${x.rows.map(r=>`<button class="gp-row tn-${x.tn}" onclick="${r.page?`openSub('${r.page}:${q}')`:`gdOpen('${q}','${r.k}')`}"><span class="gp-ic">${IC[r.ic]||''}</span><div class="gp-tx"><b>${r.t}</b><small>${r.d}</small></div><span class="gp-v">${r.v}</span></button>`).join('')}${x.t==='Pengaturan Tambahan'?`<button class="gp-row tn-amber" onclick="spoofAppOpen()"><span class="gp-ic">${IC.phone||''}</span><div class="gp-tx"><b>Spoof Perangkat</b><small>Tiru model HP untuk membuka opsi FPS</small></div><span class="gp-v">${sp?(sp.on?'Aktif':'Nonaktif'):'Belum'}</span></button>`:''}</div>`).join('')}
+ ${sec.map(x=>`<div class="gp-sec tn-${x.tn}"><span>${IC[x.ic]||''}</span>${x.t}</div><div class="gp-list">${x.rows.map(r=>`<button class="gp-row tn-${x.tn}" onclick="${r.page?`openSub('${r.page}:${q}')`:`gdOpen('${q}','${r.k}')`}"><span class="gp-ic">${IC[r.ic]||''}</span><div class="gp-tx"><b>${r.t}</b><small>${r.d}</small></div><span class="gp-v">${r.v}</span></button>`).join('')}${x.t==='Pengaturan Tambahan'?`<button class="gp-row tn-amber" onclick="spoofAppOpen()"><span class="gp-ic">${IC.phone||''}</span><div class="gp-tx"><b>Spoof Perangkat</b><small>${sp&&sp.on?esc(((sp.man?sp.man+' · ':'')+(chipName(sp)?'Chip '+chipName(sp):'Tiru model HP')).trim()):'Tiru model HP untuk membuka opsi FPS'}</small></div><span class="gp-v" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sp?(sp.on?esc(sp.mod||sp.key||'Aktif'):'Nonaktif'):'Belum'}</span></button>`:''}</div>`).join('')}
  <button class="btn ghost" style="color:var(--dg);margin-top:18px" onclick="appDel('${q}')">${IC.trash} Hapus dari daftar game</button>`;}
 async function gfxSet(k,v){toast('Menerapkan…');const r=await run(`gfx_${k==='drv'?'driver':'angle'} ${v}`);await load();toast((r.out||'').trim().startsWith('OK')?'Diterapkan · UI dimuat ulang':'Gagal: '+((r.out||'').split('|')[1]||'tidak ada respon'));}
 /* ---- Kualitas Tekstur: pratinjau sebelum/sesudah ---- */
@@ -1821,9 +1819,6 @@ async function _load(){
 let _aq=Promise.resolve();
 const queueAct=f=>{const p=_aq.then(f,f);_aq=p.catch(()=>{});return p;};
 async function setMode(m){animMode(m);toast('Menerapkan…');await queueAct(()=>run('mode '+m));toast('Mode '+(MODE_NAME[m]||m));load();}
-function uirstCard(s){return `<div class="card"><div style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Muat ulang UI otomatis</b><span style="font-size:12px;opacity:.65">Setelah ganti renderer, driver, atau ANGLE (bukan reboot)</span></div><label class="sw"><input type="checkbox" ${s.uirst!==false?'checked':''} onchange="setUirst(this.checked)"><i></i></label></div><button class="btn tonal" style="margin-top:12px;width:100%" onclick="uiNow()">Muat ulang UI sekarang</button></div>`;}
-async function setUirst(on){S.uirst=on;await run('uirst '+(on?'on':'off'));toast(on?'Muat ulang UI otomatis: aktif':'Muat ulang UI otomatis: mati');}
-async function uiNow(){toast('Memuat ulang UI…');await run('uirst now');}
 async function setFeat(id,on){const r=await queueAct(()=>run(`feat ${id} ${on?'on':'off'}`));load();const o=((r&&r.out)||'').trim();if(/^ERR/.test(o)){toast(o.split('|')[1]||'Gagal');return;}if(id==='fpsgooff'&&/^OK\|/.test(o)){toast(o.split('|')[1]);return;}toast((on?'Aktif: ':'Nonaktif: ')+(FEATURES.find(f=>f.id===id)||{}).name+(id==='nothermal'?' · reboot untuk efek penuh':''));}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function spinRefresh(){const b=$('#btnRefresh');if(!b)return;b.classList.remove('spin');void b.offsetWidth;b.classList.add('spin');}

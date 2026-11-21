@@ -53,6 +53,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        try { // ikon & judul di layar Recent: pakai ikon baru (bukan ikon lama dari cache peluncur)
+            Bitmap ic = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.ic_art);
+            if (ic != null) setTaskDescription(new android.app.ActivityManager.TaskDescription("Comatoze", ic, Color.parseColor("#101412")));
+        } catch (Throwable ignore) { }
         rootView = new FrameLayout(this);
         rootView.setBackgroundColor(Color.parseColor("#101412"));
         setContentView(rootView);

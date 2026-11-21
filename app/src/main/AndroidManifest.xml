@@ -16,12 +16,14 @@
     <application
         android:label="Comatoze"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
         <activity
             android:name=".MainActivity"
+            android:icon="@mipmap/ic_launcher"
             android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden|uiMode|smallestScreenSize|screenLayout"
             android:windowSoftInputMode="adjustResize">

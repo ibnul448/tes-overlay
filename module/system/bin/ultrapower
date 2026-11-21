@@ -1945,8 +1945,8 @@ gfx_scale_reset(){ # pkg -- hapus override khusus app itu, balik pakai default g
   echo OK
 }
 # Segarkan UI (bukan reboot): setelah ganti renderer/driver/ANGLE, game di daftar dihentikan paksa dan SystemUI dimuat ulang
-# supaya pengaturan grafis terpasang bersih. Ditunda 3 dtk; ketukan beruntun hanya memicu satu kali restart. Matikan: ultrapower uirst off
-ui_restart(){ [ "$(getcfg UI_RST)" = off ] && return 0
+# supaya pengaturan grafis terpasang bersih. Ditunda 3 dtk; ketukan beruntun hanya memicu satu kali restart. Selalu otomatis (tanpa menu).
+ui_restart(){
   read _t < /proc/sys/kernel/random/uuid 2>/dev/null || _t=$$.$(date +%s%N); echo "$_t" > $DIR/uirst
   ( sleep 3; [ "$(cat $DIR/uirst 2>/dev/null)" = "$_t" ] || exit 0; rm -f $DIR/uirst
     for _p in $(cat $DIR/games.txt 2>/dev/null); do am force-stop $_p >/dev/null 2>&1; done
