@@ -109,7 +109,11 @@ tweak_auto(){ # mode
     *)    setcfg F_perfx off; setcfg F_ecox off;;
   esac
 }
+# Mode EFEKTIF: saat profil game aktif (prof_on) mode yang terpasang = $DIR/emode (MODE di config tetap mode asli pengguna, dipulihkan saat keluar game).
+# Pemantau clock & tweak yang membaca MODE dari config sebelumnya salah mengira mode bukan Performa selama game -> clock tidak dijaga & tweak Performa tidak aktif.
+curmode(){ if [ -f $DIR/prof_on ]; then cat $DIR/emode 2>/dev/null; else getcfg MODE; fi; }
 set_mode(){
+  echo $1 > $DIR/emode
   cpu_mode $1; gpu_mode $1
   batsaver $1
   tweak_auto $1
@@ -118,6 +122,8 @@ set_mode(){
   [ "$1" = perf ] || perf_extra_off
   [ "$1" = perf ] && perf_extra
   [ "$1" = eco ] && [ "$(getcfg F_ecox)" != off ] && eco_x
+  [ "$1" = eco ] || eco_ppm_off
+  [ "$1" = eco ] && { rm -f $DIR/eco_ppm; cpu_wd_sync; }   # watchdog atap clock Eco
   hz=$(mode_hz $1); [ -n "$hz" ] && refresh $hz q >/dev/null
   [ "$2" = temp ] || { setcfg MODE $1; : > $CUS; }
 }
@@ -164,7 +170,7 @@ cpu_wd(){
   # Tanpa fork di siklus normal (read bawaan shell): fork berkala dari pemantau ikut menyela core game dan terasa sebagai hentakan frame.
   echo $$ > $CPUW.pid; _tops=
   while :; do
-    cfgv MODE
+    if [ -f $DIR/prof_on ]; then CV=; read -r CV 2>/dev/null < $DIR/emode; else cfgv MODE; fi   # mode efektif (profil game bisa memasang mode sementara)
     if [ "$CV" = perf ]; then
       if [ -z "$_tops" ]; then   # daftar policy + clock puncak + governor tujuan dihitung sekali per sesi mode Performa
         for p in $CPU/policy*; do
@@ -183,11 +189,45 @@ cpu_wd(){
         if [ "$a" != "$imax" ] || [ "$b" != "$imax" ]; then range $p/scaling_min_freq $p/scaling_max_freq $imax $imax; fi
         if [ -n "$want" ]; then read -r g 2>/dev/null < $p/scaling_governor; [ "$g" != "$want" ] && w $want $p/scaling_governor; fi
       done
-      sleep 3
-    else _tops=; sleep 10
+      sleep 3; _ecos=
+    elif [ "$CV" = eco ]; then
+      # Eco: HP sering melompat ke clock puncak (input boost / PPM / ROM menimpa scaling_max_freq). Atap clock dijaga ulang tiap 2 dtk
+      # + batas keras MediaTek PPM (hard_userlimit_max_cpu_freq) yang tidak bisa ditimpa boost.
+      _tops=
+      if [ -z "$_ecos" ]; then
+        _ex=$(getcfg F_ecox); _first=1; _ci=0
+        for p in $CPU/policy*; do
+          [ -d "$p" ] || continue
+          ist=$(rd $p/cpuinfo_max_freq); imin=$(rd $p/cpuinfo_min_freq); [ -n "$ist" ] || continue
+          fr=$(rd $p/scaling_available_frequencies); [ -z "$fr" ] && fr="$imin $ist"
+          mx=$(cap $((ist*60/100)) $fr)
+          if [ $_first = 0 ] && [ "$_ex" != off ]; then
+            t=$((ist*45/100)); best=""
+            for f in $fr; do [ "$f" -ge "$t" ] && { [ -z "$best" ] || [ "$f" -lt "$best" ]; } && best=$f; done
+            [ -n "$best" ] && [ "$best" -lt "$mx" ] && mx=$best
+          fi
+          _first=0; _ecos="$_ecos $p=$mx=$imin"; _ci=$((_ci+1))
+        done
+        [ -z "$_ecos" ] && _ecos=" "
+        eco_ppm "$_ecos"
+      fi
+      for e in $_ecos; do
+        p=${e%%=*}; r=${e#*=}; mx=${r%%=*}; imin=${r#*=}
+        [ "$p" = "$e" ] && continue
+        a=; read -r a 2>/dev/null < $p/scaling_max_freq
+        [ "${a:-0}" -gt "$mx" ] 2>/dev/null && range $p/scaling_min_freq $p/scaling_max_freq $imin $mx
+      done
+      sleep 2
+    else _tops=; _ecos=; sleep 10
     fi
   done
 }
+# Batas keras MediaTek PPM per cluster (urutan policy = nomor cluster). Nilai -1 = tanpa batas (dipulihkan di eco_ppm_off).
+eco_ppm(){ _f=/proc/ppm/policy/hard_userlimit_max_cpu_freq; [ -e $_f ] || return 0; _i=0
+  for e in $1; do p=${e%%=*}; r=${e#*=}; mx=${r%%=*}; [ "$p" = "$e" ] && continue; echo "$_i $mx" > $_f 2>/dev/null; _i=$((_i+1)); done
+  echo $_i > $DIR/eco_ppm; }
+eco_ppm_off(){ [ -f $DIR/eco_ppm ] || return 0; _f=/proc/ppm/policy/hard_userlimit_max_cpu_freq; read -r _n < $DIR/eco_ppm; _i=0
+  while [ "$_i" -lt "${_n:-0}" ]; do echo "$_i -1" > $_f 2>/dev/null; _i=$((_i+1)); done; rm -f $DIR/eco_ppm; }
 cpu_wd_sync(){
   [ -f $CPUW.pid ] && kill -0 $(cat $CPUW.pid) 2>/dev/null && return
   bg cpu_wd
@@ -295,7 +335,7 @@ PXF=$DIR/pxfeat; PXG=$DIR/pxgame
 px_feat(){ [ "$(fstate $1)" = on ] && return 0; feat $1 on >/dev/null 2>&1; [ "$(fstate $1)" = on ] && echo $1 >> $PXF; return 0; }
 perf_x_boost(){
   if [ ! -f $DIR/pxclean ]; then : > $DIR/pxclean
-    ( gclean "$(game_fg)"; am kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; pm trim-caches 999G >/dev/null 2>&1 ) </dev/null >/dev/null 2>&1 &
+    ( gclean "$(game_fg)" ) </dev/null >/dev/null 2>&1 &   # saat game dibuka: kill proses latar saja. drop_caches/compact/trim di sini bikin freeze loading & membuang cache preload
   fi
   for _f in touchboost wifilatency lessdbg smooth fpsgooff; do px_feat $_f; done
   [ -f $DIR/pxfpm ] || { cmd power set-fixed-performance-mode-enabled true >/dev/null 2>&1 && : > $DIR/pxfpm; }
@@ -605,9 +645,9 @@ touch_on(){
   [ "$(getcfg TOUCH_LP)" = on ] && tb_set secure long_press_timeout 300
   # sisi CPU: dilewati bila TOUCH_CPU=off atau mode Eco
   [ "$(getcfg TOUCH_CPU)" = off ] && return 0
-  [ "$(getcfg MODE)" = eco ] && return 0
+  [ "$(curmode)" = eco ] && return 0
   ib=600; hl=60; fq=; um=
-  if [ "$(getcfg TOUCH_CPU)" = max ]; then
+  if [ "$(getcfg TOUCH_CPU)" != normal ]; then   # bawaan brutal; TOUCH_CPU=normal untuk level ringan
     ib=1000; um=50.00; hl=40
     for pl in $CPU/policy*; do
       c=$(rd $pl/related_cpus); c=${c%% *}; f=$(rd $pl/cpuinfo_max_freq)
@@ -624,7 +664,7 @@ touch_on(){
     tb_wr /sys/devices/system/cpu/cpu_boost/input_boost_freq "$fq"
   fi
   # ramp-up lebih cepat saat UI butuh (tidak ada lantai clock di level default); perf = clock sudah terkunci, jadi dilewati
-  [ "$(getcfg MODE)" = perf ] && return 0
+  [ "$(curmode)" = perf ] && return 0
   [ -n "$um" ] && tb_wr /dev/cpuctl/top-app/cpu.uclamp.min $um
   for u in $CPU/policy*/schedutil $CPU/policy*/walt; do
     tb_wr $u/up_rate_limit_us 500
@@ -1433,15 +1473,16 @@ feat(){ # name on|off
     lessdbg) setcfg "F_$1" $2; if [ "$2" = on ]; then dbg_off; else dbg_on; fi; return;;
     perfx) setcfg "F_$1" $2
       if [ "$2" = on ]; then   # memilih tweak Performa -> tweak Eco otomatis dimatikan (hanya boleh salah satu)
-        if [ "$(getcfg F_ecox)" != off ]; then setcfg F_ecox off; [ "$(getcfg MODE)" = eco ] && { eco_x_off; cpu_mode eco; }; fi
-        [ "$(getcfg MODE)" = perf ] && perf_x
-      else [ "$(getcfg MODE)" = perf ] && perf_x_off; fi
+        if [ "$(getcfg F_ecox)" != off ]; then setcfg F_ecox off; [ "$(curmode)" = eco ] && { eco_x_off; cpu_mode eco; }; fi
+        [ "$(curmode)" = perf ] && perf_x
+      else [ "$(curmode)" = perf ] && perf_x_off; fi
       return;;
     ecox) setcfg "F_$1" $2
       if [ "$2" = on ]; then   # memilih tweak Eco -> tweak Performa otomatis dimatikan (hanya boleh salah satu)
-        if [ "$(getcfg F_perfx)" != off ]; then setcfg F_perfx off; [ "$(getcfg MODE)" = perf ] && perf_x_off; fi
-        [ "$(getcfg MODE)" = eco ] && eco_x
-      else [ "$(getcfg MODE)" = eco ] && { eco_x_off; cpu_mode eco; }; fi
+        if [ "$(getcfg F_perfx)" != off ]; then setcfg F_perfx off; [ "$(curmode)" = perf ] && perf_x_off; fi
+        [ "$(curmode)" = eco ] && eco_x
+      else [ "$(curmode)" = eco ] && { eco_x_off; cpu_mode eco; }; fi
+      [ "$(curmode)" = eco ] && { [ -f $CPUW.pid ] && kill $(cat $CPUW.pid) 2>/dev/null; rm -f $CPUW.pid; cpu_wd_sync; }   # atap watchdog dihitung ulang
       return;;
     gamefps) if [ "$2" = on ]; then r=$(gfps_on); case $r in ERR*) echo "$r"; return;; esac; else gfps_off >/dev/null; fi;;
     fpsgooff) if fpsgo_alt; then   # tanpa node FPSGO: pakai mode pengganti (aktif saat game di depan)
@@ -1502,8 +1543,8 @@ fstate(){
     bootapply) [ -f $DIR/skip ] && echo off || echo on;;
     doze) v=$(getcfg F_doze); echo ${v:-on};;
     hzforce) hz_lock_on;;
-    perfx) v=$(getcfg F_perfx); [ -z "$v" ] && { [ "$(getcfg MODE)" = perf ] && v=on || v=off; }; echo $v;;
-    ecox) v=$(getcfg F_ecox); [ -z "$v" ] && { [ "$(getcfg MODE)" = eco ] && v=on || v=off; }; echo $v;;
+    perfx) v=$(getcfg F_perfx); [ -z "$v" ] && { [ "$(curmode)" = perf ] && v=on || v=off; }; echo $v;;
+    ecox) v=$(getcfg F_ecox); [ -z "$v" ] && { [ "$(curmode)" = eco ] && v=on || v=off; }; echo $v;;
     *) v=$(getcfg F_$1); echo ${v:-off};;
   esac
 }
@@ -1752,8 +1793,8 @@ games(){ case $1 in
   add) grep -qx "$2" $DIR/games.txt 2>/dev/null || { echo $2 >> $DIR/games.txt; gfx_apply_all; };;
   del) grep -vx "$2" $DIR/games.txt > $DIR/games.t; mv $DIR/games.t $DIR/games.txt; setcfg "GPM_$2" ""; setcfg "GPH_$2" "";;
 esac; }
-preload(){ # apk/lib/oat/obb + aset non-media di Android/data/<pkg>/files -> page cache (batas ${PRELOAD_MB:-600} MB)
-  lim=$((${PRELOAD_MB:-600}*1048576)); used=0; L=$DIR/pl.$$.lst
+preload(){ # apk/lib/oat/obb + aset non-media di Android/data/<pkg>/files -> page cache (batas ${PRELOAD_MB:-1500} MB)
+  lim=$((${PRELOAD_MB:-1500}*1048576)); used=0; L=$DIR/pl.$$.lst
   { for a in $(pm path $1 | sed 's/package://'); do d=$(dirname $a); ls $a $d/lib/arm64/* $d/oat/arm64/* 2>/dev/null; done
     ls /sdcard/Android/obb/$1/* 2>/dev/null
     find /sdcard/Android/data/$1/files -type f 2>/dev/null | grep -Eiv '\.(mp3|ogg|wav|mp4|png|jpe?g|webp|log|txt)$'
@@ -1765,7 +1806,7 @@ preload(){ # apk/lib/oat/obb + aset non-media di Android/data/<pkg>/files -> pag
   rm -f $L
 }
 # Ide fitur game terinspirasi dari CMD-Tweaks (t.me/HoyoSlave); kode ditulis ulang.
-gclean(){ cmd activity kill-all >/dev/null 2>&1; am kill-all >/dev/null 2>&1; for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || [ "$p" = com.comatoze ] || { cmd activity kill --user 0 $p >/dev/null 2>&1; am force-stop $p >/dev/null 2>&1; }; done; }   # brutal: kill + force-stop semua app pihak ketiga selain game & Comatoze
+gclean(){ cmd activity kill-all >/dev/null 2>&1; for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || [ "$p" = com.comatoze ] || cmd activity kill --user 0 $p >/dev/null 2>&1; done; }   # saat game dibuka: kill proses latar saja (aman). Force-stop total hanya di tombol RAM manual (qact)
 mode_restore(){
   m=$(getcfg MODE); [ "$m" = auto ] && m=balance
   if [ "$m" = custom ]; then batsaver custom; while IFS='|' read -r k a; do [ -n "$a" ] && NOSAVE=1 sh $SELF $a; done < $CUS
@@ -1820,10 +1861,6 @@ fp_alt(){ # knob pengganti FPSGO + penstabil tambahan (node tidak ada = dilewati
   for _n in /sys/module/ged/parameters/ged_boost_enable /sys/module/ged/parameters/gx_game_mode /sys/module/ged/parameters/gx_boost_on /sys/module/ged/parameters/enable_game_self_frc_detect; do fpw $_n 1; done
   fpw /proc/perfmgr/syslimiter/syslimiter_force_disable 1
   fpw /proc/perfmgr/boost_ctrl/eas_ctrl/perfserv_fg_boost 60
-  fpw /proc/perfmgr/boost_ctrl/cpu_ctrl/cfp_enable 0
-  fpw /sys/module/mtk_fpsgo/parameters/boost_affinity 1
-  fpw /sys/module/mtk_fpsgo/parameters/boost_LR 1
-  fpw /sys/kernel/ged/hal/dcs_mode 0
   for _p in /sys/module/*fpsgo*/parameters; do [ -d $_p ] && fpw $_p/fbt_enable 1; done; }
 fp_on(){
   FPN=0; mkdir -p $DIR
@@ -1844,10 +1881,7 @@ fp_on(){
   _fg=$((FPN-_fc)); _f0=$FPN
   for _cp in $CPUD/cpu[0-9]*; do for _st in $_cp/cpuidle/state[1-9]*; do fpw $_st/disable 1; done; done
   _fi=$((FPN-_f0))
-  _dv=$(ls -d /sys/class/devfreq/*dvfsrc* 2>/dev/null | head -1)
-  if [ -n "$_dv" ]; then case " $(rd $_dv/available_governors) " in *" performance "*) fpw $_dv/governor performance;; esac; fi
-  fp_alt
-  fpp debug.sf.disable_backpressure 1; fpp debug.sf.latch_unsignaled 1
+  fpsgo_alt && [ "$(getcfg F_fpsgooff)" = on ] && fp_alt   # knob pengganti FPSGO hanya bila diminta & node FPSGO tidak ada
   echo "$FPN|$_fc|$_fg|$_fi" > $DIR/fp.res; : > $DIR/fp_on
   glog "frame pacing aktif: $FPN parameter"; }
 fp_off(){
@@ -1874,12 +1908,11 @@ game_wd(){
       set -- $(game_fgp); cur=$1; gpid=$2
     fi
     cfgv F_fpsgooff; [ "$CV" = on ] && fpsgo_keep
-    fpn=$((${fpn:-0}+1)); [ $((fpn % 10)) = 0 ] && [ "$ing" = 1 ] && [ -f $DIR/fp_on ] && ( fp_on ) >/dev/null 2>&1 &   # ROM/kernel sering menimpa balik: tegaskan lagi tiap ~30 dtk
     if [ -n "$cur" ]; then
       away=0
       if [ "$ing" = 0 ]; then
         ing=1; touch $DIR/ingame
-        [ "$(getcfg F_gameclean)" = on ] && { gclean $cur; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; } &
+        [ "$(getcfg F_gameclean)" = on ] && gclean $cur &
         [ "$(getcfg F_preload)" = on ] && preload $cur &
         lastg=$cur; glog "masuk $cur"; [ -s $AAP ] && tex_cur $cur
         [ -f $PXV2 ] && { sleep 4; perf_x_game; } &
@@ -1894,7 +1927,7 @@ game_wd(){
       fi
     elif [ "$ing" = 1 ]; then
       away=$((away+1))
-      if [ $away -ge 3 ]; then   # keluar game bila 3x cek berturut-turut (anti-flicker shade/dialog/pemuatan)
+      if [ $away -ge 5 ]; then   # keluar game bila 5x cek berturut-turut (~15 dtk) (anti-flicker shade/dialog/pemuatan)
         ing=0; rm -f $DIR/ingame; gp_leave; gth_off; fp_off; glog "keluar ${lastg}"
         [ "$dset" = 1 ] && { cmd notification set_dnd off; dset=0; }
       fi
@@ -2503,7 +2536,7 @@ boot(){
   [ -f $DIR/guard.pid ] && kill $(cat $DIR/guard.pid) 2>/dev/null
   [ -f $RHZW.pid ] && kill $(cat $RHZW.pid) 2>/dev/null
   [ -f $CPUW.pid ] && kill $(cat $CPUW.pid) 2>/dev/null
-  rm -f $DIR/guard.pid $DIR/guard_hot $DIR/chgn $DIR/chgd $DIR/nonodes $DIR/chgsave $DIR/ingame $DIR/prof_on $DIR/gth_on $DIR/fp_on $DIR/fpvals $DIR/fpprops $DIR/fpsgo_ro $DIR/fp.res $COOL.pid $COOL.end $COOL.cancel $RHZW.pid $CPUW.pid
+  rm -f $DIR/guard.pid $DIR/guard_hot $DIR/chgn $DIR/chgd $DIR/nonodes $DIR/chgsave $DIR/ingame $DIR/prof_on $DIR/gth_on $DIR/fp_on $DIR/fpvals $DIR/fpprops $DIR/fpsgo_ro $DIR/eco_ppm $DIR/fp.res $COOL.pid $COOL.end $COOL.cancel $RHZW.pid $CPUW.pid
   chg_sync; game_sync; gfx_apply_all
   ios_boot; rend_boot
   [ -n "$(getcfg GED_LV)" ] && ged_set "$(getcfg GED_LV)" >/dev/null 2>&1
