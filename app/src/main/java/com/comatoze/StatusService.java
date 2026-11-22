@@ -46,7 +46,7 @@ public class StatusService extends Service {
         c.enableVibration(false);
         nm.createNotificationChannel(c);
         try {
-            startForeground(ID, base("Comatoze", "Menghubungkan ke modul…", Color.parseColor("#3DDC84")).build());
+            startForeground(ID, base("Comatoze", "Menghubungkan ke modul…").build());
         } catch (Throwable t) { stopSelf(); return START_NOT_STICKY; }
 
         if (intent != null && "MODE".equals(intent.getAction())) {
@@ -110,50 +110,22 @@ public class StatusService extends Service {
         int cpu = num(a, 5), gpu = num(a, 6), temp = num(a, 7), bat = num(a, 8);
         boolean chg = "1".equals(a[9]);
 
-        String name; int color; int level; String glyph;
-        if ("perf".equals(mode))        { name = "PERFORMA";      color = Color.parseColor("#FF5A36"); level = 4; glyph = "P"; }
-        else if ("plite".equals(mode))  { name = "PERFORMA LITE"; color = Color.parseColor("#FFB020"); level = 3; glyph = "L"; }
-        else if ("eco".equals(mode))    { name = "ECO";           color = Color.parseColor("#2DD4BF"); level = 1; glyph = "E"; }
-        else if ("balance".equals(mode)){ name = "SEIMBANG";      color = Color.parseColor("#3DDC84"); level = 2; glyph = "S"; }
-        else                            { name = "KUSTOM";        color = Color.parseColor("#8B9BFF"); level = 2; glyph = "K"; }
-
+        String name;
+        if ("perf".equals(mode)) name = "Performa";
+        else if ("plite".equals(mode)) name = "Performa Lite";
+        else if ("eco".equals(mode)) name = "Eco";
+        else if ("balance".equals(mode)) name = "Seimbang";
+        else name = "Kustom";
         boolean auto = game && ("perf".equals(mode) || "plite".equals(mode));
-        String tag = (auto ? "OTOMATIS" : "") + (auto && thermalOff ? "  |  " : "") + (thermalOff ? "THERMAL OFF" : "");
-        String gameTxt = game ? "Game: " + appName(pkg) : "Game: tidak ada";
-        String stats = "CPU " + ghz(cpu) + "   |   GPU " + (gpu > 0 ? gpu + " MHz" : "-");
-        String heat = "Suhu " + temp + " C   |   Baterai " + bat + "%" + (chg ? " (mengisi)" : "");
-        String th = thermalOff ? "Thermal DIMATIKAN - pantau suhu" : "Thermal normal";
-        String small = gameTxt + "  |  " + stats;
-        String title = name;
 
-        String key = title + "|" + tag + "|" + gameTxt + "|" + stats + "|" + heat + "|" + th;
+        String title = "Mode " + name + (auto ? " (otomatis)" : "");
+        String text = "Thermal " + (thermalOff ? "dimatikan" : "normal") + "  \u00B7  " + temp + "\u00B0C  \u00B7  Baterai " + bat + "%" + (chg ? " (mengisi)" : "");
+
+        String key = title + "|" + text;
         if (key.equals(lastKey)) return;
         lastKey = key;
 
-        Notification.Builder b = base(title, small, color);
-        int bg = Color.parseColor("#141A17");
-        int tagColor = thermalOff ? Color.parseColor("#FF6B5E") : color;
-        RemoteViews rs = new RemoteViews(getPackageName(), R.layout.notif_small);
-        rs.setTextViewText(R.id.title, title);
-        rs.setTextColor(R.id.title, color);
-        rs.setTextViewText(R.id.tag, tag);
-        rs.setTextColor(R.id.tag, tagColor);
-        rs.setTextViewText(R.id.line1, small);
-        rs.setInt(R.id.accent, "setBackgroundColor", color);
-        rs.setInt(R.id.root, "setBackgroundColor", bg);
-        RemoteViews rb = new RemoteViews(getPackageName(), R.layout.notif_big);
-        rb.setTextViewText(R.id.title, title);
-        rb.setTextColor(R.id.title, color);
-        rb.setTextViewText(R.id.tag, tag);
-        rb.setTextColor(R.id.tag, tagColor);
-        rb.setTextViewText(R.id.line1, gameTxt);
-        rb.setTextViewText(R.id.line2, stats);
-        rb.setTextViewText(R.id.line3, heat + "   |   " + th);
-        rb.setInt(R.id.accent, "setBackgroundColor", color);
-        rb.setInt(R.id.root, "setBackgroundColor", bg);
-        b.setStyle(new Notification.DecoratedCustomViewStyle());
-        b.setCustomContentView(rs);
-        b.setCustomBigContentView(rb);
+        Notification.Builder b = base(title, text);
         if (!"perf".equals(mode)) b.addAction(act("Performa", "perf", 1));
         if (!"balance".equals(mode)) b.addAction(act("Seimbang", "balance", 2));
         if (!"eco".equals(mode)) b.addAction(act("Eco", "eco", 3));
@@ -168,14 +140,13 @@ public class StatusService extends Service {
         return new Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notif), label, pi).build();
     }
 
-    private Notification.Builder base(String title, String text, int color) {
+    private Notification.Builder base(String title, String text) {
         Intent open = new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pi = PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder b = new Notification.Builder(this, CH)
                 .setSmallIcon(R.drawable.ic_notif)
                 .setContentTitle(title)
                 .setContentText(text)
-                .setColor(color)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setShowWhen(false)

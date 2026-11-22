@@ -778,6 +778,7 @@ const FEATURES=[
  {id:'autocut',group:'chg',ic:'battery',tn:'teal',name:'Auto Cut Charging',short:'Berhenti di batas level',desc:'Berhenti mengisi di batas level yang dipilih.'},
  {id:'bypass',group:'chg',ic:'plug',tn:'purple',name:'Bypass Charging',short:'Daya langsung ke sistem',desc:'Hentikan pengisian baterai, daya langsung ke sistem. Nilai asli dipulihkan saat dimatikan.'},
  {id:'gameprofile',group:'game',ic:'rocket',tn:'purple',name:'Profil Otomatis Game',short:'Mode dan Hz khusus saat game',desc:'Masuk game: mode & Hz dari Profil Game. Keluar: kembali seperti semula.'},
+ {id:'threadpin',group:'game',ic:'rocket',tn:'rose',name:'Prioritas Thread Game',short:'Thread tersibuk ke inti CPU tercepat',desc:'Tiap ~30 detik memindahkan 3 thread game paling sibuk (game/render thread) ke inti tercepat dan menaikkan prioritasnya, supaya perang ramai dan skill tidak drop.'},
  {id:'gameclean',group:'game',ic:'cpu',tn:'blue',name:'Bersihkan RAM saat Game',short:'Tutup proses latar saat game',desc:'Matikan proses latar belakang aplikasi pihak ketiga saat game dibuka.'},
  {id:'gamebypass',group:'game',ic:'plug',tn:'amber',name:'Bypass Charging saat Game',short:'Jeda pengisian saat game',desc:'Jeda pengisian selama game berjalan, lanjut setelah keluar.'},
  {id:'preload',group:'game',ic:'download',tn:'teal',name:'Auto Game Preload',short:'Muat file game ke cache',desc:'Muat file game ke cache saat game dibuka.'},
@@ -1168,7 +1169,7 @@ function pageGame(s){const g=s.games||[];prefetchLabels(g);
  ${foldCards('pg',pgCard(s))}
  ${spoofAppCard(s)}
  ${angleStyleCard(s)}
- <div class="sec">Otomatisasi</div><div class="card">${rowsById(['gameprofile','gamethermal','gameclean','gamebypass','preload','gamednd'])}</div>`;}
+ <div class="sec">Otomatisasi</div><div class="card">${rowsById(['gameprofile','gamethermal','threadpin','gameclean','gamebypass','preload','gamednd'])}</div>`;}
 async function delGame(p){await run('games del '+p);await load();toast('Dihapus');}
 async function gpPick(k,v,el){el.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===el));await run(`gp_cfg ${k} ${v}`);toast('Disimpan');}
 async function gfxPick(k,v,el){el.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===el));toast('Menerapkan…');const r=await run(`gfx_${k==='scale'?'scale':k==='drv'?'driver':'angle'} ${v}`);await load();toast(r.out.trim().startsWith('OK')?(k==='scale'?'Diterapkan':'Diterapkan · UI dimuat ulang'):'Gagal: '+(r.out.split('|')[1]||'tidak ada respon'));}
@@ -1539,7 +1540,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.85.0';
+const VER='2.86.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1824,7 +1825,7 @@ const SUBS={
  sys:{t:'Fitur Sistem',f:s=>`<div class="card">${rows('sys')}</div>`},
  dev:{t:'Perangkat',f:devCard},
  gglobal:{t:'Profil Game',f:s=>gpCard(s)+pgCard(s)},
- gauto:{t:'Otomatisasi Game',f:s=>`<div class="card">${rowsById(['gameprofile','gamethermal','gameclean','gamebypass','preload','gamednd'])}</div>`},
+ gauto:{t:'Otomatisasi Game',f:s=>`<div class="card">${rowsById(['gameprofile','gamethermal','threadpin','gameclean','gamebypass','preload','gamednd'])}</div>`},
  gspoof:{t:'Spoof Perangkat',f:s=>spoofAppCard(s)}
 };
 const TAB_T={home:'Comatoze',apps:'Aplikasi',tweaks:'Tweaks',set:'Pengaturan'};

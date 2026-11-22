@@ -1570,6 +1570,7 @@ feat(){ # name on|off
     gameprofile) setcfg "F_$1" $2; [ "$2" = on ] || gp_leave; game_sync; return;;
     framepace) setcfg "F_$1" $2; if [ "$2" = on ]; then [ -f $DIR/ingame ] && fp_on; else fp_off; fp_want && [ -f $DIR/ingame ] && fp_on; fi; game_sync; return;;
     gameclean) setcfg "F_$1" $2; game_sync; return;;
+    threadpin) setcfg "F_$1" $2; game_sync; return;;
     wifilatency) if [ "$2" = on ]; then wm=enabled; else wm=disabled; fi; cmd wifi force-hi-perf-mode $wm >/dev/null 2>&1; cmd wifi force-low-latency-mode $wm >/dev/null 2>&1; wl_apply $2;;
     fastcharge|autocut|bypass) setcfg "F_$1" $2; chg_sync; return;;
     preload|gamednd) setcfg "F_$1" $2; game_sync; return;;
@@ -1612,6 +1613,7 @@ fstate(){
     dnd) case "$(sget global zen_mode)" in 0|null|"") echo off;; *) echo on;; esac;;
     bootapply) [ -f $DIR/skip ] && echo off || echo on;;
     doze) v=$(getcfg F_doze); echo ${v:-on};;
+    threadpin) v=$(getcfg F_threadpin); echo ${v:-on};;
     hzforce) hz_lock_on;;
     perfx) v=$(getcfg F_perfx); [ -z "$v" ] && { [ "$(curmode)" = perf ] && v=on || v=off; }; echo $v;;
     ecox) v=$(getcfg F_ecox); [ -z "$v" ] && { [ "$(curmode)" = eco ] && v=on || v=off; }; echo $v;;
@@ -1862,7 +1864,7 @@ lagrec_run(){ echo $$ > $DIR/lagrec.pid; i=0
   echo "--- proses terberat ---" >> $DIR/lagrec.txt; top -b -n 1 -m 6 2>/dev/null | tail -n 8 >> $DIR/lagrec.txt
   rm -f $DIR/lagrec.pid; }
 # ---------- CEK VERSI: bukti versi mana yang SEBENARNYA terpasang & jalan (modul, WebUI, aplikasi) ----------
-SCRIPT_VER=2.85.0
+SCRIPT_VER=2.86.0
 ver_check(){
   echo "skrip_berjalan=$SCRIPT_VER ($SELF)"
   for d in /data/adb/modules /data/adb/modules_update; do
@@ -2012,6 +2014,27 @@ fp_support(){ _sc=0; _sg=0; _si=0
   if [ -n "$GPU" ]; then for _n in polling_interval simple_ondemand/upthreshold simple_ondemand/downdifferential; do [ -e $GPU/$_n ] && _sg=$((_sg+1)); done; fi
   for _cp in $CPUD/cpu[0-9]*; do for _st in $_cp/cpuidle/state[1-9]*; do [ -e $_st/disable ] && _si=$((_si+1)); done; done
   echo "$_sc|$_sg|$_si"; }
+# ---------- PRIORITAS THREAD GAME ----------
+# Lag saat perang ramai / skill umumnya karena 1-3 thread game (game thread, render thread) kebagian inti LITTLE atau berebut inti.
+# Setiap ~30 dtk: ukur 2 dtk, ambil 3 thread TERSIBUK dari proses game, kunci ke inti tercepat (cluster big) + naikkan prioritasnya.
+# Thread lain dibiarkan bebas (tidak ada pin massal). Dilewati bila HP hanya punya satu cluster atau taskset tidak ada.
+tp_want(){ [ "$(getcfg F_threadpin)" != off ]; }
+big_mask(){ _bf=0; _bc=
+  for _p in /sys/devices/system/cpu/cpufreq/policy*; do _mf=; _ac=; read -r _mf 2>/dev/null < $_p/cpuinfo_max_freq; read -r _ac 2>/dev/null < $_p/affected_cpus
+    case $_mf in ''|*[!0-9]*) continue;; esac
+    [ "$_mf" -gt "$_bf" ] && { _bf=$_mf; _bc=$_ac; }; done
+  _lo=$_bf; for _p in /sys/devices/system/cpu/cpufreq/policy*; do _mf=; read -r _mf 2>/dev/null < $_p/cpuinfo_max_freq; case $_mf in ''|*[!0-9]*) continue;; esac; [ "$_mf" -lt "$_lo" ] && _lo=$_mf; done
+  [ "$_lo" = "$_bf" ] && return 1   # satu cluster: tidak ada gunanya
+  _m=0; for _c in $_bc; do _m=$((_m | (1 << _c))); done; printf '%x' $_m; }
+tp_snap(){ awk '{sub(/^.*\) /,""); n=split(FILENAME,a,"/"); print a[n-1], $12+$13}' /proc/$1/task/*/stat 2>/dev/null; }
+tpin(){ _pid=$1; [ -d /proc/$_pid ] || return 0; command -v taskset >/dev/null 2>&1 || return 0
+  [ -f $DIR/tpin.lock ] && return 0; : > $DIR/tpin.lock
+  _mk=$(big_mask) || { rm -f $DIR/tpin.lock; return 0; }
+  tp_snap $_pid > $DIR/tp.a; sleep 2; tp_snap $_pid > $DIR/tp.b
+  _top=$(awk 'NR==FNR{a[$1]=$2;next} ($1 in a){d=$2-a[$1]; if(d>=20) print d, $1}' $DIR/tp.a $DIR/tp.b | sort -rn | head -n 3 | awk '{print $2}')
+  _n=0; for _t in $_top; do taskset -p $_mk $_t >/dev/null 2>&1 && _n=$((_n+1)); renice -n -8 -p $_t >/dev/null 2>&1; done
+  [ "$_n" -gt 0 ] && glog "thread sibuk -> inti besar (mask $_mk): $_top"
+  rm -f $DIR/tpin.lock $DIR/tp.a $DIR/tp.b; }
 game_wd(){
   echo $$ > $DIR/game.pid; ing=0; dset=0; away=0; lastg=; gpid=
   gp_leave; gth_off; fp_off; rm -f $DIR/ingame   # sisa profil/thermal dari pemantau sebelumnya (mati mendadak) dipulihkan dulu; bila game masih jalan, loop memasangnya lagi
@@ -2023,6 +2046,7 @@ game_wd(){
       set -- $(game_fgp); cur=$1; gpid=$2
     fi
     cfgv F_fpsgooff; [ "$CV" = on ] && fpsgo_keep
+    if [ "$ing" = 1 ] && [ -n "$gpid" ]; then tpn=$((${tpn:-0}+1)); if [ "$tpn" -ge 10 ] && tp_want; then tpn=0; ( tpin $gpid ) </dev/null >/dev/null 2>&1 & fi; fi
     fpn=$((${fpn:-0}+1)); [ $((fpn % 10)) = 0 ] && [ "$ing" = 1 ] && [ -f $DIR/fp_on ] && ( fp_on ) >/dev/null 2>&1 &   # ROM/kernel sering menimpa balik: tegaskan lagi tiap ~30 dtk
     if [ "$ing" = 1 ] && [ -n "$cur" ] && [ "$cur" = "$lastg" ] && [ -n "$gpid" ] && [ -n "$lastpid" ] && [ "$gpid" != "$lastpid" ]; then
       # game mati lalu dibuka ulang (pid baru) sebelum 15 dtk: dulu dianggap 'masih di dalam game' sehingga mode Performa TIDAK dipasang lagi
@@ -2033,7 +2057,7 @@ game_wd(){
       away=0
       if [ "$ing" = 0 ]; then
         ing=1; echo "$cur" > $DIR/ingame   # isi = paket game (dipakai notifikasi status)
-        et=$(date +%s); lastg=$cur; lastpid=$gpid
+        et=$(date +%s); lastg=$cur; lastpid=$gpid; tpn=6   # pin thread sibuk pertama ~12 dtk setelah masuk (setelah game selesai memuat)
         glog "masuk $cur"; [ -s $AAP ] && tex_cur $cur
         [ "$(getcfg F_gamethermal)" = on ] && gth_on
         if [ "$(getcfg F_gamednd)" = on ]; then cmd notification set_dnd priority; dset=1; fi
@@ -2067,6 +2091,7 @@ game_wd(){
 game_sync(){
   on=0; for f in preload gamednd gameprofile gameclean gamebypass gamethermal fpsgooff framepace; do [ "$(getcfg F_$f)" = on ] && on=1; done
   alive=0; [ -f $DIR/game.pid ] && kill -0 $(cat $DIR/game.pid) 2>/dev/null && alive=1
+  tp_want && on=1
   if [ $on = 1 ] && [ $alive = 0 ]; then bg game_wd
   elif [ $on = 0 ] && [ $alive = 1 ]; then kill $(cat $DIR/game.pid); rm -f $DIR/game.pid; gp_leave; gth_off; fp_off; fi
 }
