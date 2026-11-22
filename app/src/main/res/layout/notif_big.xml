@@ -1,30 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
     android:layout_width="match_parent"
-    android:layout_height="132dp">
-    <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
-        android:scaleType="centerCrop" android:src="@drawable/notif_bg"/>
-    <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
-        android:scaleType="fitXY" android:src="@drawable/notif_scrim"/>
+    android:layout_height="112dp">
     <ImageView android:id="@+id/accent" android:layout_width="4dp" android:layout_height="match_parent"
         android:layout_gravity="start" android:scaleType="fitXY"/>
-    <ImageView android:id="@+id/gauge" android:layout_width="64dp" android:layout_height="64dp"
-        android:layout_gravity="end|top" android:layout_marginTop="12dp" android:layout_marginEnd="12dp"
-        android:scaleType="fitCenter"/>
     <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
         android:orientation="vertical" android:gravity="center_vertical"
-        android:paddingStart="16dp" android:paddingEnd="84dp">
-        <TextView android:id="@+id/title" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold"
-            android:singleLine="true" android:ellipsize="end"/>
+        android:paddingStart="14dp" android:paddingEnd="12dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <TextView android:id="@+id/title" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content" android:textSize="26sp" android:textStyle="bold"
+                android:singleLine="true" android:ellipsize="end"/>
+            <TextView android:id="@+id/tag" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="11.5sp" android:textStyle="bold" android:singleLine="true"/>
+        </LinearLayout>
         <TextView android:id="@+id/line1" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" android:textColor="#F2FFFFFF" android:textSize="12.5sp"
+            android:layout_marginTop="6dp" android:textColor="#FFFFFFFF" android:textSize="13sp"
             android:singleLine="true" android:ellipsize="end"/>
         <TextView android:id="@+id/line2" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="2dp" android:textColor="#F2FFFFFF" android:textSize="12.5sp"
+            android:layout_marginTop="3dp" android:textColor="#E6FFFFFF" android:textSize="13sp"
             android:singleLine="true" android:ellipsize="end"/>
         <TextView android:id="@+id/line3" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="2dp" android:textColor="#F2FFFFFF" android:textSize="12.5sp"
+            android:layout_marginTop="3dp" android:textColor="#B3FFFFFF" android:textSize="12.5sp"
             android:singleLine="true" android:ellipsize="end"/>
     </LinearLayout>
 </FrameLayout>

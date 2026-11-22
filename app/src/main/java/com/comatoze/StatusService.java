@@ -34,8 +34,6 @@ public class StatusService extends Service {
     private volatile boolean running = false;
     private volatile Process proc;
     private String lastKey = "";
-    private Bitmap lastIcon;
-    private String lastIconKey = "";
 
     @Override public IBinder onBind(Intent i) { return null; }
 
@@ -119,35 +117,40 @@ public class StatusService extends Service {
         else if ("balance".equals(mode)){ name = "SEIMBANG";      color = Color.parseColor("#3DDC84"); level = 2; glyph = "S"; }
         else                            { name = "KUSTOM";        color = Color.parseColor("#8B9BFF"); level = 2; glyph = "K"; }
 
-        String icon = ("perf".equals(mode) ? "⚡" : "eco".equals(mode) ? "🍃" : "plite".equals(mode) ? "🔥" : "◉");
-        String title = icon + " " + name + (game && ("perf".equals(mode) || "plite".equals(mode)) ? " OTOMATIS" : "") + (thermalOff ? "  ·  🔥 THERMAL OFF" : "");
-        String sub1 = game ? "🎮 " + appName(pkg) + " sedang dimainkan" : "💤 Tidak ada game di depan";
-        String stats = "CPU " + ghz(cpu) + "   ·   GPU " + (gpu > 0 ? gpu + " MHz" : "—");
-        String heat = "🌡 " + temp + "°C " + bar(temp, 80, 8) + "   🔋 " + bat + "%" + (chg ? " ⚡" : "");
-        String th = thermalOff ? "🔥 Thermal DIMATIKAN — pantau suhu!" : "❄ Thermal normal";
-        String big = sub1 + "\n" + stats + "\n" + heat + "\n" + th;
-        String small = (game ? appName(pkg) + " · " : "") + stats + " · " + temp + "°C";
+        boolean auto = game && ("perf".equals(mode) || "plite".equals(mode));
+        String tag = (auto ? "OTOMATIS" : "") + (auto && thermalOff ? "  |  " : "") + (thermalOff ? "THERMAL OFF" : "");
+        String gameTxt = game ? "Game: " + appName(pkg) : "Game: tidak ada";
+        String stats = "CPU " + ghz(cpu) + "   |   GPU " + (gpu > 0 ? gpu + " MHz" : "-");
+        String heat = "Suhu " + temp + " C   |   Baterai " + bat + "%" + (chg ? " (mengisi)" : "");
+        String th = thermalOff ? "Thermal DIMATIKAN - pantau suhu" : "Thermal normal";
+        String small = gameTxt + "  |  " + stats;
+        String title = name;
 
-        String key = title + "|" + big;
+        String key = title + "|" + tag + "|" + gameTxt + "|" + stats + "|" + heat + "|" + th;
         if (key.equals(lastKey)) return;
         lastKey = key;
 
         Notification.Builder b = base(title, small, color);
-        String ik = mode + "|" + thermalOff;
-        if (!ik.equals(lastIconKey) || lastIcon == null) { lastIcon = gauge(glyph, level, color, thermalOff); lastIconKey = ik; }
-        b.setLargeIcon(lastIcon);
-        // latar gambar (res/drawable-nodpi/notif_bg.jpg) + scrim gelap + garis aksen warna mode; teks putih agar terbaca
+        int bg = Color.parseColor("#141A17");
+        int tagColor = thermalOff ? Color.parseColor("#FF6B5E") : color;
         RemoteViews rs = new RemoteViews(getPackageName(), R.layout.notif_small);
         rs.setTextViewText(R.id.title, title);
+        rs.setTextColor(R.id.title, color);
+        rs.setTextViewText(R.id.tag, tag);
+        rs.setTextColor(R.id.tag, tagColor);
         rs.setTextViewText(R.id.line1, small);
         rs.setInt(R.id.accent, "setBackgroundColor", color);
+        rs.setInt(R.id.root, "setBackgroundColor", bg);
         RemoteViews rb = new RemoteViews(getPackageName(), R.layout.notif_big);
         rb.setTextViewText(R.id.title, title);
-        rb.setTextViewText(R.id.line1, sub1);
-        rb.setTextViewText(R.id.line2, stats + "   ·   🌡 " + temp + "°C   🔋 " + bat + "%" + (chg ? " ⚡" : ""));
-        rb.setTextViewText(R.id.line3, th);
+        rb.setTextColor(R.id.title, color);
+        rb.setTextViewText(R.id.tag, tag);
+        rb.setTextColor(R.id.tag, tagColor);
+        rb.setTextViewText(R.id.line1, gameTxt);
+        rb.setTextViewText(R.id.line2, stats);
+        rb.setTextViewText(R.id.line3, heat + "   |   " + th);
         rb.setInt(R.id.accent, "setBackgroundColor", color);
-        rb.setImageViewBitmap(R.id.gauge, lastIcon);
+        rb.setInt(R.id.root, "setBackgroundColor", bg);
         b.setStyle(new Notification.DecoratedCustomViewStyle());
         b.setCustomContentView(rs);
         b.setCustomBigContentView(rb);
@@ -180,39 +183,6 @@ public class StatusService extends Service {
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setContentIntent(pi);
         return b;
-    }
-
-    /** Ikon besar: cincin level mode (Eco 1/4 … Performa penuh) dengan huruf mode di tengah; titik api kecil bila thermal mati. */
-    private Bitmap gauge(String glyph, int level, int color, boolean thermalOff) {
-        int s = 128;
-        Bitmap bm = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);
-        Canvas c = new Canvas(bm);
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        p.setShader(new LinearGradient(0, 0, s, s, Color.parseColor("#1B2420"), Color.parseColor("#0B0F0D"), Shader.TileMode.CLAMP));
-        c.drawRoundRect(new RectF(0, 0, s, s), 34, 34, p);
-        p.setShader(null);
-        p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(10);
-        p.setStrokeCap(Paint.Cap.ROUND);
-        RectF r = new RectF(16, 16, s - 16, s - 16);
-        p.setColor(Color.argb(60, 255, 255, 255));
-        c.drawArc(r, 135, 270, false, p);
-        p.setColor(color);
-        c.drawArc(r, 135, 270f * level / 4f, false, p);
-        p.setStyle(Paint.Style.FILL);
-        p.setColor(Color.WHITE);
-        p.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        p.setTextSize(54);
-        p.setTextAlign(Paint.Align.CENTER);
-        c.drawText(glyph, s / 2f, s / 2f + 19, p);
-        if (thermalOff) {
-            p.setColor(Color.parseColor("#FF3B30"));
-            c.drawCircle(s - 24, 24, 11, p);
-            p.setColor(Color.WHITE);
-            p.setTextSize(16);
-            c.drawText("!", s - 24, 30, p);
-        }
-        return bm;
     }
 
     @Override
