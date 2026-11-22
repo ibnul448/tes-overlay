@@ -1529,7 +1529,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.78.0';
+const VER='2.79.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1665,8 +1665,12 @@ function pageSet(s){const d=s.dev||{},th=THEME_OPTS.find(x=>x[0]===curTheme())||
   ${mrow('power','amber','Fitur Sistem','Terapkan saat boot, boost touch, kernel tweaks, dan lainnya',"openSub('sys')")}
   ${mrow('phone','blue','Perangkat &amp; Laporan',esc(devName(d)||'Info perangkat')+' • '+esc(d.soc||'-'),"openSub('dev')")}
  </div>
- <div class="msec">Tentang</div><div class="mlist">${mrow('info','blue','Comatoze v'+VER,'Channel Telegram • t.me/ProjectComatoze',"openTg()")}</div>
+ <div class="msec">Tentang</div><div class="mlist">${mrow('info','blue','Comatoze v'+VER,'Channel Telegram • t.me/ProjectComatoze',"openTg()")}${mrow('info','blue','Cek versi terpasang','Modul, WebUI, aplikasi & mode yang berjalan',"verCheck()")}</div>
 `;}
+async function verCheck(){toast('Memeriksa…');const r=await run('ver');const d=$('#dlg');d.className='dlg';
+ d.innerHTML=`<h3>Versi terpasang</h3><pre style="white-space:pre-wrap;font-size:12px;margin:8px 0;max-height:55vh;overflow:auto;user-select:text">${esc(((r&&r.out)||'(tidak ada keluaran: skrip modul lama / tidak jalan)').trim())}</pre><div class="act"><button onclick="fixBoot()">Perbaiki &amp; terapkan</button><button onclick="closeDlg()">Tutup</button></div>`;
+ $('#ov').classList.add('on');d.classList.add('on');}
+async function fixBoot(){closeDlg();toast('Memperbaiki…');const r=await run('fixboot');toast(((r&&r.out)||'').trim().split('|')[1]||'Selesai');setTimeout(load,2500);}
 const TG_URL='https://t.me/ProjectComatoze';
 function openTg(){exec("am start --user 0 -a android.intent.action.VIEW -d '"+TG_URL+"' </dev/null >/dev/null 2>&1").catch(()=>{});try{toast&&toast('Membuka Telegram…');}catch(e){}}
 /* ----- sub-halaman ----- */

@@ -1802,6 +1802,26 @@ lagrec_run(){ echo $$ > $DIR/lagrec.pid; i=0
   done
   echo "--- proses terberat ---" >> $DIR/lagrec.txt; top -b -n 1 -m 6 2>/dev/null | tail -n 8 >> $DIR/lagrec.txt
   rm -f $DIR/lagrec.pid; }
+# ---------- CEK VERSI: bukti versi mana yang SEBENARNYA terpasang & jalan (modul, WebUI, aplikasi) ----------
+SCRIPT_VER=2.79.0
+ver_check(){
+  echo "skrip_berjalan=$SCRIPT_VER ($SELF)"
+  for d in /data/adb/modules /data/adb/modules_update; do
+    [ -f $d/ultrapower/module.prop ] || continue
+    echo "$d: module.prop=$(grep -m1 '^version=' $d/ultrapower/module.prop | cut -d= -f2) skrip=$(grep -m1 '^SCRIPT_VER=' $d/ultrapower/system/bin/ultrapower | cut -d= -f2) webroot=$(grep -o "const VER='[^']*'" $d/ultrapower/webroot/index.html 2>/dev/null | cut -d"'" -f2)"
+  done
+  [ -f /data/adb/modules/ultrapower/disable ] && echo "!! modul DINONAKTIFKAN (file disable ada)"
+  [ -f /data/adb/modules/ultrapower/remove ] && echo "!! modul akan DIHAPUS saat reboot"
+  [ -d /data/adb/modules_update/ultrapower ] && echo "!! ada pembaruan modul menunggu REBOOT (modules_update): file lama masih jalan sampai reboot"
+  echo "apk_com.comatoze=$(dumpsys package com.comatoze 2>/dev/null | grep -m1 versionName | tr -d ' ')"
+  [ -f $DIR/skip ] && echo "!! FILE SKIP ADA: tweak TIDAK diterapkan saat boot (mode aman). Penyebab: saklar 'Terapkan saat boot' mati atau pelindung bootloop aktif. Tekan 'Perbaiki & terapkan'."
+  echo "boot_try=$(cat $DIR/boot_try 2>/dev/null) bootguard=$(tail -n 1 $DIR/bootguard.log 2>/dev/null)"
+  echo "MODE=$(getcfg MODE) efektif=$(curmode) pemantau_game=$([ -f $DIR/game.pid ] && kill -0 $(cat $DIR/game.pid) 2>/dev/null && echo hidup || echo mati)"
+  p0=$(ls -d $CPU/policy* 2>/dev/null | head -1); echo "cpu_$(basename $p0): gov=$(rd $p0/scaling_governor) min=$(rd $p0/scaling_min_freq) max=$(rd $p0/scaling_max_freq) (cpuinfo_max=$(rd $p0/cpuinfo_max_freq))"
+  n=0; o=; for f in $FEATS; do [ "$(getcfg F_$f)" = on ] && { n=$((n+1)); o="$o $f"; }; done; echo "fitur_on($n):$o"
+}
+fixboot(){ # buang mode aman (skip), nolkan penghitung bootloop, nyalakan 'Terapkan saat boot' & terapkan tweak sekarang
+  rm -f $DIR/skip; echo 0 > $DIR/boot_try; setcfg F_bootapply on; bgx boot; echo "OK|mode aman dibuang, tweak diterapkan"; }
 gdiag(){ # diagnosa pemantau game (dipakai tombol Cek Pemantau di WebUI)
   alive=0; [ -f $DIR/game.pid ] && kill -0 $(cat $DIR/game.pid) 2>/dev/null && alive=1
   echo "pemantau_hidup=$alive ingame=$([ -f $DIR/ingame ] && echo ya || echo tidak) profil_aktif=$([ -f $DIR/prof_on ] && echo ya || echo tidak)"
@@ -2658,6 +2678,8 @@ case "$1" in
   gp_cfg) setcfg GP_$(echo $2 | tr a-z A-Z) $3;;
   gp_game) gp_game $2 $3 $4;;
   gdiag) gdiag;;
+  ver) ver_check;;
+  fixboot) fixboot;;
   lagrec) lagrec;;
   lagrec_run) lagrec_run;;
   chg_wd) chg_wd;;

@@ -54,6 +54,8 @@ njml=0
 [ -f $MODPATH/thermal_overlay.list ] && njml=$(( $(wc -l < $MODPATH/thermal_overlay.list) ))
 _bar 65 "Thermal: $njml file ditemukan"
 
+# Pasang ulang = mulai bersih: buang mode aman (skip) & penghitung bootloop yang bisa membuat tweak tidak pernah diterapkan saat boot
+rm -f /data/adb/ultrapower/skip; echo 0 > /data/adb/ultrapower/boot_try 2>/dev/null
 # --- COMATOZE
 if [ -f $MODPATH/apk/comatoze.apk ]; then
   _bar 80 "Memasang aplikasi Comatoze"
