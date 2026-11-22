@@ -783,11 +783,11 @@ const FEATURES=[
  {id:'preload',group:'game',ic:'download',tn:'teal',name:'Auto Game Preload',short:'Muat file game ke cache',desc:'Muat file game ke cache saat game dibuka.'},
  {id:'gamethermal',group:'game',ic:'flame',tn:'rose',name:'Thermal Otomatis saat Game',short:'Thermal mati saat game, hidup lagi setelahnya',desc:'Masuk game: thermal dimatikan sementara (service, zone, limit GPU/PPM). Keluar game: thermal dihidupkan lagi otomatis. Tidak mengubah setelan Disable Thermal permanenmu. HP bisa jauh lebih panas saat main; mematikan thermal sekitar 1-2 detik saat game dibuka.'},
  {id:'gamednd',group:'game',ic:'moon',tn:'rose',name:'DND saat Game',short:'DND otomatis saat game',desc:"Aktifkan Don't Disturb otomatis selama game berjalan."},
- {id:'doze',group:'util',ic:'moon',tn:'blue',name:'Doze Mode',short:'Hemat baterai saat layar mati',desc:'Hemat baterai saat layar mati.'},
- {id:'datasaver',group:'util',ic:'data',tn:'teal',name:'Data Saver',short:'Batasi data latar belakang',desc:'Batasi data latar belakang.'},
+ {id:'doze',group:'util',ic:'moon',tn:'blue',name:'Doze Mode',short:'Doze dipercepat saat layar mati',desc:'Mengaktifkan Doze ringan dan dalam, dengan waktu masuk dipersingkat (nilai asli dipulihkan saat dimatikan).'},
+ {id:'datasaver',group:'util',ic:'data',tn:'teal',name:'Data Saver',short:'Batasi data latar belakang',desc:'Membatasi data latar; game di Daftar Game, Comatoze, dan Play Services dikecualikan supaya online dan notifikasi tetap jalan.'},
  {id:'aggrdoze',group:'util',ic:'moon',tn:'blue',name:'Aggressive Doze',short:'Deep Sleep sesaat setelah layar mati',desc:'Memaksa perangkat masuk Deep Sleep sekitar 4 detik setelah layar mati, dan melepasnya saat layar menyala. Standby lebih hemat, tetapi notifikasi aplikasi non-prioritas bisa tertunda selama layar mati.'},
  {id:'gmslimit',group:'util',ic:'layers',tn:'amber',name:'GMS Doze',short:'Kurung Google Play Services habis-habisan',desc:'Mengeluarkan Google Play Services dari daftar putih hemat daya, memblokir jalan di latar, wakelock, auto-start saat boot, dan ubah pengaturan sistem, serta mematikan device admin GMS (Find My Device ikut nonaktif). Bisa menunda notifikasi; matikan bila ada yang telat. Saat dimatikan semuanya kembali ke default ROM.'},
- {id:'f2fsgc',group:'util',ic:'cpu',tn:'teal',name:'F2FS GC',short:'Bersihkan penyimpanan saat layar mati',desc:'Menjalankan garbage collection paksa pada partisi F2FS lalu fstrim, otomatis saat layar mati dan tidak sedang main game (maksimal tiap 6 jam). Menjaga kecepatan baca-tulis penyimpanan tetap segar. Tidak aktif bila HP tidak memakai F2FS.'},
+ {id:'f2fsgc',group:'util',ic:'cpu',tn:'teal',name:'F2FS GC',short:'Bersihkan penyimpanan saat layar mati',desc:'Menjalankan garbage collection paksa (jeda antar-GC dipercepat) pada partisi F2FS lalu fstrim, otomatis saat layar mati dan tidak sedang main game (maksimal tiap 6 jam). Menjaga kecepatan baca-tulis penyimpanan tetap segar. Tidak aktif bila HP tidak memakai F2FS.'},
  {id:'bootapply',ic:'power',tn:'amber',name:'Terapkan saat boot',short:'Matikan jika bootloop',desc:'Matikan jika terjadi bootloop.'}
 ];
 const P=d=>d.map(x=>`<path d="${x}"/>`).join('');
@@ -1539,7 +1539,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.81.0';
+const VER='2.84.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1585,6 +1585,7 @@ function pageTweaks(s){const f=s.feat||{},z=s.zram,b=s.bat||{},tw=f.perfx?'Perfo
   ${mrow('cpu','teal','Memory & ZRAM',z&&z.ok&&z.disk>0?'ZRAM '+fmtZ(z.disk)+' • '+esc(z.algo||'-'):'Kompresi swap, swappiness, dan alokasi RAM',"openSub('mem')")}
   ${mrow('storage','teal','I/O Scheduler',io&&io.cur?esc(io.cur)+' • Algoritma antrean I/O penyimpanan':'Tidak terdeteksi',"iosDlg()")}
   ${mrow('data','blue','Private DNS','DNS aman dan filter iklan',"openSub('dns')")}
+  ${mrow('rocket','purple','Grafis Unreal Engine','Kualitas grafis game UE (Engine.ini) + rekompilasi',"ueOpen()")}
   ${mrow('bolt','purple','Eksperimental','Buka batas FPS, matikan FPSGO',"openSub('exp')")}
  </div>
  <div class="msec">Utilitas &amp; Diagnostik</div><div class="mlist">
@@ -1622,6 +1623,25 @@ function appSub(p,s){const q=esc(p),sp=(s.spoofApps||[]).find(x=>x.pkg===p),sec=
  ${sec.map(x=>`<div class="gp-sec tn-${x.tn}"><span>${IC[x.ic]||''}</span>${x.t}</div><div class="gp-list">${x.rows.map(r=>`<button class="gp-row tn-${x.tn}" onclick="${r.page?`openSub('${r.page}:${q}')`:`gdOpen('${q}','${r.k}')`}"><span class="gp-ic">${IC[r.ic]||''}</span><div class="gp-tx"><b>${r.t}</b><small>${r.d}</small></div><span class="gp-v">${r.v}</span></button>`).join('')}${x.t==='Pengaturan Tambahan'?`<button class="gp-row tn-amber" onclick="spoofAppOpen()"><span class="gp-ic">${IC.phone||''}</span><div class="gp-tx"><b>Spoof Perangkat</b><small>${sp&&sp.on?esc(((sp.man?sp.man+' · ':'')+(chipName(sp)?'Chip '+chipName(sp):'Tiru model HP')).trim()):'Tiru model HP untuk membuka opsi FPS'}</small></div><span class="gp-v" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sp?(sp.on?esc(sp.mod||sp.key||'Aktif'):'Nonaktif'):'Belum'}</span></button>`:''}</div>`).join('')}
  <button class="btn ghost" style="color:var(--dg);margin-top:18px" onclick="appDel('${q}')">${IC.trash} Hapus dari daftar game</button>`;}
 async function gfxSet(k,v){toast('Menerapkan…');const r=await run(`gfx_${k==='drv'?'driver':'angle'} ${v}`);await load();toast((r.out||'').trim().startsWith('OK')?'Diterapkan · UI dimuat ulang':'Gagal: '+((r.out||'').split('|')[1]||'tidak ada respon'));}
+/* ---- Grafis Unreal Engine ---- */
+const UE_N=['Terendah','Rendah','Sedang','Tinggi','Ultra'];let UE={list:null,sel:'',lv:2,busy:false};
+async function ueOpen(){UE.list=null;openSub('ue');const r=await run('ue list');const o=((r&&r.out)||'').trim();
+ UE.list=(o.split('|')[1]||'').split(';').filter(Boolean).map(x=>{const f=x.split('~');return{p:f[0],lv:f[2]===''||f[2]===undefined?-1:+f[2]};});
+ if(!UE.list.some(g=>g.p===UE.sel)){UE.sel=(UE.list[0]||{}).p||'';}const g=UE.list.find(x=>x.p===UE.sel);UE.lv=g&&g.lv>=0?g.lv:2;prefetchLabels(UE.list.map(x=>x.p));renderSub();}
+function ueSub(s){if(UE.list===null)return '<div class="card"><div class="note">Memeriksa game Unreal Engine…</div></div>';
+ if(!UE.list.length)return '<div class="card"><div class="note"><b>Tidak ada game Unreal Engine terdeteksi.</b> Tambahkan game ke Daftar Game dan buka sekali supaya datanya terbentuk, lalu buka halaman ini lagi.</div></div>';
+ const g=UE.list.find(x=>x.p===UE.sel)||UE.list[0];
+ return `<div class="card"><div class="msec" style="margin:0 0 10px">Unreal Engine Games</div>${UE.list.map(x=>`<button class="mrow" style="${x.p===UE.sel?'outline:2px solid var(--ac);':''}" onclick="ueSel('${x.p}')">${appIcon(x.p)}<div class="tx"><b>${esc(labelOf(x.p))}</b><span>${esc(x.p)}${x.lv>=0?' · aktif: '+UE_N[x.lv]:''}</span></div></button>`).join('')}</div>
+ <div class="card tx-ctl"><div class="tx-row"><b>Unreal Quality</b><span id="uev">${UE.lv} · ${UE_N[UE.lv]}</span></div>
+  <div class="tx-seg" id="uel" style="grid-template-columns:repeat(5,1fr)">${UE_N.map((n,i)=>`<button class="${UE.lv===i?'on':''}" style="font-size:17px" onclick="ueLvl(${i})">${i}</button>`).join('')}</div>
+  <p class="mu" style="margin:8px 2px 0">Menulis <b>Engine.ini</b> game (sg.* scalability, resolusi render). Cadangan asli disimpan dan dipulihkan lewat Kembalikan. Tidak semua game UE mengikuti pengaturan ini.</p></div>
+ <div class="tx-act"><button class="btn ghost" onclick="ueOff()">${IC.refresh||''} Kembalikan</button><button class="btn" onclick="ueGo()">${IC.check||''} Terapkan</button></div>
+ <button class="btn tonal tn-purple" style="margin-top:12px" onclick="ueCompile()">${IC.refresh||''} Recompile (AOT penuh)</button>`;}
+function ueSel(p){UE.sel=p;const g=UE.list.find(x=>x.p===p);UE.lv=g&&g.lv>=0?g.lv:2;renderSub();}
+function ueLvl(n){UE.lv=n;const v=$('#uev');if(v)v.textContent=n+' · '+UE_N[n];document.querySelectorAll('#uel button').forEach((b,i)=>b.classList.toggle('on',i===n));}
+async function ueGo(){if(!UE.sel||UE.busy)return;UE.busy=true;toast('Menerapkan…');const r=await run(`ue set ${UE.sel} ${UE.lv}`);const o=((r&&r.out)||'').trim();UE.busy=false;toast(o.startsWith('OK')?'Grafis UE diterapkan · buka ulang game':(o.split('|')[1]||'Gagal'));if(o.startsWith('OK')){const g=UE.list.find(x=>x.p===UE.sel);if(g)g.lv=UE.lv;renderSub();}}
+async function ueOff(){if(!UE.sel)return;toast('Mengembalikan…');const r=await run('ue off '+UE.sel);const g=UE.list.find(x=>x.p===UE.sel);if(g)g.lv=-1;toast(((r&&r.out)||'').trim().split('|')[1]||'Dikembalikan');renderSub();}
+async function ueCompile(){if(!UE.sel)return;const r=await run('ue compile '+UE.sel);toast(((r&&r.out)||'').trim().split('|')[1]||'Rekompilasi berjalan');}
 /* ---- Kualitas Tekstur: pratinjau sebelum/sesudah ---- */
 const TX_N=['Tinggi','Sedang','Rendah','Terendah'],TX_F=[2,4,8,16];let TX={p:null,l:2,s:'blur',x:.5,art:null,on:false};
 function texSub(p,s){const c=(s.tex||{})[p];TX.p=p;TX.l=c?c.l:2;TX.s=c?c.s:'blur';TX.on=!!c;TX.x=.5;
@@ -1632,19 +1652,34 @@ function texSub(p,s){const c=(s.tex||{})[p];TX.p=p;TX.l=c?c.l:2;TX.s=c?c.s:'blur
    <div class="tx-seg two" id="txs"><button data-s="blur" onclick="texSty('blur')">Blur</button><button data-s="pixel" onclick="texSty('pixel')">Pixel</button></div></div></div>
   <div class="card tx-info"><span class="tx-i">i</span><div><b>Informasi</b><p>Game akan dimulai ulang agar berlaku. Level lebih tinggi = tekstur lebih kasar dan FPS lebih ringan. Memakai ANGLE (Vulkan). Game dimulai ulang & hasilnya dicek: bila ANGLE menolak, muncul pesan penyebabnya.</p></div></div>
   <div class="tx-act"><button class="btn ghost" onclick="texDef()">${IC.refresh||''} Nonaktifkan</button><button class="btn" onclick="texDone()">${IC.check||''} Selesai</button></div></div>`;}
-function texArt(){if(TX.art)return TX.art;const W=256,H=160,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
- g.fillStyle='#3a2a22';g.fillRect(0,0,W,H);
- for(let r=0;r<10;r++){const y=r*9,off=(r%2)*14;for(let x=-28;x<W;x+=28){const k=((x*7+r*13)&15)/15;g.fillStyle=`rgb(${168+k*30|0},${74+k*20|0},${52+k*14|0})`;g.fillRect(x+off+1,y+1,26,7);g.fillStyle='rgba(0,0,0,.18)';g.fillRect(x+off+1,y+6,26,2);}}
- g.fillStyle='#43b83c';g.fillRect(0,92,W,6);g.fillStyle='#2f8f2a';for(let x=0;x<W;x+=6)g.fillRect(x,96,3,3);
- for(let y=98;y<H;y+=4)for(let x=0;x<W;x+=4){const k=((x*3+y*5)%7)/7;g.fillStyle=`rgb(${96+k*30|0},${64+k*18|0},${30+k*10|0})`;g.fillRect(x,y,4,4);}
- for(let i=0;i<14;i++){g.strokeStyle='rgba(0,0,0,.16)';g.beginPath();g.moveTo(i*20,98);g.lineTo(i*20+30,H);g.stroke();}
+function texArt(){if(TX.art)return TX.art;const W=320,H=200,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+ /* adegan malam bergaya game: langit gradasi, bulan, bintang, gunung, pohon cemara, benteng bata berjendela, jalan batu, teks kecil (detail halus) */
+ const sk=g.createLinearGradient(0,0,0,120);sk.addColorStop(0,'#0b1030');sk.addColorStop(.6,'#3b2a6b');sk.addColorStop(1,'#e0728a');g.fillStyle=sk;g.fillRect(0,0,W,H);
+ for(let i=0;i<60;i++){g.fillStyle='rgba(255,255,255,'+(.3+((i*37)%7)/10)+')';g.fillRect((i*53)%W,(i*29)%70,1+(i%3==0),1+(i%3==0));}
+ g.fillStyle='#fff6d6';g.beginPath();g.arc(250,38,20,0,7);g.fill();g.fillStyle='#0b1030';g.beginPath();g.arc(258,33,17,0,7);g.fill();
+ g.fillStyle='#2a1d52';g.beginPath();g.moveTo(0,120);for(let x=0;x<=W;x+=20)g.lineTo(x,86+((x*7)%23)+Math.sin(x/37)*14);g.lineTo(W,120);g.fill();
+ g.fillStyle='#161233';g.beginPath();g.moveTo(0,130);for(let x=0;x<=W;x+=16)g.lineTo(x,104+((x*11)%17));g.lineTo(W,130);g.fill();
+ /* benteng */
+ g.fillStyle='#6b5a68';g.fillRect(90,70,120,70);
+ for(let r=0;r<9;r++)for(let x=0;x<120;x+=15){const o=(r%2)*7,k=((x*5+r*9)&7)/7;g.fillStyle=`rgb(${96+k*40|0},${82+k*30|0},${96+k*34|0})`;g.fillRect(90+x+o-(o?0:0),70+r*8,14,7);}
+ g.fillStyle='#6b5a68';for(let x=90;x<210;x+=20)g.fillRect(x,62,12,10);
+ g.fillStyle='#ffcf6e';[[110,92],[150,92],[188,92],[130,112],[170,112]].forEach(q=>{g.fillRect(q[0],q[1],9,13);g.fillStyle='#ff9d3c';g.fillRect(q[0],q[1]+6,9,7);g.fillStyle='#ffcf6e';});
+ g.fillStyle='#2a1d1f';g.fillRect(142,118,24,22);g.beginPath();g.arc(154,118,12,Math.PI,0);g.fill();
+ /* pohon cemara */
+ [[28,110,1],[56,118,.8],[248,108,1.1],[282,118,.85]].forEach(t=>{const x=t[0],y=t[1],k=t[2];g.fillStyle='#0f2a22';for(let i=0;i<4;i++){g.beginPath();g.moveTo(x,y-34*k+i*10*k);g.lineTo(x-(10+i*4)*k,y-14*k+i*10*k);g.lineTo(x+(10+i*4)*k,y-14*k+i*10*k);g.fill();}g.fillStyle='#3b2412';g.fillRect(x-2*k,y+14*k,4*k,8*k);});
+ /* tanah rumput + jalan batu */
+ g.fillStyle='#2f8f3a';g.fillRect(0,140,W,16);g.fillStyle='#46c24f';for(let x=0;x<W;x+=4)g.fillRect(x,140,2,3+(x%7==0));
+ for(let y=156;y<H;y+=7)for(let x=0;x<W;x+=14){const o=((y/7)&1)*7,k=((x*3+y*5)%9)/9;g.fillStyle=`rgb(${120+k*50|0},${108+k*40|0},${96+k*34|0})`;g.fillRect(x+o,y,13,6);}
+ g.fillStyle='rgba(0,0,0,.25)';for(let y=156;y<H;y+=7)g.fillRect(0,y+6,W,1);
+ /* detail halus: garis grid + teks mungil, supaya blur/pixel kelihatan jelas */
+ g.fillStyle='rgba(255,255,255,.9)';g.font='bold 9px sans-serif';g.fillText('COMATOZE · TEXTURE TEST 0123456789',10,176);g.font='7px monospace';g.fillText('The quick brown fox jumps over the lazy dog',10,188);
+ g.strokeStyle='rgba(255,255,255,.35)';g.lineWidth=1;for(let x=0;x<=W;x+=20){g.beginPath();g.moveTo(x+.5,194);g.lineTo(x+.5,H);g.stroke();}
  TX.art=c;return c;}
 function texDraw(){const cv=$('#txc');if(!cv)return;const dpr=Math.min(window.devicePixelRatio||1,2),w=cv.clientWidth,h=cv.clientHeight;if(!w)return;cv.width=w*dpr;cv.height=h*dpr;
  const g=cv.getContext('2d'),art=texArt(),f=TX_F[TX.l-1],X=Math.round(TX.x*cv.width);
  g.save();g.beginPath();g.rect(0,0,X,cv.height);g.clip();g.imageSmoothingEnabled=true;g.drawImage(art,0,0,cv.width,cv.height);g.restore();
  g.save();g.beginPath();g.rect(X,0,cv.width-X,cv.height);g.clip();
- if(!TX.on){g.imageSmoothingEnabled=true;g.drawImage(art,0,0,cv.width,cv.height);}
- else if(TX.s==='blur'){ /* blur: turun resolusi lalu naik halus (berkabut) */
+ if(TX.s==='blur'){ /* blur: turun resolusi lalu naik halus (berkabut) */
   const sm=document.createElement('canvas');sm.width=Math.max(2,Math.round(art.width/f));sm.height=Math.max(2,Math.round(art.height/f));
   const sg=sm.getContext('2d');sg.imageSmoothingEnabled=true;sg.drawImage(art,0,0,sm.width,sm.height);
   g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(sm,0,0,cv.width,cv.height);
@@ -1659,7 +1694,7 @@ function texDraw(){const cv=$('#txc');if(!cv)return;const dpr=Math.min(window.de
  const d=$('#txd');if(d)d.style.left=(TX.x*100)+'%';}
 function texUi(){const v=$('#txv');if(v)v.textContent=TX.l+' · '+TX_N[TX.l-1];document.querySelectorAll('#txl button').forEach(b=>b.classList.toggle('on',TX.on&&+b.dataset.l===TX.l));document.querySelectorAll('#txs button').forEach(b=>b.classList.toggle('on',TX.on&&b.dataset.s===TX.s));
  const bd=$('#txbody');if(bd)bd.classList.toggle('off',!TX.on);const o=$('#txon');if(o)o.checked=TX.on;const os=$('#txos');if(os)os.textContent=TX.on?'Aktif · '+(TX.s==='pixel'?'Pixel':'Blur')+' level '+TX.l:'Nonaktif · tekstur asli game';
- const br=$('#txbr'),bt=$('#txbt');if(br)br.classList.toggle('offb',!TX.on);if(bt)bt.textContent=TX.on?(TX.s==='pixel'?'PIXEL':'BLUR'):'NONAKTIF';texDraw();}
+ const br=$('#txbr'),bt=$('#txbt');if(br)br.classList.toggle('offb',!TX.on);if(bt)bt.textContent=TX.on?(TX.s==='pixel'?'PIXEL':'BLUR'):'PRATINJAU';texDraw();}
 function texInit(){texUi();const p=$('#txp');if(!p||p._b)return;p._b=1;let dn=false;const mv=ev=>{const r=p.getBoundingClientRect();TX.x=Math.min(.97,Math.max(.03,(ev.clientX-r.left)/r.width));texDraw();};
  p.addEventListener('pointerdown',ev=>{dn=true;try{p.setPointerCapture(ev.pointerId);}catch(e){}mv(ev);});p.addEventListener('pointermove',ev=>{if(dn)mv(ev);});p.addEventListener('pointerup',()=>{dn=false;});p.addEventListener('pointercancel',()=>{dn=false;});}
 function texOn(v){TX.on=!!v;texUi();}
@@ -1689,11 +1724,8 @@ function pageSet(s){const d=s.dev||{},th=THEME_OPTS.find(x=>x[0]===curTheme())||
   ${mrow('power','amber','Fitur Sistem','Terapkan saat boot, boost touch, kernel tweaks, dan lainnya',"openSub('sys')")}
   ${mrow('phone','blue','Perangkat &amp; Laporan',esc(devName(d)||'Info perangkat')+' • '+esc(d.soc||'-'),"openSub('dev')")}
  </div>
- <div class="msec">Tentang</div><div class="mlist">${mrow('info','blue','Comatoze v'+VER,'Channel Telegram • t.me/ProjectComatoze',"openTg()")}${mrow('info','blue','Cek versi terpasang','Modul, WebUI, aplikasi & mode yang berjalan',"verCheck()")}</div>
+ <div class="msec">Tentang</div><div class="mlist">${mrow('info','blue','Comatoze v'+VER,'Channel Telegram • t.me/ProjectComatoze',"openTg()")}</div>
 `;}
-async function verCheck(){toast('Memeriksa…');const r=await run('ver');const d=$('#dlg');d.className='dlg';
- d.innerHTML=`<h3>Versi terpasang</h3><pre style="white-space:pre-wrap;font-size:12px;margin:8px 0;max-height:55vh;overflow:auto;user-select:text">${esc(((r&&r.out)||'(tidak ada keluaran: skrip modul lama / tidak jalan)').trim())}</pre><div class="act"><button onclick="fixBoot()">Perbaiki &amp; terapkan</button><button onclick="closeDlg()">Tutup</button></div>`;
- $('#ov').classList.add('on');d.classList.add('on');}
 async function fixBoot(){closeDlg();toast('Memperbaiki…');const r=await run('fixboot');toast(((r&&r.out)||'').trim().split('|')[1]||'Selesai');setTimeout(load,2500);}
 const TG_URL='https://t.me/ProjectComatoze';
 function openTg(){exec("am start --user 0 -a android.intent.action.VIEW -d '"+TG_URL+"' </dev/null >/dev/null 2>&1").catch(()=>{});try{toast&&toast('Membuka Telegram…');}catch(e){}}
@@ -1703,8 +1735,7 @@ const tmodeSub=s=>`<div class="card">${tweakSeg(s)}</div>
 const fpaceSub=s=>{const p=s.fp||{on:false,act:false,tot:0,cpu:0,gpu:0,idle:0,sc:0,sg:0,si:0},sup=p.sc+p.sg+p.si;
  const st=!p.on?'Mati':p.act?'Aktif di game':'Siaga (menunggu game dibuka)';
  const warn=sup===0?'<div class="fnote"><b>Tidak ada node yang didukung.</b> Kernel HP ini tidak menyediakan pengaturan yang dipakai Frame Pacing, jadi fitur ini tidak akan berefek.</div>':'';
- return `<div class="fnote"><b>Penstabil FPS.</b> Membuat waktu antar-frame lebih rata: clock CPU tidak jatuh di tengah frame, GPU lebih cepat naik dan lambat turun, dan CPU tidak masuk tidur dalam. Aktif otomatis hanya saat game dari <b>Daftar Game</b> ada di depan, lalu dipulihkan saat keluar, jadi baterai di luar game aman. Pakai bersama Kunci Refresh Rate supaya Hz juga tetap.</div>
- <div class="card">${rowsById(['framepace'])}</div>${warn}
+ return `<div class="card">${rowsById(['framepace'])}</div>${warn}
  <div class="card"><div class="kv"><span>Status</span><b>${st}</b><span>Parameter diterapkan</span><b>${p.act?p.tot+' (CPU '+p.cpu+' · GPU '+p.gpu+' · Idle '+p.idle+')':'-'}</b><span>Didukung HP ini</span><b>CPU ${p.sc} · GPU ${p.sg} · Idle ${p.si}</b></div></div>`;};
 const thermalSub=s=>`<div class="card">${rowsById(['nothermal'])}</div>
  <div class="fnote"><b>Berisiko.</b> Mematikan mitigasi suhu membuat HP bisa sangat panas. Pakai Pendinginan di bawah bila perlu.</div>${coolCard(s)}`;
@@ -1786,6 +1817,7 @@ const SUBS={
  chg:{t:'Daya & Charging',f:s=>pageChg(s)},
  mem:{t:'Memory & ZRAM',f:s=>memCard(s)+idleCard(s)+dramCard(s)},
  dns:{t:'Private DNS',f:s=>dnsCard(s)},
+ ue:{t:'Grafis Unreal Engine',f:s=>ueSub(s)},
  exp:{t:'Eksperimental',f:s=>`<div class="card">${rows('exp')}</div>`},
  care:{t:'Perawatan',f:s=>dpiCard(s)+killCard()+cacheCard()+colorCard(s)},
  util:{t:'Utilitas',f:utilSub},

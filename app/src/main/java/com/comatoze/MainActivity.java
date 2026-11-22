@@ -89,6 +89,9 @@ public class MainActivity extends Activity {
                 if (root) gateState("mod");
                 final boolean mod = root && Root.exec("test -f " + Root.MOD + "/webroot/index.html").code == 0;
                 if (root && mod) Root.exec(Root.BIN + " appperm");
+                if (root && mod) {
+                    try { startForegroundService(new Intent(MainActivity.this, StatusService.class)); } catch (Throwable ignored) { }
+                }
                 ui.post(new Runnable() {
                     @Override public void run() {
                         checking = false;

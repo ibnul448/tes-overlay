@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="132dp">
+    <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
+        android:scaleType="centerCrop" android:src="@drawable/notif_bg"/>
+    <ImageView android:layout_width="match_parent" android:layout_height="match_parent"
+        android:scaleType="fitXY" android:src="@drawable/notif_scrim"/>
+    <ImageView android:id="@+id/accent" android:layout_width="4dp" android:layout_height="match_parent"
+        android:layout_gravity="start" android:scaleType="fitXY"/>
+    <ImageView android:id="@+id/gauge" android:layout_width="64dp" android:layout_height="64dp"
+        android:layout_gravity="end|top" android:layout_marginTop="12dp" android:layout_marginEnd="12dp"
+        android:scaleType="fitCenter"/>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+        android:orientation="vertical" android:gravity="center_vertical"
+        android:paddingStart="16dp" android:paddingEnd="84dp">
+        <TextView android:id="@+id/title" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold"
+            android:singleLine="true" android:ellipsize="end"/>
+        <TextView android:id="@+id/line1" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" android:textColor="#F2FFFFFF" android:textSize="12.5sp"
+            android:singleLine="true" android:ellipsize="end"/>
+        <TextView android:id="@+id/line2" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="2dp" android:textColor="#F2FFFFFF" android:textSize="12.5sp"
+            android:singleLine="true" android:ellipsize="end"/>
+        <TextView android:id="@+id/line3" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="2dp" android:textColor="#F2FFFFFF" android:textSize="12.5sp"
+            android:singleLine="true" android:ellipsize="end"/>
+    </LinearLayout>
+</FrameLayout>

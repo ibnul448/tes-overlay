@@ -65,6 +65,24 @@ cpu_mode(){
   done
 }
 GP=/proc/gpufreq
+# gpu_live: clock GPU NYATA (Hz). Urutan sumber: kgsl gpuclk > GED current_freqency (MediaTek) > gpufreqv2/gpufreq status > devfreq cur_freq.
+# Hasil: "<Hz>|<sumber>". devfreq cur_freq sering basi (previous_freq), jadi hanya jadi pilihan terakhir.
+gpu_live(){
+  _n(){ case $1 in ''|*[!0-9]*) return 1;; esac; return 0; }
+  _hz(){ _v=$1; if [ "$_v" -lt 10000000 ]; then _v=$((_v*1000)); fi; echo "$_v"; }   # kHz -> Hz
+  if [ -r /sys/class/kgsl/kgsl-3d0/gpuclk ]; then k=$(rd /sys/class/kgsl/kgsl-3d0/gpuclk); _n "$k" && [ "$k" -gt 0 ] && { echo "$k|kgsl"; return; }; fi
+  for f in /sys/kernel/ged/hal/current_freqency /sys/kernel/gpu/gpu_clock; do
+    [ -r $f ] || continue
+    v=$(tr -c '0-9\n' ' ' < $f 2>/dev/null | tr ' ' '\n' | awk 'length($0)>=5{x=$0} END{print x}')
+    _n "$v" && [ "$v" -gt 0 ] && { echo "$(_hz $v)|ged"; return; }
+  done
+  for f in /proc/gpufreqv2/gpufreq_status /proc/gpufreq/gpufreq_var_dump; do
+    [ -r $f ] || continue
+    v=$(grep -i -m1 'cur.*freq\|freq *:' $f 2>/dev/null | grep -o '[0-9]\{5,\}' | head -1)
+    _n "$v" && [ "$v" -gt 0 ] && { echo "$(_hz $v)|gpufreq"; return; }
+  done
+  v=$(rd $GPU/cur_freq); _n "$v" && echo "$v|devfreq"
+}
 gp_freqs(){ [ -f $GP/gpufreq_opp_dump ] && grep -o 'freq = *[0-9]*' $GP/gpufreq_opp_dump | grep -o '[0-9]*$'; }
 gpu_fix(){ [ -f $GP/gpufreq_opp_freq ] && echo $1 > $GP/gpufreq_opp_freq; markcustom gpu_fix "gpu_fix $1"; }
 gpu_mode(){
@@ -86,6 +104,16 @@ gpu_mode(){
   esac
   [ -n "$g" ] && w $g $GPU/governor
   range $GPU/min_freq $GPU/max_freq $mn $mx
+  ged_floor "$1"
+}
+# ged_floor: GPU Boost (Tinggi/Maks) juga menaikkan LANTAI clock GPU (Tinggi ~65%, Maks ~88% dari maksimum) agar tidak jatuh di tengah adegan.
+# Dilewati di mode Eco dan bila GPU Boost = Auto. Dipanggil tiap gpu_mode (supaya tidak tertimpa ganti mode) dan saat GPU Boost diubah.
+ged_floor(){
+  [ -n "$GPU" ] || return 0; [ "$1" = eco ] && return 0; [ "$1" = perf ] && return 0
+  case $(getcfg GED_LV) in tinggi) _pc=65;; maks) _pc=88;; *) return 0;; esac
+  _fr=$(rd $GPU/available_frequencies); [ -n "$_fr" ] || return 0
+  _tp=$(maxof $_fr); _fl=$(cap $((_tp*_pc/100)) $_fr); [ -n "$_fl" ] || return 0
+  range $GPU/min_freq $GPU/max_freq $_fl $_tp
 }
 # ---------- HEMAT DAYA OTOMATIS SAAT MODE ECO ----------
 # Mode eco -> nyalakan Battery Saver bawaan Android; mode lain -> matikan, tapi HANYA kalau Comatoze sendiri yang menyalakannya
@@ -336,7 +364,7 @@ perf_x_boost(){
   if [ ! -f $DIR/pxclean ]; then : > $DIR/pxclean
     ( sleep 25; gclean "$(game_fg)" ) </dev/null >/dev/null 2>&1 &   # ditunda 25 dtk (game selesai memuat), ringan: tanpa kill-all/drop_caches/compact saat game dimuat
   fi
-  for _f in touchboost wifilatency lessdbg smooth fpsgooff; do px_feat $_f; done
+  for _f in touchboost wifilatency lessdbg smooth; do px_feat $_f; done   # fpsgooff TIDAK ikut: bentrok dengan Frame Pacing yang justru menyetel FPSGO
   [ -f $DIR/pxfpm ] || { cmd power set-fixed-performance-mode-enabled true >/dev/null 2>&1 && : > $DIR/pxfpm; }
   perf_x_game
   return 0
@@ -628,6 +656,8 @@ touch_on(){
   tb_rp persist.sys.use_fifo_ui 1
   tb_wr /sys/module/msm_performance/parameters/touchboost 1
   tb_wr /sys/power/pnpmgr/touch_boost 1
+  tb_wr /dev/cpuctl/top-app/cpu.uclamp.latency_sensitive 1   # thread UI/touch app depan dijadwalkan berprioritas latensi (bangun di core cepat/idle)
+  tb_wr /dev/cpuctl/foreground/cpu.uclamp.latency_sensitive 1
   # node touch vendor tambahan (ide dari modul RedXTouch; ditulis sendiri, hanya node yang benar-benar ada di HP):
   #  - MediaTek perfmgr: tb_enable (touch boost kernel)
   #  - Oppo/Realme/OnePlus (ColorOS): game_switch_enable (mode sentuh game di firmware touch panel)
@@ -1047,7 +1077,7 @@ ged_set(){ # auto | tinggi | maks
   _lv=$1   # simpan dulu: "set --" di bawah menimpa $1
   [ -e $GEDD/gpu_boost_level ] || { echo "ERR|node GED tidak ditemukan (bukan GPU MediaTek)"; return; }
   case $1 in
-    auto) if [ -f $GEDF ]; then while IFS='|' read -r n v; do [ -n "$v" ] && w "$v" $GEDD/$n; done < $GEDF; rm -f $GEDF; fi; setcfg GED_LV ""; echo OK; return;;
+    auto) if [ -f $GEDF ]; then while IFS='|' read -r n v; do [ -n "$v" ] && w "$v" $GEDD/$n; done < $GEDF; rm -f $GEDF; fi; setcfg GED_LV ""; [ -n "$GPU" ] && gpu_mode "$(curmode)"; echo OK; return;;
     tinggi) vals="4 2 8 50";;
     maks) vals="2 1 16 100";;
     *) echo "ERR|level tidak dikenal"; return;;
@@ -1057,7 +1087,7 @@ ged_set(){ # auto | tinggi | maks
   sleep 0.2 2>/dev/null || sleep 1
   v4=$(echo $vals | awk '{print $4}')
   if [ "$(rd $GEDD/gpu_boost_level)" != "$v4" ]; then echo "ERR|GED menolak nilai (sekarang: $(rd $GEDD/gpu_boost_level))"; return; fi
-  setcfg GED_LV "$_lv"; echo OK
+  setcfg GED_LV "$_lv"; ged_floor "$(curmode)"; echo OK
 }
 games_catalog(){ cat <<'EOF'
 com.tencent.ig
@@ -1146,6 +1176,8 @@ gms_limit(){
   # Doze GMS: keluarkan GMS dari daftar putih hemat daya sistem (sys-whitelist) + daftar putih pengguna; tanpa ini GMS kebal Doze
   if [ "$1" = on ]; then cmd deviceidle sys-whitelist -com.google.android.gms >/dev/null 2>&1; cmd deviceidle whitelist -com.google.android.gms >/dev/null 2>&1
   else cmd deviceidle sys-whitelist reset >/dev/null 2>&1; fi
+  if [ "$1" = on ]; then am set-standby-bucket com.google.android.gms restricted >/dev/null 2>&1; am set-standby-bucket com.google.android.gsf restricted >/dev/null 2>&1
+  else am set-standby-bucket com.google.android.gms active >/dev/null 2>&1; am set-standby-bucket com.google.android.gsf active >/dev/null 2>&1; fi
   for u in $(ls /data/user 2>/dev/null); do
     for pk in com.google.android.gms com.google.android.ims; do
       for op in BOOT_COMPLETED AUTO_START WRITE_SETTINGS; do
@@ -1158,7 +1190,7 @@ gms_limit(){
   done
 }
 # F2FS GC: paksa garbage collection partisi F2FS (gc_urgent) + fstrim saat layar mati, tidak sedang main game. Ditulis sendiri.
-F2W=$DIR/f2fs.pid; F2L=$DIR/f2fs.last
+F2S=$DIR/f2fs.sleep; F2W=$DIR/f2fs.pid; F2L=$DIR/f2fs.last
 f2fs_dirs(){ for d in /sys/fs/f2fs/*; do [ -w "$d/gc_urgent" ] && echo "$d"; done; }
 f2fs_free(){ _t=0; for d in $(f2fs_dirs); do _f=; read -r _f 2>/dev/null < $d/free_segments; _t=$((_t + ${_f:-0})); done; echo $_t; }
 f2fs_gc_run(){ # jalan maksimal ~120 dtk; berhenti dini bila free_segments sudah tidak naik
@@ -1166,7 +1198,7 @@ f2fs_gc_run(){ # jalan maksimal ~120 dtk; berhenti dini bila free_segments sudah
   [ -n "$(f2fs_dirs)" ] || { echo "ERR|node F2FS tidak ada"; return 1; }
   [ -f $DIR/f2fs.run ] && kill -0 "$(cat $DIR/f2fs.run 2>/dev/null)" 2>/dev/null && { echo "ERR|GC sedang berjalan"; return 1; }
   echo $$ > $DIR/f2fs.run; b=$(f2fs_free); l=$b; n=0
-  for d in $(f2fs_dirs); do echo 1 > $d/gc_urgent 2>/dev/null; done
+  for d in $(f2fs_dirs); do _so=; read -r _so 2>/dev/null < $d/gc_urgent_sleep_time; echo "$d|$_so" >> $F2S; echo 50 > $d/gc_urgent_sleep_time 2>/dev/null; echo 1 > $d/gc_urgent 2>/dev/null; done   # tidur antar-GC 50 ms: GC lebih cepat
   i=0; while [ $i -lt 24 ]; do
     sleep 5; i=$((i+1)); c=$(f2fs_free)
     if [ "$c" -le "$l" ]; then n=$((n+1)); else n=0; fi
@@ -1174,7 +1206,8 @@ f2fs_gc_run(){ # jalan maksimal ~120 dtk; berhenti dini bila free_segments sudah
     [ -f $DIR/ingame ] && break
   done
   for d in $(f2fs_dirs); do echo 0 > $d/gc_urgent 2>/dev/null; done
-  sm fstrim >/dev/null 2>&1
+  [ -f $F2S ] && { while IFS='|' read -r _d _v; do [ -n "$_v" ] && echo "$_v" > $_d/gc_urgent_sleep_time 2>/dev/null; done < $F2S; rm -f $F2S; }
+  sm fstrim >/dev/null 2>&1; sm idle-maint run >/dev/null 2>&1
   echo "$(date +%s)|$b|$(f2fs_free)" > $F2L; rm -f $DIR/f2fs.run; echo "OK|$b -> $(f2fs_free) segmen bebas"
 }
 f2fs_wd(){
@@ -1197,6 +1230,33 @@ f2fs_sync(){ # on|off
   elif [ "$1" != on ] && [ $alive = 1 ]; then kill $(cat $F2W) 2>/dev/null; rm -f $F2W; fi
 }
 f2fs_status(){ _l=0; _b=0; _a=0; [ -f $F2L ] && { IFS='|' read -r _l _b _a < $F2L; }; echo "F2FS|$(f2fs_dirs | wc -l)|${_l:-0}|${_b:-0}|${_a:-0}"; }
+# Data Saver: batasi data latar, tapi game di Daftar Game + Comatoze + Play Services dikecualikan (daftar putih) supaya online/notifikasi tetap jalan.
+DSW=$DIR/dswl
+ds_uid(){ cmd package list packages -U "$1" 2>/dev/null | grep -m1 "^package:$1 " | sed 's/.*uid:\([0-9]*\).*/\1/'; }
+ds_apply(){
+  if [ "$1" = on ]; then
+    cmd netpolicy set restrict-background true >/dev/null 2>&1
+    for _p in com.comatoze com.google.android.gms $(cat $DIR/games.txt 2>/dev/null); do
+      _u=$(ds_uid $_p); [ -n "$_u" ] || continue
+      cmd netpolicy add restrict-background-whitelist $_u >/dev/null 2>&1; echo "$_u" >> $DSW
+    done
+  else
+    [ -f $DSW ] && for _u in $(sort -u $DSW); do cmd netpolicy remove restrict-background-whitelist $_u >/dev/null 2>&1; done; rm -f $DSW
+    cmd netpolicy set restrict-background false >/dev/null 2>&1
+  fi
+}
+# Doze Mode: aktifkan Doze ringan+dalam dan percepat masuknya (konstanta DeviceIdleController); nilai asli disimpan & dipulihkan saat OFF.
+DZC=$DIR/doze_const
+doze_tune(){
+  if [ "$1" = on ]; then
+    [ -f $DZC ] || { _o=$(settings get global device_idle_constants 2>/dev/null); echo "${_o:-null}" > $DZC; }
+    dumpsys deviceidle enable all >/dev/null 2>&1
+    settings put global device_idle_constants "light_after_inactive_to=10000,light_pre_idle_to=10000,light_idle_to=60000,light_idle_factor=2.0,light_max_idle_to=900000,inactive_to=30000,sensing_to=0,locating_to=0,motion_inactive_to=0,idle_after_inactive_to=0,idle_pending_to=30000,max_idle_pending_to=60000,idle_pending_factor=2.0,idle_to=1800000,max_idle_to=21600000,idle_factor=2.0,min_time_to_alert=30000" >/dev/null 2>&1
+  else
+    if [ -f $DZC ]; then _o=$(cat $DZC); if [ "$_o" = null ] || [ -z "$_o" ]; then settings delete global device_idle_constants >/dev/null 2>&1; else settings put global device_idle_constants "$_o" >/dev/null 2>&1; fi; rm -f $DZC; fi
+    dumpsys deviceidle disable all >/dev/null 2>&1
+  fi
+}
 # Aggressive Doze: layar mati (backlight 0) 2x berturut-turut (10 dtk) -> deviceidle force-idle; layar hidup -> unforce. Pemantau memakai read bawaan shell (tanpa fork) di antara transisi.
 ADZ=$DIR/adoze.pid
 adoze_wd(){
@@ -1206,7 +1266,7 @@ adoze_wd(){
   while :; do
     b=; read -r b 2>/dev/null < $BL
     if [ "${b:-1}" = 0 ]; then off=$((off+1)); else off=0; fi
-    if [ $off -ge 2 ] && [ $forced = 0 ]; then dumpsys deviceidle force-idle >/dev/null 2>&1; forced=1
+    if [ $off -ge 2 ] && [ $forced = 0 ]; then ram_purge light >/dev/null 2>&1; dumpsys deviceidle force-idle >/dev/null 2>&1; forced=1
     elif [ $off = 0 ] && [ $forced = 1 ]; then dumpsys deviceidle unforce >/dev/null 2>&1; forced=0; fi
     sleep 2
   done
@@ -1258,7 +1318,6 @@ bkt_on(){
   bk_wr $V/dirty_writeback_centisecs 1500
   bk_wr $V/page-cluster 0
   bk_wr $V/stat_interval 10
-  bk_wr $V/swappiness 10
   bk_wr $V/overcommit_ratio 80
   bk_wr $V/extra_free_kbytes 20480
   bk_wr $V/watermark_scale_factor 30   # kswapd bangun lebih awal: kurangi direct reclaim (hentakan) saat RAM ketat
@@ -1514,8 +1573,8 @@ feat(){ # name on|off
     wifilatency) if [ "$2" = on ]; then wm=enabled; else wm=disabled; fi; cmd wifi force-hi-perf-mode $wm >/dev/null 2>&1; cmd wifi force-low-latency-mode $wm >/dev/null 2>&1; wl_apply $2;;
     fastcharge|autocut|bypass) setcfg "F_$1" $2; chg_sync; return;;
     preload|gamednd) setcfg "F_$1" $2; game_sync; return;;
-    doze) [ "$2" = on ] && dumpsys deviceidle enable all >/dev/null 2>&1 || dumpsys deviceidle disable all >/dev/null 2>&1;;
-    datasaver) [ "$2" = on ] && cmd netpolicy set restrict-background true || cmd netpolicy set restrict-background false;;
+    doze) setcfg "F_$1" $2; doze_tune $2; return;;
+    datasaver) setcfg "F_$1" $2; ds_apply $2; return;;
     bootapply) [ "$2" = on ] && rm -f $DIR/skip || touch $DIR/skip; return;;
     # Khusus ROM yang refresh rate-nya nggak mau nempel ke Hz tertinggi (mis. XOS) walau peak_refresh_rate sudah
     # benar: transaksi binder SurfaceFlinger 1035 memaksa (i32 0) / melepas (i32 1) logika auto-switch bawaan ROM.
@@ -1803,7 +1862,7 @@ lagrec_run(){ echo $$ > $DIR/lagrec.pid; i=0
   echo "--- proses terberat ---" >> $DIR/lagrec.txt; top -b -n 1 -m 6 2>/dev/null | tail -n 8 >> $DIR/lagrec.txt
   rm -f $DIR/lagrec.pid; }
 # ---------- CEK VERSI: bukti versi mana yang SEBENARNYA terpasang & jalan (modul, WebUI, aplikasi) ----------
-SCRIPT_VER=2.81.0
+SCRIPT_VER=2.84.0
 ver_check(){
   echo "skrip_berjalan=$SCRIPT_VER ($SELF)"
   for d in /data/adb/modules /data/adb/modules_update; do
@@ -1973,7 +2032,7 @@ game_wd(){
     if [ -n "$cur" ]; then
       away=0
       if [ "$ing" = 0 ]; then
-        ing=1; touch $DIR/ingame
+        ing=1; echo "$cur" > $DIR/ingame   # isi = paket game (dipakai notifikasi status)
         et=$(date +%s); lastg=$cur; lastpid=$gpid
         glog "masuk $cur"; [ -s $AAP ] && tex_cur $cur
         [ "$(getcfg F_gamethermal)" = on ] && gth_on
@@ -2470,23 +2529,100 @@ cl(){ # baris status yang tetap selama HP hidup: hitung sekali, simpan sampai re
 }
 dev_line(){ echo "DEV|$(getprop ro.product.brand)|$(getprop ro.product.model)|$(soc)|$(uname -r)|$(getprop ro.build.version.release)|$(gpu_type)"; }
 chipz_line(){ echo "CHIPZ|$(grep -qa SOC_MODEL $MODD/zygisk/arm64-v8a.so 2>/dev/null && echo yes || echo no)"; }
+# ---------- STATUS untuk notifikasi (aplikasi Comatoze membaca aliran ini lewat satu proses su) ----------
+# ST|mode|ingame(0/1)|thermal-mati(0/1)|paket game|CPU MHz tertinggi|GPU MHz|suhu C (terpanas)|baterai %|mengisi(0/1)
+statline(){
+  _m=$(curmode); [ -n "$_m" ] || _m=balance
+  _i=0; _p=; if [ -f $DIR/ingame ]; then _i=1; read -r _p 2>/dev/null < $DIR/ingame; fi
+  _t=0; { [ "$(getcfg THERMAL)" = off ] || [ -f $DIR/gth_on ]; } && _t=1
+  _c=0; for _f in $CPU/policy*/scaling_cur_freq; do read -r _v 2>/dev/null < $_f || continue; case $_v in ''|*[!0-9]*) continue;; esac; [ "$_v" -gt "$_c" ] && _c=$_v; done
+  _gl=$(gpu_live); _g=${_gl%%|*}; case $_g in ''|*[!0-9]*) _g=0;; esac
+  _x=0; for _z in /sys/class/thermal/thermal_zone*/temp; do read -r _v 2>/dev/null < $_z || continue; case $_v in ''|*[!0-9]*) continue;; esac; [ "$_v" -gt 1000 ] && _v=$((_v/1000)); [ "$_v" -lt 120 ] && [ "$_v" -gt "$_x" ] && _x=$_v; done
+  read -r _b 2>/dev/null < $BAT/capacity; plugged && _ch=1 || _ch=0
+  echo "ST|$_m|$_i|$_t|$_p|$((_c/1000))|$((_g/1000000))|$_x|${_b:-0}|$_ch"
+}
+statloop(){ while :; do statline; sleep 2; done; }
 app_perm(){ # beri izin tampil-di-atas-app (crosshair) + notifikasi + latar ke aplikasi Comatoze tanpa dialog (root)
   appops set com.comatoze SYSTEM_ALERT_WINDOW allow >/dev/null 2>&1
   pm grant com.comatoze android.permission.POST_NOTIFICATIONS >/dev/null 2>&1
   for _o in RUN_IN_BACKGROUND RUN_ANY_IN_BACKGROUND START_FOREGROUND; do appops set com.comatoze $_o allow >/dev/null 2>&1; done
   cmd deviceidle whitelist +com.comatoze >/dev/null 2>&1   # baterai: Tanpa batasan
   cmd deviceidle sys-whitelist +com.comatoze >/dev/null 2>&1
-  am set-standby-bucket com.comatoze active >/dev/null 2>&1; }
+  am set-standby-bucket com.comatoze active >/dev/null 2>&1
+  am set-bg-restriction-level --user 0 com.comatoze unrestricted >/dev/null 2>&1   # Android 14+: baterai "Tanpa batasan"
+  cmd appops set com.comatoze RUN_ANY_IN_BACKGROUND allow >/dev/null 2>&1
+  am start-foreground-service -n com.comatoze/.StatusService >/dev/null 2>&1; }   # notifikasi status hidup sejak boot (tanpa buka app)
+# ram_keep: paket yang TIDAK boleh dimatikan pembersih RAM (Comatoze, app di depan/game, keyboard aktif, launcher) supaya UI tidak patah/hilang.
+ram_keep(){ _kp="com.comatoze $(game_fg)"
+  _ime=$(sget secure default_input_method 2>/dev/null); case $_ime in null|'') ;; *) _kp="$_kp ${_ime%%/*}";; esac
+  _hl=$(cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME 2>/dev/null | tail -n 1); case $_hl in */*) _kp="$_kp ${_hl%%/*}";; esac
+  echo $_kp; }
+# ram_purge full|light: full = hentikan semua app pihak ketiga (selain ram_keep) + proses cache + cache kernel; light = hanya proses cache + cache kernel.
+# Urutan sengaja: matikan proses dulu, baru pangkas cache, flush, buang page cache & padatkan memori (supaya blok kontigu besar tersedia lagi).
+ram_purge(){
+  _keep=" $(ram_keep) "
+  if [ "$1" = full ]; then
+    for _p in $(pm list packages -3 2>/dev/null | sed 's/^package://'); do case "$_keep" in *" $_p "*) continue;; esac; am force-stop $_p >/dev/null 2>&1; done
+  fi
+  am kill-all >/dev/null 2>&1; cmd activity kill-all >/dev/null 2>&1
+  [ "$1" = full ] && pm trim-caches 999G >/dev/null 2>&1
+  sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory
+  w 3 /proc/sys/vm/drop_caches
+  [ -w /proc/sys/vm/compact_memory ] && w 1 /proc/sys/vm/compact_memory
+}
 qact(){ case $1 in
-  clean) _g=$(game_fg); _b=$(meminfo_kb MemAvailable)
-    gclean "$_g"; am kill-all >/dev/null 2>&1; cmd activity kill-all >/dev/null 2>&1
-    for _p in $(pm list packages -3 2>/dev/null | sed 's/^package://'); do [ "$_p" = "$_g" ] || [ "$_p" = com.comatoze ] || am force-stop $_p >/dev/null 2>&1; done
-    pm trim-caches 999G >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory
-    w 3 /proc/sys/vm/drop_caches; _a=$(meminfo_kb MemAvailable); _f=$(( (_a-_b)/1024 )); [ "$_f" -lt 0 ] && _f=0
+  clean) _b=$(meminfo_kb MemAvailable); ram_purge full; sleep 1; _a=$(meminfo_kb MemAvailable); _f=$(( (_a-_b)/1024 )); [ "$_f" -lt 0 ] && _f=0
     echo "OK|RAM dibersihkan (+${_f} MB)";;
   trim) pm trim-caches 999G >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; cmd package bg-dexopt-job >/dev/null 2>&1 & echo "OK|cache dipangkas";;
-  killbg) _g=$(game_fg); gclean "$_g"; am kill-all >/dev/null 2>&1; for _p in $(pm list packages -3 2>/dev/null | sed 's/^package://'); do [ "$_p" = "$_g" ] || [ "$_p" = com.comatoze ] || am force-stop $_p >/dev/null 2>&1; done; echo "OK|aplikasi latar dihentikan";;
+  killbg) ram_purge full; echo "OK|aplikasi latar dihentikan";;
   *) echo "ERR|aksi tidak dikenal";;
+esac; }
+# ---------- UNREAL ENGINE: kualitas grafis game UE lewat Engine.ini (sg.* scalability) ----------
+# Level 0-4 (Terendah, Rendah, Sedang, Tinggi, Ultra). Engine.ini game dicadangkan dulu ($f.comatoze.bak), blok kita diberi penanda & dibuang/dipulihkan saat "off".
+# Dibaca lewat /data/media/0 (root) supaya tidak terhalang FUSE Android/data. TIDAK semua game UE mengikuti sg.* (sebagian memakai pengaturan sendiri).
+UEB=/data/media/0/Android/data
+ue_cfgdir(){ [ -d $UEB/$1 ] || return 1
+  _d=$(find $UEB/$1 -maxdepth 8 -type d -path '*Saved/Config/Android' 2>/dev/null | head -n 1)
+  [ -n "$_d" ] && { echo "$_d"; return 0; }
+  _sv=$(find $UEB/$1 -maxdepth 6 -type d -name Saved 2>/dev/null | head -n 1)
+  [ -n "$_sv" ] && { echo "$_sv/Config/Android"; return 0; }
+  return 1; }
+ue_is(){ [ -d $UEB/$1 ] || return 1; find $UEB/$1 -maxdepth 8 \( -path '*Saved/Config*' -o -name '*.pak' -o -name UnrealGame -o -name UE4Game -o -name UE5Game \) 2>/dev/null | head -n 1 | grep -q .; }
+ue_list(){ _o=; for _p in $(cat $DIR/games.txt 2>/dev/null); do
+    if ue_is $_p; then _o="$_o$_p~ue~$(getcfg UE_$_p);"; fi; done; echo "UE|${_o%;}"; }
+ue_apply(){ # pkg level
+  case $1 in *[!A-Za-z0-9._]*|'') echo "ERR|paket tidak valid"; return;; esac
+  case $2 in 0|1|2|3|4) ;; *) echo "ERR|level 0-4"; return;; esac
+  _cd=$(ue_cfgdir $1) || { echo "ERR|data game belum ada (buka game sekali dulu) atau bukan Unreal Engine"; return; }
+  mkdir -p "$_cd" 2>/dev/null; _f="$_cd/Engine.ini"
+  _own=$(stat -c %u:%g "$(dirname "$_cd")" 2>/dev/null)
+  if [ ! -f "$_f.comatoze.bak" ] && [ ! -f "$_f.comatoze.new" ]; then if [ -f "$_f" ]; then cp -p "$_f" "$_f.comatoze.bak"; else : > "$_f.comatoze.new"; fi; fi
+  case $2 in 0) _n=0; _sp=75;; 1) _n=1; _sp=85;; 2) _n=2; _sp=100;; 3) _n=3; _sp=100;; 4) _n=3; _sp=100;; esac
+  [ -f "$_f" ] && chmod 644 "$_f" 2>/dev/null
+  # buang blok lama kita (jika ada) lalu tulis blok baru
+  [ -f "$_f" ] && sed -i '/^; COMATOZE-UE BEGIN/,/^; COMATOZE-UE END/d' "$_f" 2>/dev/null
+  { echo; echo "; COMATOZE-UE BEGIN"; echo "[SystemSettings]"
+    for _g in ViewDistance AntiAliasing Shadow PostProcess Texture Effects Foliage Shading; do echo "sg.${_g}Quality=$_n"; done
+    echo "r.ScreenPercentage=$_sp"
+    [ "$2" = 4 ] && { echo "r.MaxAnisotropy=16"; echo "r.ViewDistanceScale=1.5"; }
+    [ "$2" = 0 ] && { echo "r.ViewDistanceScale=0.6"; echo "r.Shadow.MaxResolution=512"; }
+    echo "; COMATOZE-UE END"; } >> "$_f"
+  [ -n "$_own" ] && chown $_own "$_cd" "$_f" 2>/dev/null; chmod 444 "$_f" 2>/dev/null; restorecon "$_f" >/dev/null 2>&1
+  setcfg "UE_$1" "$2"; am force-stop $1 >/dev/null 2>&1; echo "OK|grafis UE level $2 diterapkan - buka ulang game"; }
+ue_off(){ case $1 in *[!A-Za-z0-9._]*|'') echo "ERR|paket tidak valid"; return;; esac
+  _cd=$(ue_cfgdir $1) || { setcfg "UE_$1" ""; echo "OK|dikembalikan"; return; }; _f="$_cd/Engine.ini"
+  chmod 644 "$_f" 2>/dev/null
+  if [ -f "$_f.comatoze.bak" ]; then cat "$_f.comatoze.bak" > "$_f"; rm -f "$_f.comatoze.bak"
+  elif [ -f "$_f.comatoze.new" ]; then rm -f "$_f" "$_f.comatoze.new"
+  elif [ -f "$_f" ]; then sed -i '/^; COMATOZE-UE BEGIN/,/^; COMATOZE-UE END/d' "$_f" 2>/dev/null; fi
+  setcfg "UE_$1" ""; am force-stop $1 >/dev/null 2>&1; echo "OK|grafis UE dikembalikan"; }
+ue_compile(){ case $1 in *[!A-Za-z0-9._]*|'') return;; esac; cmd package compile -m speed -f $1 >/dev/null 2>&1; echo "$(date +%s)" > $DIR/uec.$1; }
+ue(){ case $1 in
+  list) ue_list;;
+  set) ue_apply "$2" "$3";;
+  off) ue_off "$2";;
+  compile) case $2 in *[!A-Za-z0-9._]*|'') echo "ERR|paket tidak valid";; *) bgx ue_compile "$2"; echo "OK|rekompilasi berjalan di latar (beberapa menit)";; esac;;
+  *) echo "ERR|perintah ue tidak dikenal";;
 esac; }
 # ---------- IDLE RAM saat TIDAK ada game aktif, bila RAM bebas < batas -> padatkan memori + buang cache bersih ----------
 # Config: IDLE_RAM on|off, IDLE_MIN (MB, 128-8192, bawaan 2048), IDLE_INT (menit, 1-120, bawaan 5)
@@ -2498,7 +2634,11 @@ idleram_run(){ echo $$ > $DIR/idleram.pid
     [ -f $DIR/ingame ] && continue
     _m=$(getcfg IDLE_MIN); case $_m in ""|*[!0-9]*) _m=2048;; esac
     _fa=$(meminfo_kb MemAvailable); _fa=$((_fa/1024))
-    if [ "$_fa" -lt "$_m" ]; then am kill-all >/dev/null 2>&1; cmd activity kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; echo "$(date +%H:%M:%S) bebas ${_fa}MB < ${_m}MB -> dibersihkan" > $DIR/idleram.last; fi
+    if [ "$_fa" -lt "$_m" ]; then
+      ram_purge light; _fb=$(meminfo_kb MemAvailable); _fb=$((_fb/1024)); _tg=light
+      if [ "$_fb" -lt "$_m" ]; then ram_purge full; _fb=$(meminfo_kb MemAvailable); _fb=$((_fb/1024)); _tg=penuh; fi   # masih kurang -> hentikan app latar juga
+      echo "$(date +%H:%M:%S) bebas ${_fa}MB < ${_m}MB -> ${_tg} -> ${_fb}MB" > $DIR/idleram.last
+    fi
   done
   rm -f $DIR/idleram.pid; }
 idleram(){ case $1 in
@@ -2593,7 +2733,9 @@ status(){
     gmn=$(rd $GPU/min_freq); gmx=$(rd $GPU/max_freq); gc=$(rd $GPU/cur_freq)
     if [ -r /sys/class/kgsl/kgsl-3d0/gpuclk ]; then k=$(rd /sys/class/kgsl/kgsl-3d0/gpuclk); case $k in ''|0|*[!0-9]*) ;; *) gc=$k;; esac; fi
     isnum(){ case $1 in ''|*[!0-9]*) return 1;; esac; }
-    if isnum "$gc" && isnum "$gmn" && isnum "$gmx"; then
+    gl=$(gpu_live); glv=${gl%%|*}; gls=${gl#*|}
+    if isnum "$glv" && [ "$gls" != devfreq ]; then gc=$glv   # clock nyata dari sumber andal, tidak dijepit ke min/max devfreq (yang bisa basi)
+    elif isnum "$gc" && isnum "$gmn" && isnum "$gmx"; then
       [ "$gc" -lt "$gmn" ] && gc=$gmn
       [ "$gc" -gt "$gmx" ] && gc=$gmx
     fi
@@ -2611,7 +2753,8 @@ boot(){
   rm -f $DIR/adoze.pid $DIR/f2fs.pid $DIR/f2fs.run $DIR/c.* $TS.* $TB.* $PXV $PXV2 $EXV   # sysfs/props baru saja di-reset oleh boot: buang catatan lama
   [ "$(getcfg THERMAL)" = "off" ] && thermal off
   bgx thr_scan   # siapkan daftar node *throttling* di latar supaya klik Disable Thermal pertama sudah cepat
-  for f in doze datasaver wifilatency touchboost lessdbg bkt smooth fpsgooff gmslimit aggrdoze f2fsgc; do v=$(getcfg F_$f); [ -n "$v" ] && feat $f $v; done
+  [ "$(getcfg F_doze)" = off ] || doze_tune on >/dev/null 2>&1   # Doze Mode aktif secara bawaan: ikut konstanta yang dipercepat
+  for f in datasaver wifilatency touchboost lessdbg bkt smooth fpsgooff gmslimit aggrdoze f2fsgc; do v=$(getcfg F_$f); [ -n "$v" ] && feat $f $v; done
   [ -f $DIR/guard.pid ] && kill $(cat $DIR/guard.pid) 2>/dev/null
   [ -f $RHZW.pid ] && kill $(cat $RHZW.pid) 2>/dev/null
   [ -f $CPUW.pid ] && kill $(cat $CPUW.pid) 2>/dev/null
@@ -2710,6 +2853,10 @@ case "$1" in
   dram) case $2 in set) dram_set $3;; *) echo "ERR|perintah dram tidak dikenal";; esac;;
   ged) case $2 in set) ged_set $3;; *) echo "ERR|perintah ged tidak dikenal";; esac;;
   thr_scan) thr_scan;;
+  statline) statline;;
+  ue) ue "$2" "$3" "$4";;
+  ue_compile) ue_compile "$2";;
+  statloop) statloop;;
   boot) boot;;
   dpi) dpi_set $2;;
   dpi_reset) dpi_reset;;
