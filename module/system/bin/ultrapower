@@ -110,7 +110,6 @@ tweak_auto(){ # mode
   esac
 }
 # Mode EFEKTIF: saat profil game aktif (prof_on) mode yang terpasang = $DIR/emode (MODE di config tetap mode asli pengguna, dipulihkan saat keluar game).
-# Pemantau clock & tweak yang membaca MODE dari config sebelumnya salah mengira mode bukan Performa selama game -> clock tidak dijaga & tweak Performa tidak aktif.
 curmode(){ if [ -f $DIR/prof_on ]; then cat $DIR/emode 2>/dev/null; else getcfg MODE; fi; }
 set_mode(){
   echo $1 > $DIR/emode
@@ -255,7 +254,7 @@ perf_x(){
   px2 /dev/cpuctl/top-app/cpu.uclamp.latency_sensitive 1
   for q in /sys/block/sd[a-z]/queue /sys/block/mmcblk[0-9]/queue; do
     [ -d "$q" ] || continue
-    px2 $q/read_ahead_kb 512; px2 $q/iostats 0; px2 $q/add_random 0; px2 $q/rq_affinity 2
+    px2 $q/read_ahead_kb 1024; px2 $q/iostats 0; px2 $q/add_random 0; px2 $q/rq_affinity 2
   done
   px2 /proc/sys/vm/page-cluster 0
   # --- tambahan "brutal" (panas & boros, tapi respons maksimal). Semua node dicek dulu, tidak ada = dilewati, dipulihkan oleh perf_x_off ---
@@ -325,7 +324,7 @@ perf_x_agg(){
   px4 /dev/cpuctl/top-app/cpu.uclamp.latency_sensitive 1
   for _q in /sys/block/sd?/queue /sys/block/mmcblk?/queue; do
     [ -d "$_q" ] || continue
-    px4 $_q/iostats 0; px4 $_q/add_random 0; px4 $_q/rq_affinity 2; px4 $_q/read_ahead_kb 512
+    px4 $_q/iostats 0; px4 $_q/add_random 0; px4 $_q/rq_affinity 2; px4 $_q/read_ahead_kb 1024
   done
 }
 # v2.51 "super brutal" tertanam di mode Performa (tidak ada tombol terpisah): masuk Performa = bersihkan RAM sekali, nyalakan
@@ -335,7 +334,7 @@ PXF=$DIR/pxfeat; PXG=$DIR/pxgame
 px_feat(){ [ "$(fstate $1)" = on ] && return 0; feat $1 on >/dev/null 2>&1; [ "$(fstate $1)" = on ] && echo $1 >> $PXF; return 0; }
 perf_x_boost(){
   if [ ! -f $DIR/pxclean ]; then : > $DIR/pxclean
-    ( gclean "$(game_fg)" ) </dev/null >/dev/null 2>&1 &   # saat game dibuka: kill proses latar saja. drop_caches/compact/trim di sini bikin freeze loading & membuang cache preload
+    ( gclean "$(game_fg)"; am kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; pm trim-caches 999G >/dev/null 2>&1 ) </dev/null >/dev/null 2>&1 &
   fi
   for _f in touchboost wifilatency lessdbg smooth fpsgooff; do px_feat $_f; done
   [ -f $DIR/pxfpm ] || { cmd power set-fixed-performance-mode-enabled true >/dev/null 2>&1 && : > $DIR/pxfpm; }
@@ -623,6 +622,10 @@ touch_on(){
   touch_off   # mulai dari kondisi bersih: nilai asli (termasuk sisa versi lama) dipulihkan dulu, lalu diterapkan ulang
   tb_rp debug.hwui.skip_empty_damage true
   tb_rp debug.hwui.use_hint_manager true
+  tb_rp windowsmgr.max_events_per_sec 240
+  tb_rp ro.min_pointer_dur 1
+  tb_rp debug.performance.tuning 1
+  tb_rp persist.sys.use_fifo_ui 1
   tb_wr /sys/module/msm_performance/parameters/touchboost 1
   tb_wr /sys/power/pnpmgr/touch_boost 1
   # node touch vendor tambahan (ide dari modul RedXTouch; ditulis sendiri, hanya node yang benar-benar ada di HP):
@@ -648,7 +651,7 @@ touch_on(){
   [ "$(curmode)" = eco ] && return 0
   ib=600; hl=60; fq=; um=
   if [ "$(getcfg TOUCH_CPU)" != normal ]; then   # bawaan brutal; TOUCH_CPU=normal untuk level ringan
-    ib=1000; um=50.00; hl=40
+    ib=1500; um=60.00; hl=30
     for pl in $CPU/policy*; do
       c=$(rd $pl/related_cpus); c=${c%% *}; f=$(rd $pl/cpuinfo_max_freq)
       [ -n "$c" ] && [ -n "$f" ] && fq="$fq $c:$f"
@@ -1239,30 +1242,38 @@ bkt_on(){
   bk_wr $K/sched_autogroup_enabled 1
   bk_wr $K/sched_child_runs_first 1
   bk_wr $K/sched_tunable_scaling 0
-  bk_wr $K/sched_latency_ns 3000000
-  bk_wr $K/sched_min_granularity_ns 100000
-  bk_wr $K/sched_wakeup_granularity_ns 1500000
+  bk_wr $K/sched_latency_ns 2000000
+  bk_wr $K/sched_min_granularity_ns 75000
+  bk_wr $K/sched_wakeup_granularity_ns 1000000
   bk_wr $K/sched_migration_cost_ns 5000000
   bk_wr $K/sched_nr_migrate 128
   bk_wr $K/sched_schedstats 0
+  bk_wr $K/sched_rr_timeslice_ms 5
+  bk_wr $K/hung_task_timeout_secs 0
+  bk_wr $K/watchdog 0
   bk_wr $K/printk_devkmsg off
   bk_sf NEXT_BUDDY on; bk_sf TTWU_QUEUE on; bk_sf HRTICK off; bk_sf WAKEUP_PREEMPTION on
   # VM / memori (angka mengikuti RAM: >4 GB vs lainnya)
-  bk_wr $V/dirty_expire_centisecs 3000
-  bk_wr $V/dirty_writeback_centisecs 3000
+  bk_wr $V/dirty_expire_centisecs 2000
+  bk_wr $V/dirty_writeback_centisecs 1500
   bk_wr $V/page-cluster 0
   bk_wr $V/stat_interval 10
   bk_wr $V/swappiness 10
   bk_wr $V/overcommit_ratio 80
-  bk_wr $V/extra_free_kbytes 10240
-  if [ "$big" = 1 ]; then bk_wr $V/dirty_background_ratio 10; bk_wr $V/dirty_ratio 20; bk_wr $V/vfs_cache_pressure 50
-  else bk_wr $V/dirty_background_ratio 15; bk_wr $V/dirty_ratio 30; bk_wr $V/vfs_cache_pressure 80; fi
+  bk_wr $V/extra_free_kbytes 20480
+  bk_wr $V/watermark_scale_factor 30   # kswapd bangun lebih awal: kurangi direct reclaim (hentakan) saat RAM ketat
+  bk_wr $V/compaction_proactiveness 0
+  bk_wr $V/oom_dump_tasks 0
+  if [ "$big" = 1 ]; then bk_wr $V/dirty_background_ratio 5; bk_wr $V/dirty_ratio 15; bk_wr $V/vfs_cache_pressure 40
+  else bk_wr $V/dirty_background_ratio 10; bk_wr $V/dirty_ratio 25; bk_wr $V/vfs_cache_pressure 60; fi
   # jaringan: BBR bila kernel menyediakan, TCP fast open
   case " $(rd /proc/sys/net/ipv4/tcp_available_congestion_control) " in *" bbr "*) bk_wr /proc/sys/net/ipv4/tcp_congestion_control bbr;; esac
   bk_wr /proc/sys/net/ipv4/tcp_fastopen 3
   bk_wr /proc/sys/net/ipv4/tcp_slow_start_after_idle 0
   bk_wr /proc/sys/net/ipv4/tcp_low_latency 1
   bk_wr /proc/sys/net/ipv4/tcp_no_metrics_save 1
+  bk_wr /proc/sys/net/ipv4/tcp_timestamps 0
+  bk_wr /proc/sys/net/ipv4/tcp_mtu_probing 1
 }
 bkt_off(){
   if [ -f $BK.nodes ]; then
@@ -1301,7 +1312,7 @@ dexopt_run(){
   case $1 in
     games) list=$(cat $DIR/games.txt 2>/dev/null); flt=speed;;
     reset) list=$(cmd package list packages -3 2>/dev/null | sed 's/^package://'); flt=reset;;
-    *) list=$(cmd package list packages -3 2>/dev/null | sed 's/^package://'); flt=speed-profile;;
+    *) list=$(cmd package list packages -3 2>/dev/null | sed 's/^package://'); flt=speed;;
   esac
   total=$(echo "$list" | grep -c .); n=0
   echo "running|$1|0|$total|" > $DXS.state
@@ -1806,7 +1817,7 @@ preload(){ # apk/lib/oat/obb + aset non-media di Android/data/<pkg>/files -> pag
   rm -f $L
 }
 # Ide fitur game terinspirasi dari CMD-Tweaks (t.me/HoyoSlave); kode ditulis ulang.
-gclean(){ cmd activity kill-all >/dev/null 2>&1; for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || [ "$p" = com.comatoze ] || cmd activity kill --user 0 $p >/dev/null 2>&1; done; }   # saat game dibuka: kill proses latar saja (aman). Force-stop total hanya di tombol RAM manual (qact)
+gclean(){ cmd activity kill-all >/dev/null 2>&1; am kill-all >/dev/null 2>&1; for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || [ "$p" = com.comatoze ] || { cmd activity kill --user 0 $p >/dev/null 2>&1; am force-stop $p >/dev/null 2>&1; }; done; }   # brutal: kill + force-stop semua app pihak ketiga selain game & Comatoze
 mode_restore(){
   m=$(getcfg MODE); [ "$m" = auto ] && m=balance
   if [ "$m" = custom ]; then batsaver custom; while IFS='|' read -r k a; do [ -n "$a" ] && NOSAVE=1 sh $SELF $a; done < $CUS
@@ -1861,6 +1872,10 @@ fp_alt(){ # knob pengganti FPSGO + penstabil tambahan (node tidak ada = dilewati
   for _n in /sys/module/ged/parameters/ged_boost_enable /sys/module/ged/parameters/gx_game_mode /sys/module/ged/parameters/gx_boost_on /sys/module/ged/parameters/enable_game_self_frc_detect; do fpw $_n 1; done
   fpw /proc/perfmgr/syslimiter/syslimiter_force_disable 1
   fpw /proc/perfmgr/boost_ctrl/eas_ctrl/perfserv_fg_boost 60
+  fpw /proc/perfmgr/boost_ctrl/cpu_ctrl/cfp_enable 0
+  fpw /sys/module/mtk_fpsgo/parameters/boost_affinity 1
+  fpw /sys/module/mtk_fpsgo/parameters/boost_LR 1
+  fpw /sys/kernel/ged/hal/dcs_mode 0
   for _p in /sys/module/*fpsgo*/parameters; do [ -d $_p ] && fpw $_p/fbt_enable 1; done; }
 fp_on(){
   FPN=0; mkdir -p $DIR
@@ -1876,12 +1891,15 @@ fp_on(){
     fpw $GPU/polling_interval 8; fpw $GPU/simple_ondemand/upthreshold 55; fpw $GPU/simple_ondemand/downdifferential 30
     # lantai clock GPU ~55% dari maksimum: GPU tidak jatuh ke OPP bawah di tengah adegan ringan -> waktu frame rata
     _gf=$(rd $GPU/available_frequencies); _gx=0; for _f in $_gf; do [ "$_f" -gt "$_gx" ] 2>/dev/null && _gx=$_f; done
-    if [ "$_gx" -gt 0 ]; then _gm=$_gx; _lim=$((_gx*55/100)); for _f in $_gf; do [ "$_f" -ge "$_lim" ] && [ "$_f" -lt "$_gm" ] && _gm=$_f; done; fpw $GPU/min_freq $_gm; fi
+    if [ "$_gx" -gt 0 ]; then _gm=$_gx; _lim=$((_gx*60/100)); for _f in $_gf; do [ "$_f" -ge "$_lim" ] && [ "$_f" -lt "$_gm" ] && _gm=$_f; done; fpw $GPU/min_freq $_gm; fi
   fi
   _fg=$((FPN-_fc)); _f0=$FPN
   for _cp in $CPUD/cpu[0-9]*; do for _st in $_cp/cpuidle/state[1-9]*; do fpw $_st/disable 1; done; done
   _fi=$((FPN-_f0))
-  fpsgo_alt && [ "$(getcfg F_fpsgooff)" = on ] && fp_alt   # knob pengganti FPSGO hanya bila diminta & node FPSGO tidak ada
+  _dv=$(ls -d /sys/class/devfreq/*dvfsrc* 2>/dev/null | head -1)
+  if [ -n "$_dv" ]; then case " $(rd $_dv/available_governors) " in *" performance "*) fpw $_dv/governor performance;; esac; fi
+  fp_alt
+  [ "$(getcfg FP_SF)" = off ] || { fpp debug.sf.disable_backpressure 1; fpp debug.sf.latch_unsignaled 1; }   # FP_SF=off bila layar berkedip/putih
   echo "$FPN|$_fc|$_fg|$_fi" > $DIR/fp.res; : > $DIR/fp_on
   glog "frame pacing aktif: $FPN parameter"; }
 fp_off(){
@@ -1908,11 +1926,13 @@ game_wd(){
       set -- $(game_fgp); cur=$1; gpid=$2
     fi
     cfgv F_fpsgooff; [ "$CV" = on ] && fpsgo_keep
+    fpn=$((${fpn:-0}+1)); [ $((fpn % 10)) = 0 ] && [ "$ing" = 1 ] && [ -f $DIR/fp_on ] && ( fp_on ) >/dev/null 2>&1 &   # ROM/kernel sering menimpa balik: tegaskan lagi tiap ~30 dtk
     if [ -n "$cur" ]; then
       away=0
       if [ "$ing" = 0 ]; then
         ing=1; touch $DIR/ingame
-        [ "$(getcfg F_gameclean)" = on ] && gclean $cur &
+        et=$(date +%s)
+        [ "$(getcfg F_gameclean)" = on ] && { gclean $cur; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; } &
         [ "$(getcfg F_preload)" = on ] && preload $cur &
         lastg=$cur; glog "masuk $cur"; [ -s $AAP ] && tex_cur $cur
         [ -f $PXV2 ] && { sleep 4; perf_x_game; } &
@@ -1929,6 +1949,10 @@ game_wd(){
       away=$((away+1))
       if [ $away -ge 5 ]; then   # keluar game bila 5x cek berturut-turut (~15 dtk) (anti-flicker shade/dialog/pemuatan)
         ing=0; rm -f $DIR/ingame; gp_leave; gth_off; fp_off; glog "keluar ${lastg}"
+        # penjaga render: game mati (bukan sekadar pindah app) dalam ~60 dtk setelah dibuka, 2x berturut-turut -> kembalikan setelan render bawaan
+        if [ -n "$gpid" ] && ! kill -0 $gpid 2>/dev/null; then
+          en=$(date +%s); if [ $((en-${et:-0})) -lt 75 ]; then crash=$((${crash:-0}+1)); glog "game berhenti mendadak ($crash)"; [ $crash -ge 2 ] && { gfx_safe; crash=0; }; else crash=0; fi
+        fi
         [ "$dset" = 1 ] && { cmd notification set_dnd off; dset=0; }
       fi
     fi
@@ -2006,6 +2030,9 @@ gfx_angle(){ # default | native (OpenGL ES asli) | angle (lapisan terjemahan ke 
   angle_compose
   echo OK
 }
+gfx_safe(){ # setelan render dikembalikan ke bawaan (ANGLE/driver/skala) - dipakai penjaga crash
+  angle_app clear >/dev/null 2>&1; gfx_angle default >/dev/null 2>&1; gfx_driver default >/dev/null 2>&1; gfx_scale 100 >/dev/null 2>&1
+  glog "render AMAN: ANGLE/driver/skala dikembalikan ke bawaan (game crash berulang)"; }
 gfx_apply_all(){ # terapkan ulang pengaturan grafis (scale per-app/default, driver, angle) ke seluruh daftar game saat ini
   s=$(getcfg GFX_SCALE); [ -z "$s" ] && s=100
   for p in $(cat $DIR/games.txt 2>/dev/null); do
@@ -2253,7 +2280,7 @@ angle_ok_r(){ # ANGLE terdeteksi di perangkat? (hanya informasi; bila tidak ada,
 # Kualitas tekstur per game: TEX_<paket>="level|gaya" (level 1-4, gaya blur|pixel). Kosong = tidak diubah.
 tex_feat(){ v=$(getcfg "TEX_$1"); [ -n "$v" ] || return 1
   l=${v%%|*}; st=${v#*|}; case $l in 1|2|3|4) ;; *) l=4;; esac
-  f=disableAnisotropicFiltering:forceTextureLodOffset$l; [ "$st" = pixel ] && f=forceNearestFiltering:$f
+  f=forceTextureLodOffset$l; [ "$st" = pixel ] && f=forceNearestFiltering:forceNearestMipFiltering:$f   # nama resmi FeaturesVk ANGLE
   echo $f; }
 tex_forget(){ grep -v "^TEX_$1=" $CFG > $CFG.t 2>/dev/null; mv -f $CFG.t $CFG; grep -v "^TEXA_$1=" $CFG > $CFG.t 2>/dev/null; mv -f $CFG.t $CFG; }
 ANL=$DIR/angle_last.txt   # catatan penggabungan terakhir (untuk diagnosa)
@@ -2307,6 +2334,11 @@ angle_regame(){ # kembalikan pengaturan ANGLE global (gfx_angle) untuk game di d
 }
 tex_cur(){ [ -s $AAP ] || return 0; echo "$1" > $DIR/tex_cur; angle_prop_apply; }
 tex_status(){ o=; for q in $(cat $DIR/games.txt 2>/dev/null); do v=$(getcfg "TEX_$q"); [ -n "$v" ] && o="$o$q~${v%%|*}~${v#*|};"; done; echo "TEX|${o%;}"; }
+tex_verify(){ # cek hasil nyata: daftar ANGLE sistem memuat paket & properti override menempel (bila tidak: pesan penyebab, bukan "OK" palsu)
+  _p=",$(sget global angle_gl_driver_selection_pkgs),"; _w=$(tex_feat $1); _g=$(getprop debug.angle.feature_overrides_enabled)
+  case "$_p" in *",$1,"*) ;; *) echo "ERR|sistem menolak daftar ANGLE (angle_gl_driver_selection_pkgs kosong)$(angle_ok_r || echo '; ANGLE tidak terdeteksi di HP ini')"; return 1;; esac
+  [ "$_g" = "$_w" ] || { echo "ERR|properti override tidak menempel (baca: ${_g:-kosong}) - ROM memblokir setprop debug.angle"; return 1; }
+  echo OK; }
 tex(){ # set <paket> <1-4> <blur|pixel> | off <paket> | cur <paket>
   case $1 in
     set) angle_pkg_ok "$2" || { echo "ERR|nama paket tidak valid"; return 1; }
@@ -2316,7 +2348,8 @@ tex(){ # set <paket> <1-4> <blur|pixel> | off <paket> | cur <paket>
          if ! grep -qx "$2" $AAP; then new=1; setcfg "TEXA_$2" 1; echo "$2" >> $AAP; fi
          setcfg "TEX_$2" "$3|$4"; echo "$2" > $DIR/tex_cur
          [ $new = 1 ] && angle_compose; angle_prop_apply; am force-stop "$2" >/dev/null 2>&1
-         [ $new = 1 ] && ui_restart; echo OK;;
+         [ $new = 1 ] && ui_restart
+         tex_verify "$2";;
     off) angle_pkg_ok "$2" || { echo "ERR|nama paket tidak valid"; return 1; }
          auto=$(getcfg "TEXA_$2"); tex_forget "$2"
          if [ "$auto" = 1 ]; then angle_app del "$2" >/dev/null; ui_restart; else angle_prop_apply; am force-stop "$2" >/dev/null 2>&1; fi

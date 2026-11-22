@@ -1528,7 +1528,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.74.0';
+const VER='2.77.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1602,7 +1602,7 @@ function gsSpec(p,s){const c=(s.gprof||{})[p]||{mode:'',hz:''},sc=(s.gfxApp||{})
   {k:'res',ic:'game',d:'Turunkan resolusi untuk dongkrak FPS',t:'Resolusi Render',v:scaleFmt(sc),opts:SCALE_OPTS.map(v=>[String(v),scaleFmt(v),v===100?'Paling tajam':v>=70?'Seimbang':v>=40?'Ringan':'Ekstrem']),cur:String(sc),fn:v=>gfxAppSet(p,+v)},
   {k:'drv',ic:'layers',d:'Driver Vulkan untuk semua game di daftar',t:'Driver Grafis',v:DRV_N[g.drv]||'Default',opts:[['default','Default','Bawaan sistem'],['driver','Game Driver','Driver khusus game'],['native','Driver Sistem','Driver native perangkat']],cur:g.drv||'default',fn:v=>gfxSet('drv',v)},
   {k:'api',ic:'layers',d:'Backend OpenGL/Vulkan semua game di daftar',t:'API Grafis',v:API_N[g.angle]||'Default',opts:[['default','Default','Bawaan sistem'],['native','OpenGL Native','Langsung ke driver GPU'],['angle','ANGLE','OpenGL lewat Vulkan']],cur:g.angle||'default',fn:v=>gfxSet('angle',v)},
-  {k:'ang',ic:'game',d:'Pakai ANGLE hanya untuk game ini',t:'ANGLE Game Ini',v:ang?'Aktif':'Mati',opts:[['off','Mati','Driver bawaan'],['on','Aktif','Render lewat ANGLE']],cur:ang?'on':'off',fn:v=>angToggle(p,v==='on')},
+  {k:'ang',ic:'game',d:'Bawaan Mati. Aktif bisa bikin layar putih / crash di beberapa game',t:'ANGLE Game Ini',v:ang?'Aktif':'Mati',opts:[['off','Mati','Driver bawaan'],['on','Aktif','Render lewat ANGLE']],cur:ang?'on':'off',fn:v=>angToggle(p,v==='on')},
   {k:'tex',page:'tex',ic:'brush',d:'Level & gaya tekstur (Blur / Pixel) + pratinjau',t:'Kualitas Tekstur',v:tx?'Lv '+tx.l+' · '+(tx.s==='pixel'?'Pixel':'Blur'):'Default'}]});
  sec.push({t:'Pengaturan Tambahan',tn:'amber',ic:'bolt',rows:[]});
  return sec;}
@@ -1619,7 +1619,7 @@ function texSub(p,s){const c=(s.tex||{})[p];TX.p=p;TX.l=c?c.l:2;TX.s=c?c.s:'blur
   <div class="card tx-ctl"><div class="tx-row"><b>Texture level</b><span id="txv"></span></div>
    <div class="tx-seg" id="txl">${[1,2,3,4].map(n=>`<button data-l="${n}" onclick="texLvl(${n})">${n}</button>`).join('')}</div>
    <div class="tx-seg two" id="txs"><button data-s="blur" onclick="texSty('blur')">Blur</button><button data-s="pixel" onclick="texSty('pixel')">Pixel</button></div></div>
-  <div class="card tx-info"><span class="tx-i">i</span><div><b>Informasi</b><p>Game akan dimulai ulang agar berlaku. Level lebih tinggi = tekstur lebih kasar dan FPS lebih ringan. Memakai ANGLE; Android 14+, beberapa game mungkin tidak berubah.</p></div></div>
+  <div class="card tx-info"><span class="tx-i">i</span><div><b>Informasi</b><p>Game akan dimulai ulang agar berlaku. Level lebih tinggi = tekstur lebih kasar dan FPS lebih ringan. Memakai ANGLE (Vulkan). Game dimulai ulang & hasilnya dicek: bila ANGLE menolak, muncul pesan penyebabnya.</p></div></div>
   <div class="tx-act"><button class="btn ghost" onclick="texDef()">${IC.refresh||''} Default</button><button class="btn" onclick="texDone()">${IC.check||''} Selesai</button></div></div>`;}
 function texArt(){if(TX.art)return TX.art;const W=256,H=160,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
  g.fillStyle='#3a2a22';g.fillRect(0,0,W,H);
