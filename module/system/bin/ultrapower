@@ -1786,11 +1786,28 @@ game_fgp(){ # game dari daftar yang sedang di layar -> "paket pid" (daftar dibac
 }
 game_fg(){ set -- $(game_fgp); echo $1; }
 glog(){ echo "$(date +%H:%M:%S) $*" >> $DIR/game.log; [ "$(stat -c %s $DIR/game.log 2>/dev/null || echo 0)" -gt 4096 ] && { tail -n 20 $DIR/game.log > $DIR/game.log.t; mv -f $DIR/game.log.t $DIR/game.log; }; }
+# ---------- REKAM LAG: sampel tiap 2 dtk selama 40 dtk saat kamu main (clock CPU/GPU, suhu, beban, mode) -> $DIR/lagrec.txt ----------
+# Dipakai untuk mencari penyebab nyata lag: clock jatuh? suhu tinggi (throttle)? CPU penuh? Hasil dibaca lewat "Cek pemantau game".
+lagrec(){ [ -f $DIR/lagrec.pid ] && kill -0 $(cat $DIR/lagrec.pid) 2>/dev/null && { echo "ERR|perekaman sedang berjalan"; return; }
+  : > $DIR/lagrec.txt; bgx lagrec_run; echo "OK|merekam 40 detik - main sekarang, lalu tekan Cek pemantau game"; }
+lagrec_run(){ echo $$ > $DIR/lagrec.pid; i=0
+  while [ $i -lt 20 ]; do
+    tmax=0; for z in /sys/class/thermal/thermal_zone*/temp; do read -r v < $z 2>/dev/null || continue; case $v in ''|*[!0-9-]*) continue;; esac; [ "$v" -gt "$tmax" ] && tmax=$v; done
+    [ "$tmax" -gt 1000 ] && tmax=$((tmax/1000))
+    cf=; for pl in $CPU/policy*; do cf="$cf $(rd $pl/scaling_cur_freq | cut -c1-4)/$(rd $pl/scaling_max_freq | cut -c1-4)"; done
+    gf=$(rd $GPU/cur_freq); [ -z "$gf" ] && gf=$(rd /sys/kernel/ged/hal/current_freqency); gf=${gf:-?}
+    read -r l1 _ < /proc/loadavg; bt=$(rd $BAT/temp)
+    echo "$(date +%S)s suhuMax=${tmax}C bat=${bt:-?} cpu(cur/max MHz)=${cf# } gpu=$gf load=$l1 mode=$(curmode) fg=$(game_fg)" >> $DIR/lagrec.txt
+    i=$((i+1)); sleep 2
+  done
+  echo "--- proses terberat ---" >> $DIR/lagrec.txt; top -b -n 1 -m 6 2>/dev/null | tail -n 8 >> $DIR/lagrec.txt
+  rm -f $DIR/lagrec.pid; }
 gdiag(){ # diagnosa pemantau game (dipakai tombol Cek Pemantau di WebUI)
   alive=0; [ -f $DIR/game.pid ] && kill -0 $(cat $DIR/game.pid) 2>/dev/null && alive=1
   echo "pemantau_hidup=$alive ingame=$([ -f $DIR/ingame ] && echo ya || echo tidak) profil_aktif=$([ -f $DIR/prof_on ] && echo ya || echo tidak)"
   echo "F_gameprofile=$(getcfg F_gameprofile) GP_MODE=$(getcfg GP_MODE) GP_HZ=$(getcfg GP_HZ) MODE=$(getcfg MODE)"
   echo "game_di_layar=$(game_fg)"
+  [ -s $DIR/lagrec.txt ] && { echo "--- rekaman lag terakhir ---"; tail -n 24 $DIR/lagrec.txt | cut -c1-170; }
   for g in $(cat $DIR/games.txt 2>/dev/null); do
     pids=$(pidof $g 2>/dev/null)
     if [ -z "$pids" ]; then echo "$g: proses tidak ada"; continue; fi
@@ -2641,6 +2658,8 @@ case "$1" in
   gp_cfg) setcfg GP_$(echo $2 | tr a-z A-Z) $3;;
   gp_game) gp_game $2 $3 $4;;
   gdiag) gdiag;;
+  lagrec) lagrec;;
+  lagrec_run) lagrec_run;;
   chg_wd) chg_wd;;
   chgreset) chg_reset;;
   game_wd) game_wd;;

@@ -1049,10 +1049,11 @@ function prefetchLabels(pkgs){const need=pkgs.filter(p=>!(p in LBL));if(!need.le
     const j=JSON.parse(ksu.getPackagesInfo(JSON.stringify(need)));(j||[]).forEach(o=>{if(o&&o.packageName&&o.appLabel)LBL[o.packageName]=o.appLabel;});}}catch(e){}}
 function appIcon(p){return `<div class="ai"><b>${esc((labelOf(p)[0]||'?').toUpperCase())}</b><img src="ksu://icon/${esc(p)}" loading="lazy" alt="" onerror="this.style.display='none'"></div>`;}
 let GDIAG='';
+async function lagRec(){const r=await run('lagrec');toast(((r&&r.out)||'').trim().split('|')[1]||'Merekam…');}
 async function gdiagRun(){toast('Memeriksa pemantau game…');const r=await run('gdiag');GDIAG=((r&&r.out)||'').trim();render();}
 function gwdLine(s){const w=s.gwd;if(!w)return '';
  const st=!w.alive?'Pemantau game MATI (nyalakan salah satu saklar game di bawah)':(w.n?`Pemantau aktif · ${w.ing?'sedang di dalam game':'menunggu game dibuka'} · ${w.n} game di daftar`:'Pemantau aktif, tetapi daftar game kosong: tambahkan game di bawah');
- return `<p class="mu" style="margin:10px 2px 0">${st}${w.last?'<br>Terakhir: '+esc(w.last):''}</p><button class="btn tonal" style="margin-top:8px" onclick="gdiagRun()">Cek pemantau game</button>${GDIAG?`<pre class="mu" style="white-space:pre-wrap;margin:10px 2px 0;font-size:12px">${esc(GDIAG)}</pre>`:''}`;}
+ return `<p class="mu" style="margin:10px 2px 0">${st}${w.last?'<br>Terakhir: '+esc(w.last):''}</p><button class="btn tonal" style="margin-top:8px" onclick="gdiagRun()">Cek pemantau game</button><button class="btn tonal" style="margin-top:8px" onclick="lagRec()">Rekam lag (40 dtk)</button>${GDIAG?`<pre class="mu" style="white-space:pre-wrap;margin:10px 2px 0;font-size:12px">${esc(GDIAG)}</pre>`:''}`;}
 function gpCard(s){const g=s.gpcfg||{mode:'perf',hz:120};
  return `<div class="card"><div class="head">${ico('rocket','purple')}<div class="tx"><b>Profil Game</b><span>Mode dan Hz saat game</span></div></div>
   <div class="lbl" style="margin-top:14px">Mode</div>
@@ -1528,7 +1529,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.77.0';
+const VER='2.78.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
