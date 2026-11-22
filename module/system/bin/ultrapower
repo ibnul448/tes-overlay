@@ -334,7 +334,7 @@ PXF=$DIR/pxfeat; PXG=$DIR/pxgame
 px_feat(){ [ "$(fstate $1)" = on ] && return 0; feat $1 on >/dev/null 2>&1; [ "$(fstate $1)" = on ] && echo $1 >> $PXF; return 0; }
 perf_x_boost(){
   if [ ! -f $DIR/pxclean ]; then : > $DIR/pxclean
-    ( gclean "$(game_fg)"; am kill-all >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; pm trim-caches 999G >/dev/null 2>&1 ) </dev/null >/dev/null 2>&1 &
+    ( sleep 25; gclean "$(game_fg)" ) </dev/null >/dev/null 2>&1 &   # ditunda 25 dtk (game selesai memuat), ringan: tanpa kill-all/drop_caches/compact saat game dimuat
   fi
   for _f in touchboost wifilatency lessdbg smooth fpsgooff; do px_feat $_f; done
   [ -f $DIR/pxfpm ] || { cmd power set-fixed-performance-mode-enabled true >/dev/null 2>&1 && : > $DIR/pxfpm; }
@@ -344,14 +344,14 @@ perf_x_boost(){
 perf_x_game(){ # prioritas game yang sedang di depan (dipanggil juga saat game dibuka ketika Performa sudah aktif)
   set -- $(game_fgp); [ -n "$1" ] || return 0
   _pg=$1; _pd=$2
-  echo "$_pg" > $PXG; cmd game mode performance "$_pg" >/dev/null 2>&1
+  echo "$_pg" > $PXG   # (cmd game mode performance DIHAPUS: mengubah mode GameManager saat game dimuat bisa memuat ulang/mematikan game)
   if [ -n "$_pd" ]; then renice -n -20 -p $_pd >/dev/null 2>&1; ionice -c 1 -n 0 -p $_pd >/dev/null 2>&1; { echo -1000 > /proc/$_pd/oom_score_adj; } 2>/dev/null; fi
   return 0
 }
 perf_x_boost_off(){
   [ -f $PXF ] && { while read -r _f; do [ -n "$_f" ] && feat $_f off >/dev/null 2>&1; done < $PXF; rm -f $PXF; }
   [ -f $DIR/pxfpm ] && { cmd power set-fixed-performance-mode-enabled false >/dev/null 2>&1; rm -f $DIR/pxfpm; }
-  [ -f $PXG ] && { _pg=$(cat $PXG); cmd game mode standard "$_pg" >/dev/null 2>&1; rm -f $PXG; }
+  rm -f $PXG
   rm -f $DIR/pxclean
 }
 perf_x_off(){
@@ -1443,7 +1443,7 @@ smooth_on(){
   # brutal: matikan pembekuan app cache (freezer) + longgarkan batas proses cache supaya game/app latar tidak dibekukan atau dimatikan
   sput global cached_apps_freezer disabled
   device_config put activity_manager_native_boot use_freezer false >/dev/null 2>&1
-  device_config put activity_manager max_cached_processes 256 >/dev/null 2>&1
+  device_config put activity_manager max_cached_processes 64 >/dev/null 2>&1
 }
 smooth_off(){
   [ -f $SMD ] || return 0
@@ -1803,7 +1803,7 @@ lagrec_run(){ echo $$ > $DIR/lagrec.pid; i=0
   echo "--- proses terberat ---" >> $DIR/lagrec.txt; top -b -n 1 -m 6 2>/dev/null | tail -n 8 >> $DIR/lagrec.txt
   rm -f $DIR/lagrec.pid; }
 # ---------- CEK VERSI: bukti versi mana yang SEBENARNYA terpasang & jalan (modul, WebUI, aplikasi) ----------
-SCRIPT_VER=2.79.0
+SCRIPT_VER=2.81.0
 ver_check(){
   echo "skrip_berjalan=$SCRIPT_VER ($SELF)"
   for d in /data/adb/modules /data/adb/modules_update; do
@@ -1841,8 +1841,9 @@ games(){ case $1 in
   add) grep -qx "$2" $DIR/games.txt 2>/dev/null || { echo $2 >> $DIR/games.txt; gfx_apply_all; };;
   del) grep -vx "$2" $DIR/games.txt > $DIR/games.t; mv $DIR/games.t $DIR/games.txt; setcfg "GPM_$2" ""; setcfg "GPH_$2" "";;
 esac; }
-preload(){ # apk/lib/oat/obb + aset non-media di Android/data/<pkg>/files -> page cache (batas ${PRELOAD_MB:-1500} MB)
-  lim=$((${PRELOAD_MB:-1500}*1048576)); used=0; L=$DIR/pl.$$.lst
+preload(){ [ "$(meminfo_kb MemAvailable)" -lt 2500000 ] 2>/dev/null && return 0   # RAM tersedia <2.5 GB: lewati (rebutan memori dengan game)
+  # apk/lib/oat/obb + aset non-media di Android/data/<pkg>/files -> page cache (batas ${PRELOAD_MB:-800} MB)
+  lim=$((${PRELOAD_MB:-800}*1048576)); used=0; L=$DIR/pl.$$.lst
   { for a in $(pm path $1 | sed 's/package://'); do d=$(dirname $a); ls $a $d/lib/arm64/* $d/oat/arm64/* 2>/dev/null; done
     ls /sdcard/Android/obb/$1/* 2>/dev/null
     find /sdcard/Android/data/$1/files -type f 2>/dev/null | grep -Eiv '\.(mp3|ogg|wav|mp4|png|jpe?g|webp|log|txt)$'
@@ -1854,7 +1855,7 @@ preload(){ # apk/lib/oat/obb + aset non-media di Android/data/<pkg>/files -> pag
   rm -f $L
 }
 # Ide fitur game terinspirasi dari CMD-Tweaks (t.me/HoyoSlave); kode ditulis ulang.
-gclean(){ cmd activity kill-all >/dev/null 2>&1; am kill-all >/dev/null 2>&1; for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || [ "$p" = com.comatoze ] || { cmd activity kill --user 0 $p >/dev/null 2>&1; am force-stop $p >/dev/null 2>&1; }; done; }   # brutal: kill + force-stop semua app pihak ketiga selain game & Comatoze
+gclean(){ for p in $(pm list packages -3 | sed 's/package://'); do [ "$p" = "$1" ] || [ "$p" = com.comatoze ] || cmd activity kill --user 0 $p >/dev/null 2>&1; done; }   # per paket pihak ketiga selain game & Comatoze. TANPA kill-all global: kill-all bisa mematikan proses pendamping game yang sedang dimuat (penyebab game 'mental' saat dibuka)
 mode_restore(){
   m=$(getcfg MODE); [ "$m" = auto ] && m=balance
   if [ "$m" = custom ]; then batsaver custom; while IFS='|' read -r k a; do [ -n "$a" ] && NOSAVE=1 sh $SELF $a; done < $CUS
@@ -1964,19 +1965,26 @@ game_wd(){
     fi
     cfgv F_fpsgooff; [ "$CV" = on ] && fpsgo_keep
     fpn=$((${fpn:-0}+1)); [ $((fpn % 10)) = 0 ] && [ "$ing" = 1 ] && [ -f $DIR/fp_on ] && ( fp_on ) >/dev/null 2>&1 &   # ROM/kernel sering menimpa balik: tegaskan lagi tiap ~30 dtk
+    if [ "$ing" = 1 ] && [ -n "$cur" ] && [ "$cur" = "$lastg" ] && [ -n "$gpid" ] && [ -n "$lastpid" ] && [ "$gpid" != "$lastpid" ]; then
+      # game mati lalu dibuka ulang (pid baru) sebelum 15 dtk: dulu dianggap 'masih di dalam game' sehingga mode Performa TIDAK dipasang lagi
+      en=$(date +%s); [ $((en-${et:-0})) -lt 75 ] && { crash=$((${crash:-0}+1)); glog "game berhenti mendadak ($crash)"; [ $crash -ge 2 ] && { gfx_safe; crash=0; }; }
+      gp_leave; gth_off; fp_off; rm -f $DIR/ingame; ing=0; glog "game dibuka ulang"
+    fi
     if [ -n "$cur" ]; then
       away=0
       if [ "$ing" = 0 ]; then
         ing=1; touch $DIR/ingame
-        et=$(date +%s)
-        [ "$(getcfg F_gameclean)" = on ] && { gclean $cur; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; } &
-        [ "$(getcfg F_preload)" = on ] && preload $cur &
-        lastg=$cur; glog "masuk $cur"; [ -s $AAP ] && tex_cur $cur
-        [ -f $PXV2 ] && { sleep 4; perf_x_game; } &
-        [ "$(getcfg F_gameprofile)" = on ] && gp_enter $cur
+        et=$(date +%s); lastg=$cur; lastpid=$gpid
+        glog "masuk $cur"; [ -s $AAP ] && tex_cur $cur
         [ "$(getcfg F_gamethermal)" = on ] && gth_on
-        fp_want && fp_later &
         if [ "$(getcfg F_gamednd)" = on ]; then cmd notification set_dnd priority; dset=1; fi
+        # Tindakan berat DITUNDA 8 dtk: saat game baru dibuka ia sedang memuat aset; ganti mode/Hz/kill/IO di detik pertama bisa membuatnya mati ('mental').
+        ( sleep 8; [ -f $DIR/ingame ] || exit 0; [ "$(game_fg)" = "$cur" ] || exit 0
+          [ -f $PXV2 ] && perf_x_game
+          [ "$(getcfg F_gameprofile)" = on ] && gp_enter $cur
+          fp_want && fp_on
+          [ "$(getcfg F_gameclean)" = on ] && { sleep 15; [ "$(game_fg)" = "$cur" ] && gclean $cur; }
+        ) </dev/null >/dev/null 2>&1 &
       elif [ "$cur" != "$lastg" ]; then   # pindah langsung ke game lain di daftar: terapkan profil game barunya
         lastg=$cur; [ -s $AAP ] && tex_cur $cur
         if [ "$(getcfg F_gameprofile)" = on ]; then gp_leave; gp_enter $cur; fi
@@ -1986,6 +1994,7 @@ game_wd(){
       away=$((away+1))
       if [ $away -ge 5 ]; then   # keluar game bila 5x cek berturut-turut (~15 dtk) (anti-flicker shade/dialog/pemuatan)
         ing=0; rm -f $DIR/ingame; gp_leave; gth_off; fp_off; glog "keluar ${lastg}"
+        [ "$(getcfg F_preload)" = on ] && ( sleep 20; preload $lastg ) </dev/null >/dev/null 2>&1 &   # panaskan cache untuk pembukaan berikutnya, saat RAM lega (bukan saat game dimuat)
         # penjaga render: game mati (bukan sekadar pindah app) dalam ~60 dtk setelah dibuka, 2x berturut-turut -> kembalikan setelan render bawaan
         if [ -n "$gpid" ] && ! kill -0 $gpid 2>/dev/null; then
           en=$(date +%s); if [ $((en-${et:-0})) -lt 75 ]; then crash=$((${crash:-0}+1)); glog "game berhenti mendadak ($crash)"; [ $crash -ge 2 ] && { gfx_safe; crash=0; }; else crash=0; fi

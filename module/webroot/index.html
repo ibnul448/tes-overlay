@@ -283,6 +283,7 @@ nav button.pop svg{animation:pop .32s ease-out}
 .tx-seg button{height:54px;border-radius:99px;border:1px solid var(--ln);background:var(--s2);color:var(--tx);font:inherit;font-size:19px;font-weight:800;transition:all .2s}
 .tx-seg.two button{height:58px;font-size:20px}
 .tx-seg button.on{background:var(--ac);color:var(--on);border-color:var(--ac);box-shadow:0 6px 18px color-mix(in srgb,var(--ac) 40%,transparent);transform:scale(1.02)}
+.tx-onrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--ln)}.tx-onrow b{display:block;font-size:17px;font-weight:800}.tx-onrow small{display:block;margin-top:2px;font-size:12.5px;color:var(--mu)}#txbody{transition:opacity .25s,filter .25s}#txbody.off{opacity:.4;filter:grayscale(1)}.tx-b.r.offb{background:rgba(255,255,255,.78);color:#333}.tx-b.r.offb i{background:#777;animation:none}.tx-b em{font-style:normal}
 .tx-info{display:flex;gap:14px;align-items:flex-start}.tx-i{flex:none;width:26px;height:26px;border-radius:50%;background:var(--ac);color:var(--on);font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:2px}.tx-info b{display:block;font-size:15px}.tx-info p{margin:2px 0 0;font-size:13px;color:var(--mu);line-height:1.45}
 .tx-act{display:grid;grid-template-columns:1fr 1.15fr;gap:12px}.tx-act .btn{height:56px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:17px}
 .sheet .head{margin:6px 0 14px}
@@ -676,13 +677,15 @@ nav button.on .pl{background:none;color:var(--ac)}
 #splash.play .tagline{ animation: sp_tagIn .6s ease forwards 3.5s; }
 @keyframes sp_tagIn{ to{ opacity:1; transform:translateY(0); } }
 #splash .prompt{
-    position:absolute; bottom: max(28px, env(safe-area-inset-bottom, 0px)); left:0; right:0;
-    text-align:center; font-size:.6rem; letter-spacing:.3em; color: var(--dim);
-    opacity:0; text-transform:uppercase; z-index: 2;
+    position:absolute; bottom: max(40px, env(safe-area-inset-bottom, 0px)); left:0; right:0;
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+    text-align:center; opacity:0; z-index: 2;
   }
-#splash.play .prompt{ animation: sp_promptIn .6s ease forwards 3.9s, sp_blink 1.6s ease-in-out 4.5s infinite; }
-@keyframes sp_promptIn{ to{ opacity:.7; } }
-@keyframes sp_blink{ 50%{ opacity:.25; } }
+#splash .pbtn{display:inline-block;padding:13px 38px;border-radius:999px;border:1px solid var(--accent);color:var(--ink);font-family:'Orbitron','Inter',sans-serif;font-weight:800;font-size:.95rem;letter-spacing:.42em;text-indent:.42em;background:rgba(255,255,255,.05);box-shadow:0 0 26px -4px var(--accent),inset 0 0 14px -8px var(--accent)}
+#splash .psub{font-size:.6rem;letter-spacing:.3em;color:var(--dim);text-transform:uppercase}
+#splash.play .prompt{ animation: sp_promptIn .6s ease forwards 3.2s, sp_blink 1.6s ease-in-out 3.9s infinite; }
+@keyframes sp_promptIn{ to{ opacity:1; } }
+@keyframes sp_blink{ 50%{ opacity:.55; } }
 @media (prefers-reduced-motion: reduce){#splash.play *{ animation-duration: .01s !important; animation-delay: 0s !important; }}
 #splash{position:fixed;inset:0;z-index:1000;height:auto;width:auto;font-family:'Inter',-apple-system,'Segoe UI',sans-serif;color:var(--ink);overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none;transition:opacity .45s ease,transform .45s ease,filter .45s ease}
 #splash.out{opacity:0;transform:scale(1.06);filter:blur(4px);pointer-events:none}
@@ -691,7 +694,14 @@ nav button.on .pl{background:none;color:var(--ac)}
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&family=Inter:wght@400;500;600&display=swap">
 </head>
 <body>
-<div id="splash" aria-label="Comatoze – ketuk untuk masuk">
+<script>
+/* WebUI bawaan KernelSU (mui.kernelsu.org) ditutup: manager hanya jalan di aplikasi Comatoze (comatoze.local) */
+(function(){var h='';try{h=location.hostname}catch(e){}
+if(h==='comatoze.local')return;
+window.__BLOCKED=1;document.documentElement.innerHTML=('<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Comatoze</title><style>html,body{margin:0;height:100%;background:#0b0f0d;color:#d7efdc;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}body{display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box}.c{max-width:340px}.i{width:84px;height:84px;margin:0 auto 22px;border-radius:26px;display:flex;align-items:center;justify-content:center;background:#16251c;border:1px solid #2c4a37;box-shadow:0 0 40px #2e7d4a55}h1{margin:0 0 10px;font-size:26px;letter-spacing:.2px;color:#8ee0a3}p{margin:0;font-size:14px;line-height:1.55;color:#93ad9b}</style></head><body><div class="c"><div class="i"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#8ee0a3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10" rx="3"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><path d="M12 14.5v2.5"/></svg></div><h1>webui di tutup coyy</h1><p>Manager Comatoze hanya bisa dibuka lewat aplikasi Comatoze, bukan dari WebUI KernelSU.</p></div></body>');
+})();
+</script>
+<div id="splash" aria-label="Comatoze – tekan Enter untuk masuk ke manager">
   <div class="grain"></div>
   <div class="sweep"></div>
   <div class="reveal">
@@ -702,12 +712,12 @@ nav button.on .pl{background:none;color:var(--ac)}
     </div>
     <div class="tagline">Manager</div>
   </div>
-  <div class="prompt">Tap to enter</div>
+  <div class="prompt"><span class="pbtn">ENTER</span><span class="psub">untuk masuk ke manager</span></div>
   <div class="vignette"></div>
 </div>
 <script>
 (function(){try{
-  var sp=document.getElementById('splash'),word=document.getElementById('spWord');if(!sp||!word)return;
+  if(window.__BLOCKED)return;var sp=document.getElementById('splash'),word=document.getElementById('spWord');if(!sp||!word)return;
   var letters='COMATOZE',delays=[0.55];
   for(var i=1;i<letters.length;i++)delays.push(1.1+(i-1)*0.07);
   letters.split('').forEach(function(ch,i){
@@ -726,7 +736,7 @@ nav button.on .pl{background:none;color:var(--ac)}
   sp.classList.add('play');
   var done=false;
   function enter(){if(done)return;done=true;sp.classList.add('out');setTimeout(function(){if(sp.parentNode)sp.parentNode.removeChild(sp);},520);}
-  sp.addEventListener('click',enter);
+  sp.addEventListener('click',enter);document.addEventListener('keydown',function(e){if(e.key==='Enter')enter();});
   sp.addEventListener('touchend',function(e){e.preventDefault();enter();},{passive:false});
 }catch(e){var x=document.getElementById('splash');if(x&&x.parentNode)x.parentNode.removeChild(x);}})();
 </script>
@@ -748,7 +758,7 @@ nav button.on .pl{background:none;color:var(--ac)}
 <div class="dlg" id="dlg" role="dialog" aria-modal="true"></div>
 <div id="toast"></div>
 
-<script>
+<script>if(window.__BLOCKED)throw 0;
 /* ===== Registry fitur on/off — tambah fitur baru di sini (+ backend: FEATS, feat(), fstate()) ===== */
 /* ic = ikon (lihat IC), tn = warna (blue|purple|teal|amber|rose) */
 const FEATURES=[
@@ -1529,7 +1539,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.79.0';
+const VER='2.81.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1604,7 +1614,7 @@ function gsSpec(p,s){const c=(s.gprof||{})[p]||{mode:'',hz:''},sc=(s.gfxApp||{})
   {k:'drv',ic:'layers',d:'Driver Vulkan untuk semua game di daftar',t:'Driver Grafis',v:DRV_N[g.drv]||'Default',opts:[['default','Default','Bawaan sistem'],['driver','Game Driver','Driver khusus game'],['native','Driver Sistem','Driver native perangkat']],cur:g.drv||'default',fn:v=>gfxSet('drv',v)},
   {k:'api',ic:'layers',d:'Backend OpenGL/Vulkan semua game di daftar',t:'API Grafis',v:API_N[g.angle]||'Default',opts:[['default','Default','Bawaan sistem'],['native','OpenGL Native','Langsung ke driver GPU'],['angle','ANGLE','OpenGL lewat Vulkan']],cur:g.angle||'default',fn:v=>gfxSet('angle',v)},
   {k:'ang',ic:'game',d:'Bawaan Mati. Aktif bisa bikin layar putih / crash di beberapa game',t:'ANGLE Game Ini',v:ang?'Aktif':'Mati',opts:[['off','Mati','Driver bawaan'],['on','Aktif','Render lewat ANGLE']],cur:ang?'on':'off',fn:v=>angToggle(p,v==='on')},
-  {k:'tex',page:'tex',ic:'brush',d:'Level & gaya tekstur (Blur / Pixel) + pratinjau',t:'Kualitas Tekstur',v:tx?'Lv '+tx.l+' · '+(tx.s==='pixel'?'Pixel':'Blur'):'Default'}]});
+  {k:'tex',page:'tex',ic:'brush',d:'Level & gaya tekstur (Blur / Pixel) + pratinjau',t:'Kualitas Tekstur',v:tx?'Lv '+tx.l+' · '+(tx.s==='pixel'?'Pixel':'Blur'):'Nonaktif'}]});
  sec.push({t:'Pengaturan Tambahan',tn:'amber',ic:'bolt',rows:[]});
  return sec;}
 function appSub(p,s){const q=esc(p),sp=(s.spoofApps||[]).find(x=>x.pkg===p),sec=gsSpec(p,s);
@@ -1613,15 +1623,15 @@ function appSub(p,s){const q=esc(p),sp=(s.spoofApps||[]).find(x=>x.pkg===p),sec=
  <button class="btn ghost" style="color:var(--dg);margin-top:18px" onclick="appDel('${q}')">${IC.trash} Hapus dari daftar game</button>`;}
 async function gfxSet(k,v){toast('Menerapkan…');const r=await run(`gfx_${k==='drv'?'driver':'angle'} ${v}`);await load();toast((r.out||'').trim().startsWith('OK')?'Diterapkan · UI dimuat ulang':'Gagal: '+((r.out||'').split('|')[1]||'tidak ada respon'));}
 /* ---- Kualitas Tekstur: pratinjau sebelum/sesudah ---- */
-const TX_N=['Tinggi','Sedang','Rendah','Terendah'],TX_F=[2,4,8,16];let TX={p:null,l:2,s:'blur',x:.5,art:null};
-function texSub(p,s){const c=(s.tex||{})[p];TX.p=p;TX.l=c?c.l:2;TX.s=c?c.s:'blur';TX.x=.5;
- return `<div class="tx-page"><div class="tx-prev" id="txp"><canvas id="txc"></canvas><span class="tx-b l"><i></i>ASLI</span><span class="tx-b r"><i></i>AKTIF</span>
+const TX_N=['Tinggi','Sedang','Rendah','Terendah'],TX_F=[2,4,8,16];let TX={p:null,l:2,s:'blur',x:.5,art:null,on:false};
+function texSub(p,s){const c=(s.tex||{})[p];TX.p=p;TX.l=c?c.l:2;TX.s=c?c.s:'blur';TX.on=!!c;TX.x=.5;
+ return `<div class="tx-page"><div class="tx-prev" id="txp"><canvas id="txc"></canvas><span class="tx-b l"><i></i>ASLI</span><span class="tx-b r" id="txbr"><i></i><em id="txbt">AKTIF</em></span>
   <div class="tx-div" id="txd"><span class="tx-h">${IC.swap||'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h12l-3-3M17 17H5l3 3"/></svg>'}</span></div><span class="tx-hint">Geser pemisah untuk membandingkan</span></div>
-  <div class="card tx-ctl"><div class="tx-row"><b>Texture level</b><span id="txv"></span></div>
+  <div class="card tx-ctl"><div class="tx-onrow"><div><b>Kualitas tekstur</b><small id="txos"></small></div><label class="sw"><input type="checkbox" id="txon" ${TX.on?'checked':''} onchange="texOn(this.checked)"><i></i></label></div><div id="txbody"><div class="tx-row"><b>Texture level</b><span id="txv"></span></div>
    <div class="tx-seg" id="txl">${[1,2,3,4].map(n=>`<button data-l="${n}" onclick="texLvl(${n})">${n}</button>`).join('')}</div>
-   <div class="tx-seg two" id="txs"><button data-s="blur" onclick="texSty('blur')">Blur</button><button data-s="pixel" onclick="texSty('pixel')">Pixel</button></div></div>
+   <div class="tx-seg two" id="txs"><button data-s="blur" onclick="texSty('blur')">Blur</button><button data-s="pixel" onclick="texSty('pixel')">Pixel</button></div></div></div>
   <div class="card tx-info"><span class="tx-i">i</span><div><b>Informasi</b><p>Game akan dimulai ulang agar berlaku. Level lebih tinggi = tekstur lebih kasar dan FPS lebih ringan. Memakai ANGLE (Vulkan). Game dimulai ulang & hasilnya dicek: bila ANGLE menolak, muncul pesan penyebabnya.</p></div></div>
-  <div class="tx-act"><button class="btn ghost" onclick="texDef()">${IC.refresh||''} Default</button><button class="btn" onclick="texDone()">${IC.check||''} Selesai</button></div></div>`;}
+  <div class="tx-act"><button class="btn ghost" onclick="texDef()">${IC.refresh||''} Nonaktifkan</button><button class="btn" onclick="texDone()">${IC.check||''} Selesai</button></div></div>`;}
 function texArt(){if(TX.art)return TX.art;const W=256,H=160,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
  g.fillStyle='#3a2a22';g.fillRect(0,0,W,H);
  for(let r=0;r<10;r++){const y=r*9,off=(r%2)*14;for(let x=-28;x<W;x+=28){const k=((x*7+r*13)&15)/15;g.fillStyle=`rgb(${168+k*30|0},${74+k*20|0},${52+k*14|0})`;g.fillRect(x+off+1,y+1,26,7);g.fillStyle='rgba(0,0,0,.18)';g.fillRect(x+off+1,y+6,26,2);}}
@@ -1630,19 +1640,33 @@ function texArt(){if(TX.art)return TX.art;const W=256,H=160,c=document.createEle
  for(let i=0;i<14;i++){g.strokeStyle='rgba(0,0,0,.16)';g.beginPath();g.moveTo(i*20,98);g.lineTo(i*20+30,H);g.stroke();}
  TX.art=c;return c;}
 function texDraw(){const cv=$('#txc');if(!cv)return;const dpr=Math.min(window.devicePixelRatio||1,2),w=cv.clientWidth,h=cv.clientHeight;if(!w)return;cv.width=w*dpr;cv.height=h*dpr;
- const g=cv.getContext('2d'),art=texArt(),f=TX_F[TX.l-1],sm=document.createElement('canvas');sm.width=Math.max(2,Math.round(art.width/f));sm.height=Math.max(2,Math.round(art.height/f));
- const sg=sm.getContext('2d');sg.imageSmoothingEnabled=true;sg.drawImage(art,0,0,sm.width,sm.height);
- const X=Math.round(TX.x*cv.width);
+ const g=cv.getContext('2d'),art=texArt(),f=TX_F[TX.l-1],X=Math.round(TX.x*cv.width);
  g.save();g.beginPath();g.rect(0,0,X,cv.height);g.clip();g.imageSmoothingEnabled=true;g.drawImage(art,0,0,cv.width,cv.height);g.restore();
- g.save();g.beginPath();g.rect(X,0,cv.width-X,cv.height);g.clip();g.imageSmoothingEnabled=TX.s==='blur';g.imageSmoothingQuality='high';g.drawImage(sm,0,0,cv.width,cv.height);g.restore();
+ g.save();g.beginPath();g.rect(X,0,cv.width-X,cv.height);g.clip();
+ if(!TX.on){g.imageSmoothingEnabled=true;g.drawImage(art,0,0,cv.width,cv.height);}
+ else if(TX.s==='blur'){ /* blur: turun resolusi lalu naik halus (berkabut) */
+  const sm=document.createElement('canvas');sm.width=Math.max(2,Math.round(art.width/f));sm.height=Math.max(2,Math.round(art.height/f));
+  const sg=sm.getContext('2d');sg.imageSmoothingEnabled=true;sg.drawImage(art,0,0,sm.width,sm.height);
+  g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(sm,0,0,cv.width,cv.height);
+  g.globalAlpha=.35;g.filter='blur('+(f*1.2)+'px)';g.drawImage(sm,0,0,cv.width,cv.height);g.filter='none';g.globalAlpha=1;}
+ else { /* pixel: kotak tegas, warna dikuantisasi, tepi tajam */
+  const pf=f*1.1,sm=document.createElement('canvas');sm.width=Math.max(2,Math.round(art.width/pf));sm.height=Math.max(2,Math.round(art.height/pf));
+  const sg=sm.getContext('2d');sg.imageSmoothingEnabled=false;sg.drawImage(art,0,0,sm.width,sm.height);
+  const im=sg.getImageData(0,0,sm.width,sm.height),d=im.data;for(let i=0;i<d.length;i+=4){d[i]=Math.round(d[i]/24)*24;d[i+1]=Math.round(d[i+1]/24)*24;d[i+2]=Math.round(d[i+2]/24)*24;}sg.putImageData(im,0,0);
+  g.imageSmoothingEnabled=false;g.drawImage(sm,0,0,cv.width,cv.height);
+}
+ g.restore();
  const d=$('#txd');if(d)d.style.left=(TX.x*100)+'%';}
-function texUi(){const v=$('#txv');if(v)v.textContent=TX.l+' · '+TX_N[TX.l-1];document.querySelectorAll('#txl button').forEach(b=>b.classList.toggle('on',+b.dataset.l===TX.l));document.querySelectorAll('#txs button').forEach(b=>b.classList.toggle('on',b.dataset.s===TX.s));texDraw();}
+function texUi(){const v=$('#txv');if(v)v.textContent=TX.l+' · '+TX_N[TX.l-1];document.querySelectorAll('#txl button').forEach(b=>b.classList.toggle('on',TX.on&&+b.dataset.l===TX.l));document.querySelectorAll('#txs button').forEach(b=>b.classList.toggle('on',TX.on&&b.dataset.s===TX.s));
+ const bd=$('#txbody');if(bd)bd.classList.toggle('off',!TX.on);const o=$('#txon');if(o)o.checked=TX.on;const os=$('#txos');if(os)os.textContent=TX.on?'Aktif · '+(TX.s==='pixel'?'Pixel':'Blur')+' level '+TX.l:'Nonaktif · tekstur asli game';
+ const br=$('#txbr'),bt=$('#txbt');if(br)br.classList.toggle('offb',!TX.on);if(bt)bt.textContent=TX.on?(TX.s==='pixel'?'PIXEL':'BLUR'):'NONAKTIF';texDraw();}
 function texInit(){texUi();const p=$('#txp');if(!p||p._b)return;p._b=1;let dn=false;const mv=ev=>{const r=p.getBoundingClientRect();TX.x=Math.min(.97,Math.max(.03,(ev.clientX-r.left)/r.width));texDraw();};
  p.addEventListener('pointerdown',ev=>{dn=true;try{p.setPointerCapture(ev.pointerId);}catch(e){}mv(ev);});p.addEventListener('pointermove',ev=>{if(dn)mv(ev);});p.addEventListener('pointerup',()=>{dn=false;});p.addEventListener('pointercancel',()=>{dn=false;});}
-function texLvl(n){TX.l=n;texUi();}
-function texSty(s){TX.s=s;texUi();}
-async function texDone(){const p=TX.p;if(!/^[A-Za-z0-9._]+$/.test(p||''))return;toast('Menerapkan…');const r=await run(`tex set ${p} ${TX.l} ${TX.s}`);await load();toast((r.out||'').trim().startsWith('OK')?'Tekstur diterapkan · mulai ulang game':'Gagal: '+((r.out||'').split('|')[1]||'tidak ada respon'));closeSub();}
-async function texDef(){const p=TX.p;if(!/^[A-Za-z0-9._]+$/.test(p||''))return;toast('Mengembalikan…');await run('tex off '+p);await load();toast('Tekstur dikembalikan ke default');closeSub();}
+function texOn(v){TX.on=!!v;texUi();}
+function texLvl(n){TX.l=n;TX.on=true;texUi();}
+function texSty(s){TX.s=s;TX.on=true;texUi();}
+async function texDone(){const p=TX.p;if(!/^[A-Za-z0-9._]+$/.test(p||''))return;if(!TX.on)return texDef();toast('Menerapkan…');const r=await run(`tex set ${p} ${TX.l} ${TX.s}`);await load();toast((r.out||'').trim().startsWith('OK')?'Tekstur diterapkan · mulai ulang game':'Gagal: '+((r.out||'').split('|')[1]||'tidak ada respon'));closeSub();}
+async function texDef(){const p=TX.p;if(!/^[A-Za-z0-9._]+$/.test(p||''))return;toast('Mengembalikan…');await run('tex off '+p);await load();toast('Tekstur dinonaktifkan · mulai ulang game');closeSub();}
 /* dialog pilihan (kartu radio beranimasi) */
 let GD=null;
 function gdOpen(p,k){const it=gsSpec(p,S).reduce((a,x)=>a.concat(x.rows),[]).find(r=>r.k===k),tn=(gsSpec(p,S).find(x=>x.rows.some(r=>r.k===k))||{}).tn||'blue';if(!it)return;GD={fn:it.fn};

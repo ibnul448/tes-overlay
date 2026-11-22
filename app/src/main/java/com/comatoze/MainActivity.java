@@ -45,7 +45,8 @@ import java.util.regex.Pattern;
 public class MainActivity extends Activity {
     private static final String HOST = "comatoze.local";
     private WebView wv;
-    private TextView msg;
+    private WebView gate;
+    private boolean checking = false;
     private FrameLayout rootView;
     private final ExecutorService pool = Executors.newCachedThreadPool();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -61,28 +62,52 @@ public class MainActivity extends Activity {
         rootView.setBackgroundColor(Color.parseColor("#101412"));
         setContentView(rootView);
 
-        msg = new TextView(this);
-        msg.setTextColor(Color.parseColor("#C8E6D0"));
-        msg.setTextSize(15);
-        msg.setGravity(Gravity.CENTER);
-        msg.setPadding(dp(32), dp(32), dp(32), dp(32));
-        msg.setText("Memeriksa akses root...");
-        rootView.addView(msg, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        gate = new WebView(this);
+        gate.setBackgroundColor(Color.parseColor("#080C0A"));
+        gate.getSettings().setJavaScriptEnabled(true);
+        gate.addJavascriptInterface(new GateBridge(), "Gate");
+        gate.setWebViewClient(new WebViewClient() {
+            @Override public void onPageFinished(WebView v, String url) { checkRoot(); }
+        });
+        rootView.addView(gate, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        getWindow().setStatusBarColor(Color.parseColor("#080C0A"));
+        getWindow().setNavigationBarColor(Color.parseColor("#080C0A"));
+        gate.loadUrl("file:///android_asset/gate.html");
+    }
 
+    private void gateState(final String st) {
+        ui.post(new Runnable() { @Override public void run() { if (gate != null) gate.evaluateJavascript("setState('" + st + "')", null); } });
+    }
+
+    private void checkRoot() {
+        if (checking) return;
+        checking = true;
+        gateState("wait");
         pool.execute(new Runnable() {
             @Override public void run() {
                 final boolean root = Root.available();
+                if (root) gateState("mod");
                 final boolean mod = root && Root.exec("test -f " + Root.MOD + "/webroot/index.html").code == 0;
                 if (root && mod) Root.exec(Root.BIN + " appperm");
                 ui.post(new Runnable() {
                     @Override public void run() {
-                        if (!root) msg.setText("Aplikasi ini butuh akses root.\n\nBerikan izin Superuser ke Comatoze (KernelSU/Magisk) lalu buka lagi.");
-                        else if (!mod) msg.setText("Modul Comatoze belum terpasang / belum aktif.\n\nFlash modulnya lalu reboot.");
-                        else startWeb();
+                        checking = false;
+                        if (!root) gateState("denied");
+                        else if (!mod) gateState("nomod");
+                        else {
+                            gateState("ok");
+                            ui.postDelayed(new Runnable() { @Override public void run() { if (wv == null) startWeb(); } }, 800);
+                        }
                     }
                 });
             }
         });
+    }
+
+    private class GateBridge {
+        @JavascriptInterface public void retry() {
+            ui.post(new Runnable() { @Override public void run() { checkRoot(); } });
+        }
     }
 
     private int dp(int v) { return (int) (v * getResources().getDisplayMetrics().density + 0.5f); }
@@ -121,8 +146,12 @@ public class MainActivity extends Activity {
             }
         });
         rootView.addView(wv, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        msg.setVisibility(View.GONE);
         wv.loadUrl("https://" + HOST + "/index.html");
+        ui.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (gate != null) { rootView.removeView(gate); gate.destroy(); gate = null; }
+            }
+        }, 900);
     }
 
     /** Warna status bar / nav bar mengikuti latar halaman (terang/gelap). */

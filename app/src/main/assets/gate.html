@@ -1,0 +1,59 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Root</title>
+<style>
+:root{--g:#7be39a;--g2:#2fbf6a;--bg:#080c0a;--mu:#8aa393}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:#e2f5e8;font-family:system-ui,-apple-system,Roboto,sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;background:radial-gradient(120% 70% at 50% 0%,#12301f 0%,transparent 60%),radial-gradient(90% 60% at 50% 110%,#0f2a1c 0%,transparent 60%),var(--bg)}
+.grid{position:fixed;inset:0;background-image:linear-gradient(#ffffff08 1px,transparent 1px),linear-gradient(90deg,#ffffff08 1px,transparent 1px);background-size:34px 34px;-webkit-mask-image:radial-gradient(circle at 50% 40%,#000 0,transparent 70%);mask-image:radial-gradient(circle at 50% 40%,#000 0,transparent 70%)}
+.radar{position:relative;width:220px;height:220px;display:flex;align-items:center;justify-content:center;margin-bottom:30px}
+.ring{position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--g);opacity:0;animation:rg 2.8s ease-out infinite}
+.ring:nth-child(2){animation-delay:.9s}.ring:nth-child(3){animation-delay:1.8s}
+@keyframes rg{0%{transform:scale(.35);opacity:.7}100%{transform:scale(1.05);opacity:0}}
+.sweep{position:absolute;inset:14px;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 300deg,#7be39a55 350deg,transparent 360deg);animation:sw 2.4s linear infinite;-webkit-mask-image:radial-gradient(circle,transparent 0 34%,#000 36%);mask-image:radial-gradient(circle,transparent 0 34%,#000 36%)}
+@keyframes sw{to{transform:rotate(360deg)}}
+.core{position:relative;width:104px;height:104px;border-radius:32px;background:linear-gradient(160deg,#1c3a29,#0e1d15);border:1px solid #2f6a47;display:flex;align-items:center;justify-content:center;box-shadow:0 0 50px -6px #2fbf6a99,inset 0 0 22px -10px var(--g);transition:all .4s}
+.core svg{width:52px;height:52px;stroke:var(--g);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:stroke .4s}
+.core .ck,.core .xx{display:none}
+body.ok .lock,body.no .lock,body.nm .lock{display:none}
+body.ok .ck{display:block;stroke-dasharray:40;stroke-dashoffset:40;animation:dr .5s .1s forwards}
+body.no .xx,body.nm .xx{display:block}
+@keyframes dr{to{stroke-dashoffset:0}}
+body.no .core,body.nm .core{border-color:#7a3b3b;box-shadow:0 0 50px -6px #e5484d88,inset 0 0 22px -10px #e5484d}
+body.no .core svg,body.nm .core svg{stroke:#ff8a8a}
+body.no .ring,body.nm .ring,body.no .sweep,body.nm .sweep{animation-play-state:paused;opacity:0}
+body.ok .sweep{animation-duration:.9s}
+h1{margin:0 0 8px;font-size:26px;font-weight:800;letter-spacing:.2px;text-align:center}
+h1 b{color:var(--g)}
+p{margin:0;text-align:center;color:var(--mu);font-size:14.5px;line-height:1.55;max-width:320px;min-height:68px}
+.steps{margin:22px 0 4px;width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px}
+.st{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:#ffffff08;border:1px solid #ffffff10;font-size:14px;color:var(--mu);transition:all .3s}
+.st i{flex:none;width:22px;height:22px;border-radius:50%;border:2px solid #3b5546;position:relative}
+.st.run{color:#e2f5e8;border-color:#2f6a47}.st.run i{border-color:var(--g);border-top-color:transparent;animation:sp .8s linear infinite}
+.st.done{color:#e2f5e8}.st.done i{background:var(--g2);border-color:var(--g2)}.st.done i::after{content:"";position:absolute;left:6px;top:2px;width:5px;height:10px;border:solid #06210f;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+.st.bad{color:#ffc2c2;border-color:#7a3b3b}.st.bad i{background:#e5484d;border-color:#e5484d}.st.bad i::after{content:"!";position:absolute;inset:0;text-align:center;font:900 13px/18px sans-serif;color:#fff}
+@keyframes sp{to{transform:rotate(360deg)}}
+.btn{margin-top:20px;width:100%;max-width:320px;height:54px;border:0;border-radius:99px;background:linear-gradient(135deg,#7be39a,#2fbf6a);color:#04210f;font:800 16px system-ui;letter-spacing:.3px;box-shadow:0 12px 30px -10px #2fbf6a;display:none}
+.btn:active{transform:scale(.98)}
+body.no .btn,body.nm .btn{display:block}
+.fade{animation:fi .6s both}@keyframes fi{from{opacity:0;transform:translateY(8px)}}
+</style></head><body class="">
+<div class="grid"></div>
+<div class="radar"><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="sweep"></div>
+<div class="core"><svg viewBox="0 0 24 24"><g class="lock"><rect x="4.5" y="10.5" width="15" height="9.5" rx="3"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/><path d="M12 14.2v2.2"/></g><path class="ck" d="M6 12.5l4 4 8-9"/><g class="xx"><path d="M7 7l10 10M17 7L7 17"/></g></svg></div></div>
+<h1 id="t" class="fade">Akses <b>Root</b></h1>
+<p id="d" class="fade">Comatoze butuh izin Superuser untuk mengatur kernel, CPU &amp; GPU. Pilih <b>Izinkan</b> pada dialog yang muncul.</p>
+<div class="steps fade">
+<div class="st run" id="s1"><i></i>Meminta izin Superuser</div>
+<div class="st" id="s2"><i></i>Memeriksa modul Comatoze</div>
+<div class="st" id="s3"><i></i>Membuka manager</div></div>
+<button class="btn" id="b" onclick="Gate.retry()">Coba lagi</button>
+<script>
+function $(i){return document.getElementById(i)}
+function st(i,c){$('s'+i).className='st '+c}
+function setState(x){var b=document.body;b.className=x==='ok'?'ok':x==='denied'?'no':x==='nomod'?'nm':'';
+ if(x==='wait'){st(1,'run');st(2,'');st(3,'');$('t').innerHTML='Akses <b>Root</b>';$('d').innerHTML='Comatoze butuh izin Superuser untuk mengatur kernel, CPU &amp; GPU. Pilih <b>Izinkan</b> pada dialog yang muncul.';}
+ if(x==='mod'){st(1,'done');st(2,'run');st(3,'');$('t').innerHTML='Root <b>diberikan</b>';$('d').innerHTML='Memeriksa modul Comatoze…';}
+ if(x==='ok'){st(1,'done');st(2,'done');st(3,'run');$('t').innerHTML='Siap <b>masuk</b>';$('d').innerHTML='Semua akses lengkap. Membuka manager…';}
+ if(x==='denied'){st(1,'bad');st(2,'');st(3,'');$('t').innerHTML='Root <b style="color:#ff8a8a">ditolak</b>';$('d').innerHTML='Berikan izin Superuser ke Comatoze di KernelSU / Magisk, lalu tekan Coba lagi.';}
+ if(x==='nomod'){st(1,'done');st(2,'bad');st(3,'');$('t').innerHTML='Modul <b style="color:#ff8a8a">belum aktif</b>';$('d').innerHTML='Flash modul Comatoze lalu reboot, kemudian tekan Coba lagi.';}}
+</script></body></html>
