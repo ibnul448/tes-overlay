@@ -996,7 +996,7 @@ rlearn(){
 FPSGO_N=/sys/kernel/fpsgo/common/fpsgo_enable
 if [ ! -e "$FPSGO_N" ]; then
   FPSGO_N=
-  for _d in /sys/kernel/fpsgo /sys/module/mtk_fpsgo /sys/module/fpsgo /sys/kernel/debug/fpsgo /proc/fpsgo; do
+  for _d in /sys/kernel/fpsgo /sys/kernel/fpsgo_v2 /sys/kernel/mtk_fpsgo /sys/module/mtk_fpsgo /sys/module/fpsgo /sys/kernel/debug/fpsgo /proc/fpsgo; do
     [ -d $_d ] || continue
     FPSGO_N=$(find $_d -maxdepth 3 -name fpsgo_enable 2>/dev/null | head -1)
     [ -n "$FPSGO_N" ] && break
@@ -1017,6 +1017,28 @@ fpsgo_set(){ # <on|off>: on = matikan FPSGO (tulis 0), off = nyalakan lagi (tuli
   done
   return 1
 }
+# Pelengkap saklar utama (hanya 3 node yang dikenal aman): fbt/switch_idleprefer, minitop/enable -> 0; nilai asli dicatat di $FPX dan dipulihkan saat dimatikan.
+FPX=$DIR/fpsgo.orig
+fpsgo_extra_nodes(){ for _b in /sys/kernel/fpsgo /sys/kernel/fpsgo_v2 /sys/kernel/mtk_fpsgo /sys/module/fpsgo/parameters /sys/module/mtk_fpsgo/parameters; do
+    [ -d $_b ] || continue; find $_b -maxdepth 3 -type f \( -name switch_idleprefer -o -path '*minitop/enable' \) 2>/dev/null; done; }
+fpsgo_x(){ # on|off
+  if [ "$1" = on ]; then : >> $FPX
+    for _n in $(fpsgo_extra_nodes); do grep -q "^$_n|" $FPX || echo "$_n|$(rd $_n)" >> $FPX; chmod 644 $_n 2>/dev/null; echo 0 > $_n 2>/dev/null; done
+  elif [ -f $FPX ]; then
+    while IFS='|' read -r _n _v; do [ -n "$_n" ] && [ -n "$_v" ] && [ -e "$_n" ] && { chmod 644 $_n 2>/dev/null; echo "$_v" > $_n 2>/dev/null; }; done < $FPX
+    rm -f $FPX; fi; }
+# Segel: node yang sudah 0 ditimpa file bayangan (bind mount, di namespace mount utama), jadi HAL/ROM yang menulis ulang FPSGO jatuh ke file bayangan
+# dan node asli tetap 0. Dilepas (umount) sebelum nilai asli dipulihkan. Mati otomatis saat reboot. Matikan dengan FPSGO_SEAL=off di config.
+fpsgo_seal(){ # on|off
+  SD=$DIR/seal; _ns=; command -v nsenter >/dev/null 2>&1 && _ns="nsenter --mount=/proc/1/ns/mnt --"
+  if [ "$1" = on ]; then [ "$(getcfg FPSGO_SEAL)" = off ] && return 0; mkdir -p $SD
+    if command -v magiskpolicy >/dev/null 2>&1; then magiskpolicy --live "allow * sysfs file mounton" >/dev/null 2>&1
+    elif command -v ksud >/dev/null 2>&1; then ksud sepolicy patch "allow * sysfs file mounton" >/dev/null 2>&1; fi
+    for _n in $FPSGO_N $(fpsgo_extra_nodes); do [ -e "$_n" ] || continue; grep -q " $_n " /proc/1/mounts 2>/dev/null && continue
+      _sf=$SD/$(echo $_n | tr '/' '_'); echo 0 > $_sf; chmod 666 $_sf 2>/dev/null
+      $_ns mount -o bind $_sf $_n >/dev/null 2>&1 && echo "$_n" >> $SD/list; done
+  else [ -f $SD/list ] && while IFS= read -r _n; do [ -n "$_n" ] && { $_ns umount $_n >/dev/null 2>&1 || $_ns umount -l $_n >/dev/null 2>&1; }; done < $SD/list
+    rm -rf $SD; fi; }
 fpsgo_keep(){ # dipanggil pemantau game: bila fitur ON tetapi kernel/ROM menyalakan FPSGO lagi, matikan lagi (tanpa fork bila sudah benar)
   [ -n "$FPSGO_N" ] || return 0
   read -r _fv 2>/dev/null < "$FPSGO_N" || return 0
@@ -1530,7 +1552,7 @@ wl_apply(){ # on|off: WiFi tanpa scan latar & tanpa tidur (nilai asli disimpan l
     setcfg WLO_set 0
   fi
 }
-FEATS="framepace f2fsgc gamefps gamethermal nothermal doze datasaver wifilatency bootapply dnd fastcharge autocut bypass gamebypass preload gamednd gameprofile gameclean touchboost perfx ecox lessdbg fpsgooff gmslimit aggrdoze hzlock120 hzforce bkt smooth"
+FEATS="framepace f2fsgc gamefps gamethermal nothermal doze datasaver wifilatency bootapply dnd fastcharge autocut bypass gamebypass preload gamednd gameprofile gameclean touchboost perfx ecox lessdbg fpsgooff gmslimit aggrdoze hzlock120 hzforce bkt smooth fpsrec"
 feat(){ # name on|off
   case $1 in
     nothermal) if [ "$2" = on ]; then thermal off; else thermal on; fi; return;;
@@ -1560,7 +1582,8 @@ feat(){ # name on|off
         [ "$2" = on ] && echo "OK|FPSGO tidak ada di kernel ini, mode pengganti aktif saat game"; return
       fi
       setcfg "F_$1" $2
-      if fpsgo_set $2; then rm -f $DIR/fpsgo_ro
+      [ "$2" = on ] || { fpsgo_seal off; fpsgo_x off; }   # lepas segel & pulihkan node pelengkap dulu, baru saklar utama dinyalakan lagi
+      if fpsgo_set $2; then rm -f $DIR/fpsgo_ro; [ "$2" = on ] && { fpsgo_x on; fpsgo_seal on; }
       elif [ "$2" = on ]; then touch $DIR/fpsgo_ro; [ -f $DIR/ingame ] && fp_on; echo "OK|FPSGO ditolak kernel, mode pengganti aktif saat game"; game_sync
       else echo "ERR|FPSGO tidak bisa diubah: $(echo "${FPSGO_ERR:-nilai ditimpa lagi oleh sistem}" | tr -d '|' | tr '\n' ' ' | cut -c1-90) [nilai sekarang: $(rd "$FPSGO_N")]"; fi
       return;;
@@ -1571,6 +1594,7 @@ feat(){ # name on|off
     framepace) setcfg "F_$1" $2; if [ "$2" = on ]; then [ -f $DIR/ingame ] && fp_on; else fp_off; fp_want && [ -f $DIR/ingame ] && fp_on; fi; game_sync; return;;
     gameclean) setcfg "F_$1" $2; game_sync; return;;
     threadpin) setcfg "F_$1" $2; game_sync; return;;
+    fpsrec) setcfg "F_$1" $2; game_sync; [ "$2" = on ] && rec_kick; return;;
     wifilatency) if [ "$2" = on ]; then wm=enabled; else wm=disabled; fi; cmd wifi force-hi-perf-mode $wm >/dev/null 2>&1; cmd wifi force-low-latency-mode $wm >/dev/null 2>&1; wl_apply $2;;
     fastcharge|autocut|bypass) setcfg "F_$1" $2; chg_sync; return;;
     preload|gamednd) setcfg "F_$1" $2; game_sync; return;;
@@ -1614,6 +1638,7 @@ fstate(){
     bootapply) [ -f $DIR/skip ] && echo off || echo on;;
     doze) v=$(getcfg F_doze); echo ${v:-on};;
     threadpin) v=$(getcfg F_threadpin); echo ${v:-on};;
+    fpsrec) v=$(getcfg F_fpsrec); echo ${v:-on};;
     hzforce) hz_lock_on;;
     perfx) v=$(getcfg F_perfx); [ -z "$v" ] && { [ "$(curmode)" = perf ] && v=on || v=off; }; echo $v;;
     ecox) v=$(getcfg F_ecox); [ -z "$v" ] && { [ "$(curmode)" = eco ] && v=on || v=off; }; echo $v;;
@@ -1847,24 +1872,8 @@ game_fgp(){ # game dari daftar yang sedang di layar -> "paket pid" (daftar dibac
 }
 game_fg(){ set -- $(game_fgp); echo $1; }
 glog(){ echo "$(date +%H:%M:%S) $*" >> $DIR/game.log; [ "$(stat -c %s $DIR/game.log 2>/dev/null || echo 0)" -gt 4096 ] && { tail -n 20 $DIR/game.log > $DIR/game.log.t; mv -f $DIR/game.log.t $DIR/game.log; }; }
-# ---------- REKAM LAG: sampel tiap 2 dtk selama 40 dtk saat kamu main (clock CPU/GPU, suhu, beban, mode) -> $DIR/lagrec.txt ----------
-# Dipakai untuk mencari penyebab nyata lag: clock jatuh? suhu tinggi (throttle)? CPU penuh? Hasil dibaca lewat "Cek pemantau game".
-lagrec(){ [ -f $DIR/lagrec.pid ] && kill -0 $(cat $DIR/lagrec.pid) 2>/dev/null && { echo "ERR|perekaman sedang berjalan"; return; }
-  : > $DIR/lagrec.txt; bgx lagrec_run; echo "OK|merekam 40 detik - main sekarang, lalu tekan Cek pemantau game"; }
-lagrec_run(){ echo $$ > $DIR/lagrec.pid; i=0
-  while [ $i -lt 20 ]; do
-    tmax=0; for z in /sys/class/thermal/thermal_zone*/temp; do read -r v < $z 2>/dev/null || continue; case $v in ''|*[!0-9-]*) continue;; esac; [ "$v" -gt "$tmax" ] && tmax=$v; done
-    [ "$tmax" -gt 1000 ] && tmax=$((tmax/1000))
-    cf=; for pl in $CPU/policy*; do cf="$cf $(rd $pl/scaling_cur_freq | cut -c1-4)/$(rd $pl/scaling_max_freq | cut -c1-4)"; done
-    gf=$(rd $GPU/cur_freq); [ -z "$gf" ] && gf=$(rd /sys/kernel/ged/hal/current_freqency); gf=${gf:-?}
-    read -r l1 _ < /proc/loadavg; bt=$(rd $BAT/temp)
-    echo "$(date +%S)s suhuMax=${tmax}C bat=${bt:-?} cpu(cur/max MHz)=${cf# } gpu=$gf load=$l1 mode=$(curmode) fg=$(game_fg)" >> $DIR/lagrec.txt
-    i=$((i+1)); sleep 2
-  done
-  echo "--- proses terberat ---" >> $DIR/lagrec.txt; top -b -n 1 -m 6 2>/dev/null | tail -n 8 >> $DIR/lagrec.txt
-  rm -f $DIR/lagrec.pid; }
 # ---------- CEK VERSI: bukti versi mana yang SEBENARNYA terpasang & jalan (modul, WebUI, aplikasi) ----------
-SCRIPT_VER=2.86.0
+SCRIPT_VER=2.90.0
 ver_check(){
   echo "skrip_berjalan=$SCRIPT_VER ($SELF)"
   for d in /data/adb/modules /data/adb/modules_update; do
@@ -1888,7 +1897,6 @@ gdiag(){ # diagnosa pemantau game (dipakai tombol Cek Pemantau di WebUI)
   echo "pemantau_hidup=$alive ingame=$([ -f $DIR/ingame ] && echo ya || echo tidak) profil_aktif=$([ -f $DIR/prof_on ] && echo ya || echo tidak)"
   echo "F_gameprofile=$(getcfg F_gameprofile) GP_MODE=$(getcfg GP_MODE) GP_HZ=$(getcfg GP_HZ) MODE=$(getcfg MODE)"
   echo "game_di_layar=$(game_fg)"
-  [ -s $DIR/lagrec.txt ] && { echo "--- rekaman lag terakhir ---"; tail -n 24 $DIR/lagrec.txt | cut -c1-170; }
   for g in $(cat $DIR/games.txt 2>/dev/null); do
     pids=$(pidof $g 2>/dev/null)
     if [ -z "$pids" ]; then echo "$g: proses tidak ada"; continue; fi
@@ -1997,6 +2005,7 @@ fp_on(){
   _fi=$((FPN-_f0))
   _dv=$(ls -d /sys/class/devfreq/*dvfsrc* 2>/dev/null | head -1)
   if [ -n "$_dv" ]; then case " $(rd $_dv/available_governors) " in *" performance "*) fpw $_dv/governor performance;; esac; fi
+  fpp vendor.perf.framepacing.enable 1   # properti frame pacing HAL perf vendor (aman bila HP tidak punya: diabaikan)
   fp_alt
   [ "$(getcfg FP_SF)" = off ] || { fpp debug.sf.disable_backpressure 1; fpp debug.sf.latch_unsignaled 1; }   # FP_SF=off bila layar berkedip/putih
   echo "$FPN|$_fc|$_fg|$_fi" > $DIR/fp.res; : > $DIR/fp_on
@@ -2066,10 +2075,12 @@ game_wd(){
           [ -f $PXV2 ] && perf_x_game
           [ "$(getcfg F_gameprofile)" = on ] && gp_enter $cur
           fp_want && fp_on
+          rec_want && bgx rec_run "$cur"
           [ "$(getcfg F_gameclean)" = on ] && { sleep 15; [ "$(game_fg)" = "$cur" ] && gclean $cur; }
         ) </dev/null >/dev/null 2>&1 &
       elif [ "$cur" != "$lastg" ]; then   # pindah langsung ke game lain di daftar: terapkan profil game barunya
-        lastg=$cur; [ -s $AAP ] && tex_cur $cur
+        lastg=$cur; echo "$cur" > $DIR/ingame; [ -s $AAP ] && tex_cur $cur
+        rec_want && ( sleep 8; bgx rec_run "$cur" ) </dev/null >/dev/null 2>&1 &
         if [ "$(getcfg F_gameprofile)" = on ]; then gp_leave; gp_enter $cur; fi
         fp_want && fp_later &
       fi
@@ -2091,7 +2102,7 @@ game_wd(){
 game_sync(){
   on=0; for f in preload gamednd gameprofile gameclean gamebypass gamethermal fpsgooff framepace; do [ "$(getcfg F_$f)" = on ] && on=1; done
   alive=0; [ -f $DIR/game.pid ] && kill -0 $(cat $DIR/game.pid) 2>/dev/null && alive=1
-  tp_want && on=1
+  tp_want && on=1; rec_want && on=1
   if [ $on = 1 ] && [ $alive = 0 ]; then bg game_wd
   elif [ $on = 0 ] && [ $alive = 1 ]; then kill $(cat $DIR/game.pid); rm -f $DIR/game.pid; gp_leave; gth_off; fp_off; fi
 }
@@ -2564,11 +2575,12 @@ statline(){
   _gl=$(gpu_live); _g=${_gl%%|*}; case $_g in ''|*[!0-9]*) _g=0;; esac
   _x=0; for _z in /sys/class/thermal/thermal_zone*/temp; do read -r _v 2>/dev/null < $_z || continue; case $_v in ''|*[!0-9]*) continue;; esac; [ "$_v" -gt 1000 ] && _v=$((_v/1000)); [ "$_v" -lt 120 ] && [ "$_v" -gt "$_x" ] && _x=$_v; done
   read -r _b 2>/dev/null < $BAT/capacity; plugged && _ch=1 || _ch=0
-  echo "ST|$_m|$_i|$_t|$_p|$((_c/1000))|$((_g/1000000))|$_x|${_b:-0}|$_ch"
+  _rs=1; cfgv F_fpsrec; [ "$CV" = off ] && _rs=0; [ "$_rs" = 1 ] && [ -f $DIR/rec_on ] && _rs=2
+  _rf=0; [ "$_rs" = 2 ] && read -r _rf 2>/dev/null < $DIR/rec_fps
+  echo "ST|$_m|$_i|$_t|$_p|$((_c/1000))|$((_g/1000000))|$_x|${_b:-0}|$_ch|$_rs|${_rf:-0}"
 }
 statloop(){ while :; do statline; sleep 2; done; }
-app_perm(){ # beri izin tampil-di-atas-app (crosshair) + notifikasi + latar ke aplikasi Comatoze tanpa dialog (root)
-  appops set com.comatoze SYSTEM_ALERT_WINDOW allow >/dev/null 2>&1
+app_perm(){ # beri izin notifikasi + latar ke aplikasi Comatoze tanpa dialog (root)
   pm grant com.comatoze android.permission.POST_NOTIFICATIONS >/dev/null 2>&1
   for _o in RUN_IN_BACKGROUND RUN_ANY_IN_BACKGROUND START_FOREGROUND; do appops set com.comatoze $_o allow >/dev/null 2>&1; done
   cmd deviceidle whitelist +com.comatoze >/dev/null 2>&1   # baterai: Tanpa batasan
@@ -2582,25 +2594,119 @@ ram_keep(){ _kp="com.comatoze $(game_fg)"
   _ime=$(sget secure default_input_method 2>/dev/null); case $_ime in null|'') ;; *) _kp="$_kp ${_ime%%/*}";; esac
   _hl=$(cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME 2>/dev/null | tail -n 1); case $_hl in */*) _kp="$_kp ${_hl%%/*}";; esac
   echo $_kp; }
-# ram_purge full|light: full = hentikan semua app pihak ketiga (selain ram_keep) + proses cache + cache kernel; light = hanya proses cache + cache kernel.
-# Urutan sengaja: matikan proses dulu, baru pangkas cache, flush, buang page cache & padatkan memori (supaya blok kontigu besar tersedia lagi).
+# ram_compact: padatkan memori proses yang MASIH hidup (anon -> zram) lewat `cmd activity compact full`, tanpa mematikannya; hasilnya MemAvailable naik besar.
+# Proses di ram_keep (app depan/game, keyboard, launcher) dilewati supaya tidak tersendat. Perintah yang tidak ada di versi Android ini diabaikan.
+ram_compact(){ _keep=" $(ram_keep) "
+  for _n in $(ps -A -o NAME 2>/dev/null | grep '\.' | sort -u | head -n 90); do _b=${_n%%:*}; case "$_keep" in *" $_b "*) continue;; esac
+    cmd activity compact full "$_n" 0 >/dev/null 2>&1 || am compact full "$_n" 0 >/dev/null 2>&1; done; }
+# ram_purge full|light: full = SANGAT AGRESIF: hentikan semua app pihak ketiga yang berjalan (selain ram_keep) dua putaran (yang hidup lagi dari alarm/service ikut kena),
+# bunuh proses cache, pangkas cache, padatkan proses sisa, lalu buang page cache/slab & padatkan memori kernel dua kali; light = hanya proses cache + cache kernel.
+# Urutan sengaja: matikan proses dulu, baru pangkas/padatkan, flush, buang cache (supaya blok kontigu besar tersedia lagi).
 ram_purge(){
   _keep=" $(ram_keep) "
   if [ "$1" = full ]; then
-    for _p in $(pm list packages -3 2>/dev/null | sed 's/^package://'); do case "$_keep" in *" $_p "*) continue;; esac; am force-stop $_p >/dev/null 2>&1; done
+    for _pass in 1 2; do
+      for _p in $(pm list packages -3 2>/dev/null | sed 's/^package://'); do case "$_keep" in *" $_p "*) continue;; esac; pidof $_p >/dev/null 2>&1 || continue; am force-stop $_p >/dev/null 2>&1; done
+      [ $_pass = 1 ] && { am kill-all >/dev/null 2>&1; cmd activity kill-all >/dev/null 2>&1; sleep 1; }
+    done
   fi
   am kill-all >/dev/null 2>&1; cmd activity kill-all >/dev/null 2>&1
-  [ "$1" = full ] && pm trim-caches 999G >/dev/null 2>&1
+  if [ "$1" = full ]; then pm trim-caches 999G >/dev/null 2>&1; ram_compact; fi
   sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory
+  [ "$1" = full ] && sleep 1
   w 3 /proc/sys/vm/drop_caches
   [ -w /proc/sys/vm/compact_memory ] && w 1 /proc/sys/vm/compact_memory
 }
 qact(){ case $1 in
-  clean) _b=$(meminfo_kb MemAvailable); ram_purge full; sleep 1; _a=$(meminfo_kb MemAvailable); _f=$(( (_a-_b)/1024 )); [ "$_f" -lt 0 ] && _f=0
+  clean) _b=$(meminfo_kb MemAvailable); ram_purge full; sleep 2; _a=$(meminfo_kb MemAvailable); _f=$(( (_a-_b)/1024 )); [ "$_f" -lt 0 ] && _f=0
     echo "OK|RAM dibersihkan (+${_f} MB)";;
   trim) pm trim-caches 999G >/dev/null 2>&1; sync; w 3 /proc/sys/vm/drop_caches; w 1 /proc/sys/vm/compact_memory; cmd package bg-dexopt-job >/dev/null 2>&1 & echo "OK|cache dipangkas";;
   killbg) ram_purge full; echo "OK|aplikasi latar dihentikan";;
   *) echo "ERR|aksi tidak dikenal";;
+esac; }
+# ---------- PEREKAM FPS per game ----------
+# Selama game di Daftar Game ada di layar: tiap 1 dtk baca timestamp frame layar game dari SurfaceFlinger
+# (dumpsys SurfaceFlinger --latency <layer>) + suhu baterai -> $DIR/rec/<paket>/<epoch>.csv; saat keluar game dihitung ringkasan (.meta).
+# Kolom csv: detik,fps*10,suhu*10,Hz,jumlah_frame,5 frame terlama (0.1ms) dipisah '/'. Sesi <20 dtk data valid dibuang. Maks 30 rekaman/app.
+REC=$DIR/rec
+rec_want(){ cfgv F_fpsrec; [ "$CV" != off ]; }
+rec_kick(){ [ -f $DIR/ingame ] || return 0; _kp=; read -r _kp < $DIR/ingame; [ -n "$_kp" ] && bgx rec_run "$_kp"; return 0; }
+rec_up(){ read -r _u _ < /proc/uptime; RU=${_u%.*}${_u#*.}; }
+rec_layer(){ _all=$(dumpsys SurfaceFlinger --list 2>/dev/null | grep -F "$1" | grep -v '^Background for\|^Bounds for')
+  _l=$(echo "$_all" | grep '^SurfaceView' | head -n 1); [ -z "$_l" ] && _l=$(echo "$_all" | head -n 1); echo "$_l"; }
+rec_fin(){ _f=$1; _ts=$2; _md=$3; _tf=$4; _d=$(dirname "$_f")
+  awk -F, '{a[NR]=$0; if($2>0)l=NR} END{for(i=1;i<=l;i++)print a[i]}' "$_f" > "$_f.t" 2>/dev/null
+  awk -F, '$2>=0' "$_f.t" > "$_f.u" 2>/dev/null
+  _n=$(wc -l < "$_f.u"); _du=$(wc -l < "$_f.t")
+  if [ "${_n:-0}" -lt 20 ]; then rm -f "$_f" "$_f.t" "$_f.u"; glog "rekam FPS dibuang (data valid <20 dtk; layer game tidak terbaca?)"; return; fi
+  _med=$(cut -d, -f2 "$_f.u" | sort -n | awk '{a[NR]=$1} END{print a[int((NR+1)/2)]}')
+  set -- $(awk -F, 'BEGIN{mn=999999;tn=9999;tx=0;hz=0}
+    {n++; s+=$2; ss+=$2*$2; if($2<mn)mn=$2; if($2>mx)mx=$2; t=$3; if(n==1)t0=t; tl=t; ts+=t; if(t<tn)tn=t; if(t>tx)tx=t; if($4>hz)hz=$4; fr+=$5}
+    END{av=s/n; var=ss/n-av*av; if(var<0)var=0; sd=sqrt(var); st=0; if(av>0)st=100*(1-sd/av); if(st<0)st=0;
+      printf "%d %d %d %d %d %d %d %d %d %d\n", av+0.5, mn, mx, st+0.5, hz, ts/n+0.5, tn, tx, tl-t0, fr}' "$_f.u")
+  _av=$1; _mn=$2; _mx=$3; _st=$4; _hz=$5; _ta=$6; _tn=$7; _tx=$8; _tr=$9; _fr=${10}
+  set -- $(cut -d, -f6 "$_f.u" | tr '/' '\n' | sort -rn | awk -v N="${_fr:-0}" 'BEGIN{k1=int(N*0.01+0.999); k2=int(N*0.001+0.999); if(k1<1)k1=1; if(k2<1)k2=1}
+    $1>0{c++; if(c<=k1)s1+=$1; if(c<=k2)s2+=$1}
+    END{a=k1; if(c<a)a=c; b=k2; if(c<b)b=c; l1=0; l2=0; if(a>0&&s1>0)l1=100000/(s1/a); if(b>0&&s2>0)l2=100000/(s2/b); printf "%d %d\n", l1, l2}')
+  echo "$_ts~$_du~$_md~$_av~$_mn~$_mx~$_med~${1:-0}~${2:-0}~$_st~$_hz~$_ta~$_tn~$_tx~$_tr~$_n~$_tf" > "$_d/$_ts.meta"
+  mv -f "$_f.u" "$_d/$_ts.csv"; rm -f "$_f" "$_f.t"
+  for _m in $(ls -t $_d/*.meta 2>/dev/null | tail -n +31); do rm -f "$_m" "${_m%.meta}.csv"; done
+  glog "rekam FPS tersimpan: ${_du}s rata2 $((_av/10)) fps"; }
+rec_run(){ pkg=$1; case $pkg in *[!A-Za-z0-9._]*|'') return;; esac
+  _w=0; while [ -f $DIR/rec.pid ] && kill -0 $(cat $DIR/rec.pid) 2>/dev/null; do
+    _o=; read -r _o < $DIR/rec_pkg 2>/dev/null; [ "$_o" = "$pkg" ] && return
+    _w=$((_w+1)); [ $_w -gt 6 ] && return; sleep 1
+  done
+  echo $$ > $DIR/rec.pid; echo "$pkg" > $DIR/rec_pkg
+  d=$REC/$pkg; mkdir -p $d; rm -f $REC/*/*.tmp
+  ts=$(date +%s); f=$d/$ts.tmp; : > $f; : > $DIR/rec_on; echo 0 > $DIR/rec_fps
+  rec_quit=; trap 'rec_quit=1' TERM INT HUP
+  last=0; lay=; zc=0; i=0; seeded=0; md=; tf=0; rec_up; t0=$RU; pu=$RU
+  while :; do
+    sleep 1; [ -n "$rec_quit" ] && break
+    cfgv F_fpsrec; [ "$CV" = off ] && break
+    [ -f $DIR/ingame ] || break; ip=; read -r ip < $DIR/ingame; [ "$ip" = "$pkg" ] || break
+    [ -z "$lay" ] && lay=$(rec_layer $pkg)
+    rec_up; now=$RU; dt=$((now-pu)); pu=$now; [ $dt -lt 20 ] && dt=100
+    n=; if [ -n "$lay" ]; then
+      set -- $(dumpsys SurfaceFlinger --latency "$lay" 2>/dev/null | awk -v last=$last 'NR==1{per=$1+0; next}
+        {t=$2+0; if(t<=0||t>9e18||t<=last)next; if(p>0){d=int((t-p)/100000+0.5)} else {d=0}; p=t; n++; if(t>mx)mx=t
+         if(d>0){for(k=1;k<=5;k++){if(d>top[k]){for(j=5;j>k;j--)top[j]=top[j-1]; top[k]=d; break}}}}
+        END{printf "%d %.0f %d %d/%d/%d/%d/%d\n", n, mx, per, top[1], top[2], top[3], top[4], top[5]}')
+      n=$1; mx=$2; per=$3; tops=$4
+    fi
+    if [ -z "$n" ]; then lay=; fps10=-1; n=0; hz=0; tops=0/0/0/0/0
+    else
+      [ "${mx:-0}" -gt "$last" ] 2>/dev/null && last=$mx
+      if [ "$n" = 0 ]; then zc=$((zc+1)); [ $((zc % 5)) = 0 ] && lay=; else zc=0; fi
+      fps10=$((n*1000/dt)); hz=0; [ "${per:-0}" -gt 0 ] 2>/dev/null && hz=$(( (2000000000/per+1)/2 ))
+    fi
+    if [ $seeded = 0 ]; then [ "$fps10" -ge 0 ] && seeded=1; continue; fi   # sampel pertama hanya menanam titik awal (isinya frame lama)
+    bt=; [ -r $BAT/temp ] && read -r bt < $BAT/temp; case $bt in ''|*[!0-9]*) bt=0;; esac; [ "$bt" -gt 0 ] && [ "$bt" -lt 100 ] && bt=$((bt*10))
+    i=$((i+1)); [ $i = 12 ] && { md=$(curmode); tf=0; { [ -f $DIR/gth_on ] || [ "$(getcfg THERMAL)" = off ]; } && tf=1; }
+    echo "$(( (now-t0)/100 )),$fps10,$bt,$hz,$n,$tops" >> $f
+    [ "$fps10" -ge 0 ] && echo $((fps10/10)) > $DIR/rec_fps
+  done
+  rm -f $DIR/rec_on $DIR/rec_fps
+  [ -z "$md" ] && md=$(curmode)
+  rec_fin "$f" "$ts" "$md" "$tf"
+  rm -f $DIR/rec.pid $DIR/rec_pkg; }
+rec(){ case $1 in
+  apps) _o=; for _d in $REC/*/; do [ -d "$_d" ] || continue; _p=$(basename $_d); _c=$(ls $_d*.meta 2>/dev/null | wc -l); [ "${_c:-0}" -gt 0 ] || continue
+      _l=$(ls -t $_d*.meta | head -n 1); _o="$_o$_p~$_c~$(basename $_l .meta);"; done; echo "RA|${_o%;}";;
+  list) case $2 in *[!A-Za-z0-9._]*|'') echo "ERR|paket tidak valid"; return;; esac
+      _o=; for _m in $(ls -t $REC/$2/*.meta 2>/dev/null); do _o="$_o$(cat $_m);"; done; echo "RL|${_o%;}";;
+  get) case $2$3 in *[!A-Za-z0-9._]*|'') echo "ERR|id tidak valid"; return;; esac
+      [ -f $REC/$2/$3.meta ] || { echo "ERR|rekaman tidak ada"; return; }
+      _c=$(getprop ro.soc.model); [ -z "$_c" ] && _c=$(getprop ro.hardware.chipname); [ -z "$_c" ] && _c=$(getprop ro.board.platform)
+      echo "RG|$(cat $REC/$2/$3.meta)|$(getprop ro.product.model)~$_c~$(getprop ro.build.version.release)~$(uname -r)|$(awk -F, -v M=300 '{n++; a[n]=$1; f[n]=$2; t[n]=$3; h[n]=$4}
+        END{if(n<=M){for(i=1;i<=n;i++)printf "%d,%d,%d,%d;", a[i],f[i],t[i],h[i]}
+        else{b=n/M; for(k=0;k<M;k++){lo=int(k*b)+1; hi=int((k+1)*b); if(hi<lo)hi=lo; c=0; sf=0; st=0; for(i=lo;i<=hi;i++){c++; sf+=f[i]; st+=t[i]} printf "%d,%d,%d,%d;", a[lo], sf/c, st/c, h[lo]}}}' $REC/$2/$3.csv)";;
+  del) case $2$3 in *[!A-Za-z0-9._]*|'') echo "ERR|id tidak valid"; return;; esac
+      rm -f $REC/$2/$3.meta $REC/$2/$3.csv; echo "OK|rekaman dihapus";;
+  delall) case $2 in *[!A-Za-z0-9._]*|'') echo "ERR|paket tidak valid"; return;; esac
+      rm -rf $REC/$2; echo "OK|semua rekaman dihapus";;
+  *) echo "ERR|perintah rec tidak dikenal";;
 esac; }
 # ---------- UNREAL ENGINE: kualitas grafis game UE lewat Engine.ini (sg.* scalability) ----------
 # Level 0-4 (Terendah, Rendah, Sedang, Tinggi, Ultra). Engine.ini game dicadangkan dulu ($f.comatoze.bak), blok kita diberi penanda & dibuang/dipulihkan saat "off".
@@ -2611,10 +2717,13 @@ ue_cfgdir(){ [ -d $UEB/$1 ] || return 1
   [ -n "$_d" ] && { echo "$_d"; return 0; }
   _sv=$(find $UEB/$1 -maxdepth 6 -type d -name Saved 2>/dev/null | head -n 1)
   [ -n "$_sv" ] && { echo "$_sv/Config/Android"; return 0; }
+  _pj=$(find $UEB/$1/files -mindepth 3 -maxdepth 3 -type d \( -path '*/UnrealGame/*/*' -o -path '*/UE4Game/*/*' -o -path '*/UE5Game/*/*' \) 2>/dev/null | head -n 1)
+  [ -n "$_pj" ] && { echo "$_pj/Saved/Config/Android"; return 0; }
   return 1; }
-ue_is(){ [ -d $UEB/$1 ] || return 1; find $UEB/$1 -maxdepth 8 \( -path '*Saved/Config*' -o -name '*.pak' -o -name UnrealGame -o -name UE4Game -o -name UE5Game \) 2>/dev/null | head -n 1 | grep -q .; }
+ue_apk(){ for _a in $(pm path $1 2>/dev/null | sed 's/^package://'); do tail -c 3000000 "$_a" 2>/dev/null | grep -aq 'libUE4\.so\|libUnreal\.so\|libUE5\.so' && return 0; done; return 1; }   # direktori tengah ZIP ada di ujung APK: nama lib terbaca tanpa ekstrak
+ue_is(){ ue_apk $1 && return 0; [ -d $UEB/$1 ] || return 1; find $UEB/$1 -maxdepth 8 \( -path '*Saved/Config*' -o -name '*.pak' -o -name UnrealGame -o -name UE4Game -o -name UE5Game \) 2>/dev/null | head -n 1 | grep -q .; }
 ue_list(){ _o=; for _p in $(cat $DIR/games.txt 2>/dev/null); do
-    if ue_is $_p; then _o="$_o$_p~ue~$(getcfg UE_$_p);"; fi; done; echo "UE|${_o%;}"; }
+    if ue_is $_p; then _k=ue; else _k=no; fi; _o="$_o$_p~$_k~$(getcfg UE_$_p);"; done; echo "UE|${_o%;}"; }
 ue_apply(){ # pkg level
   case $1 in *[!A-Za-z0-9._]*|'') echo "ERR|paket tidak valid"; return;; esac
   case $2 in 0|1|2|3|4) ;; *) echo "ERR|level 0-4"; return;; esac
@@ -2674,33 +2783,6 @@ idleram(){ case $1 in
          *) echo "ERR|kunci tidak dikenal"; return;; esac; echo "OK|tersimpan";;
   *) _r=stop; [ -f $DIR/idleram.pid ] && kill -0 $(cat $DIR/idleram.pid) 2>/dev/null && _r=run; echo "IDLERAM|$(getcfg IDLE_RAM)|$(getcfg IDLE_MIN)|$(getcfg IDLE_INT)|$_r|$(cat $DIR/idleram.last 2>/dev/null)";;
 esac; }
-# ---------- CROSSHAIR (overlay bidik tidak bisa disentuh). Aktif hanya sesi ini (reset tiap boot, anti burn-in) ----------
-# CH_STYLE: dot cross crossdot tcross x circle brackets chevron diamond pulse spin | CH_COLOR: hex 6 digit
-ch_svc(){ am start-foreground-service --user 0 -n com.comatoze/.CrosshairService "$@" >/dev/null 2>&1 || am startservice --user 0 -n com.comatoze/.CrosshairService "$@" >/dev/null 2>&1; }
-ch_get(){ _v=$(getcfg "$1"); echo "${_v:-$2}"; }
-crosshair(){ case $1 in
-  on) app_perm; setcfg CH_ON on; ch_svc --ez reload true; echo "OK|crosshair aktif";;
-  off) setcfg CH_ON off; am stopservice --user 0 -n com.comatoze/.CrosshairService >/dev/null 2>&1; echo "OK|crosshair mati";;
-  next) case $2 in
-      style) _l="dot cross crossdot tcross x circle brackets chevron diamond pulse spin"; _k=CH_STYLE; _c=$(ch_get CH_STYLE cross);;
-      color) _l="FF3B30 FF9500 FFD60A 34C759 2EDCFF 3B9BFF AF52DE FFFFFF"; _k=CH_COLOR; _c=$(ch_get CH_COLOR FF3B30);;
-      *) echo "ERR|style atau color"; return;;
-    esac
-    _f=; _n=; _1=; for _i in $_l; do [ -n "$_1" ] || _1=$_i; if [ -n "$_f" ]; then _n=$_i; break; fi; [ "$_i" = "$_c" ] && _f=1; done
-    [ -n "$_n" ] || _n=$_1
-    setcfg $_k "$_n"; [ "$(getcfg CH_ON)" = on ] && ch_svc --ez reload true; echo "OK|$_n";;
-  reset) for _k in CH_STYLE CH_COLOR CH_SIZE CH_TH CH_GAP CH_OP CH_GLOW CH_SPD CH_OX CH_OY CH_OUT CH_DOT; do setcfg $_k ""; done; [ "$(getcfg CH_ON)" = on ] && ch_svc --ez reload true; echo "OK|bawaan dipulihkan";;
-  set) _k=$2; _v=$3
-    case $_k in
-      style) case $_v in dot|cross|crossdot|tcross|x|circle|brackets|chevron|diamond|pulse|spin) ;; *) echo "ERR|gaya tidak dikenal"; return;; esac;;
-      color) case $_v in [0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f]) ;; *) echo "ERR|warna harus 6 digit hex"; return;; esac;;
-      size|th|gap|op|glow|spd|ox|oy) case $_v in ""|*[!0-9.-]*) echo "ERR|angka tidak valid"; return;; esac;;
-      out|dot) case $_v in 0|1) ;; *) echo "ERR|0 atau 1"; return;; esac;;
-      *) echo "ERR|kunci tidak dikenal"; return;;
-    esac
-    setcfg "CH_$(echo $_k | tr a-z A-Z)" "$_v"; [ "$(getcfg CH_ON)" = on ] && ch_svc --ez reload true; echo "OK|tersimpan";;
-  *) echo "CH|$(getcfg CH_ON)|$(ch_get CH_STYLE cross)|$(ch_get CH_COLOR FF3B30)|$(ch_get CH_SIZE 30)|$(ch_get CH_TH 2)|$(ch_get CH_GAP 6)|$(ch_get CH_OP 90)|$(ch_get CH_GLOW 50)|$(ch_get CH_SPD 1)|$(ch_get CH_OX 0)|$(ch_get CH_OY 0)|$(ch_get CH_OUT 1)|$(ch_get CH_DOT 0)";;
-esac; }
 status(){
   SC=1
   echo "MODE|$(getcfg MODE)"
@@ -2712,7 +2794,7 @@ status(){
   f2fs_status
   mt=0; ma=0; while IFS=' ' read -r _k _v _u; do case $_k in MemTotal:) mt=$_v;; MemAvailable:) ma=$_v; break;; esac; done < /proc/meminfo
   echo "RAM|$([ $mt -gt 0 ] && echo $(( (100*(mt-ma))/mt )) || echo 0)|$((mt/1024))|$((ma/1024))"
-  idleram status; crosshair status
+  idleram status
   echo "RATES|$(rates)"
   echo "GPCFG|$(getcfg GP_MODE)|$(getcfg GP_HZ)"
   echo "GFX|$(getcfg GFX_SCALE)|$(getcfg GFX_DRV)|$(getcfg GFX_ANGLE)"
@@ -2794,11 +2876,10 @@ boot(){
   angle_boot
   color_boot
   dk=$(getcfg DNS); [ -n "$dk" ] && dns_set "$dk" "$(getcfg DNS_H)" >/dev/null
-  ( sleep 20; app_perm ) >/dev/null 2>&1 &   # izin latar/crosshair selalu dipasang ulang tiap boot
+  ( sleep 20; app_perm ) >/dev/null 2>&1 &   # izin latar selalu dipasang ulang tiap boot
   # Migrasi: fitur overlay sudah dihapus. Bersihkan sisa config lama.
   grep -v -e "^OV_" -e "^REC_" $CFG > $CFG.t 2>/dev/null && mv $CFG.t $CFG
   rm -f $DIR/ovdiag.txt $DIR/recstop
-  setcfg CH_ON off   # crosshair selalu mati saat boot (anti burn-in)
   [ "$(getcfg IDLE_RAM)" = on ] && bg idleram_run
   # Migrasi: fitur overlay FPS (aplikasi UltraFPS) sudah dihapus. Bersihkan sisa lama bila ada.
   [ -f $DIR/fps.pid ] && kill $(cat $DIR/fps.pid) 2>/dev/null; rm -f $DIR/fps.pid $DIR/layers
@@ -2847,7 +2928,6 @@ case "$1" in
   angle_app) angle_app $2 $3; ui_restart;;
   idleram) idleram $2 $3 $4;;
   idleram_run) idleram_run;;
-  crosshair) crosshair $2 $3 $4;;
   uirst) case $2 in on|off) setcfg UI_RST $2; echo "OK|restart UI $2";; now) rm -f $DIR/uirst; setcfg UI_RST on; ui_restart; echo "OK|UI dimuat ulang";; *) echo "UIRST|$(getcfg UI_RST)";; esac;;
   cache) cache_clean;;
   trim) trim_run;;
@@ -2857,8 +2937,8 @@ case "$1" in
   gdiag) gdiag;;
   ver) ver_check;;
   fixboot) fixboot;;
-  lagrec) lagrec;;
-  lagrec_run) lagrec_run;;
+  rec) rec "$2" "$3" "$4";;
+  rec_run) rec_run "$2";;
   chg_wd) chg_wd;;
   chgreset) chg_reset;;
   game_wd) game_wd;;

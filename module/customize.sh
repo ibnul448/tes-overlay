@@ -63,7 +63,6 @@ if [ -f $MODPATH/apk/comatoze.apk ]; then
   # tanda tangan APK baru (build GitHub) bisa beda dengan versi lama -> copot dulu bila pasang ulang gagal
   pm install -r /data/local/tmp/comatoze.apk >/dev/null 2>&1 || { pm uninstall com.comatoze >/dev/null 2>&1; pm install -r /data/local/tmp/comatoze.apk >/dev/null 2>&1; }
   if pm path com.comatoze >/dev/null 2>&1; then
-    appops set com.comatoze SYSTEM_ALERT_WINDOW allow >/dev/null 2>&1
     pm grant com.comatoze android.permission.POST_NOTIFICATIONS >/dev/null 2>&1
     ui_print "      [OK] Aplikasi terpasang"
   else

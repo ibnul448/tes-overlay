@@ -78,6 +78,50 @@ public final class Root {
         return p;
     }
 
+    /** Shell root yang dibiarkan hidup: perintah dikirim lewat stdin, jadi satu ketukan tombol tidak perlu memulai proses `su` baru (itu yang bikin lambat). */
+    public static final class Shell {
+        private Process p;
+        private java.io.OutputStream os;
+
+        private boolean alive() {
+            if (p == null) return false;
+            try { p.exitValue(); return false; } catch (IllegalThreadStateException e) { return true; }
+        }
+
+        private void start() throws IOException {
+            p = new ProcessBuilder("su").redirectErrorStream(true).start();
+            os = p.getOutputStream();
+            final InputStream in = p.getInputStream();
+            new Thread(new Runnable() {
+                @Override public void run() {
+                    try { byte[] b = new byte[1024]; while (in.read(b) >= 0) { } } catch (IOException ignored) { }
+                }
+            }).start();
+        }
+
+        /** Kirim satu perintah (dijalankan berurutan oleh shell). Mengembalikan false bila root tidak bisa dihubungi. */
+        public synchronized boolean send(String cmd) {
+            byte[] data = (cmd + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            for (int i = 0; i < 2; i++) {
+                try {
+                    if (!alive()) start();
+                    os.write(data);
+                    os.flush();
+                    return true;
+                } catch (Throwable t) {
+                    try { if (p != null) p.destroy(); } catch (Throwable ignored) { }
+                    p = null;
+                }
+            }
+            return false;
+        }
+
+        public synchronized void close() {
+            try { if (p != null) p.destroy(); } catch (Throwable ignored) { }
+            p = null;
+        }
+    }
+
     private static byte[] readAll(InputStream in) throws IOException {
         ByteArrayOutputStream bo = new ByteArrayOutputStream();
         byte[] buf = new byte[16384];

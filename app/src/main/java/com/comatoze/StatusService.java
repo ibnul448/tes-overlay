@@ -34,26 +34,45 @@ public class StatusService extends Service {
     private volatile boolean running = false;
     private volatile Process proc;
     private String lastKey = "";
+    private final Root.Shell shell = new Root.Shell();
+    private volatile String[] lastArr;
+    private volatile String pendingMode;
+    private volatile long pendingUntil;
+    private volatile int pendingRec = -1;   // -1 tidak ada, 0/1 = status rekam yang diminta
 
     @Override public IBinder onBind(Intent i) { return null; }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        NotificationChannel c = new NotificationChannel(CH, "Status Comatoze", NotificationManager.IMPORTANCE_LOW);
-        c.setShowBadge(false);
-        c.setSound(null, null);
-        c.enableVibration(false);
-        nm.createNotificationChannel(c);
-        try {
-            startForeground(ID, base("Comatoze", "Menghubungkan ke modul…").build());
-        } catch (Throwable t) { stopSelf(); return START_NOT_STICKY; }
+        String act = intent != null ? intent.getAction() : null;
+        boolean isAct = "MODE".equals(act) || "REC".equals(act);
+        if (!(isAct && running)) {   // ketukan tombol saat layanan sudah jalan: JANGAN pasang ulang notifikasi "Menghubungkan" (itu penyebab patah-patah)
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            NotificationChannel c = new NotificationChannel(CH, "Status Comatoze", NotificationManager.IMPORTANCE_LOW);
+            c.setShowBadge(false);
+            c.setSound(null, null);
+            c.enableVibration(false);
+            nm.createNotificationChannel(c);
+            try {
+                startForeground(ID, base("Comatoze", "Menghubungkan ke modul…").build());
+            } catch (Throwable t) { stopSelf(); return START_NOT_STICKY; }
+        }
 
-        if (intent != null && "MODE".equals(intent.getAction())) {
+        if ("MODE".equals(act)) {
             final String m = intent.getStringExtra("m");
             if (m != null && m.matches("perf|plite|balance|eco")) {
-                new Thread(new Runnable() { @Override public void run() { Root.exec(Root.BIN + " mode " + m); } }).start();
+                pendingMode = m;                                   // tampilkan mode baru SEKETIKA, tanpa menunggu skrip selesai
+                pendingUntil = System.currentTimeMillis() + 6000;
+                String[] cur = lastArr;
+                if (cur != null) { String[] c2 = cur.clone(); c2[1] = m; render(c2); }
+                shell.send(Root.BIN + " mode " + m + " </dev/null >/dev/null 2>&1");
             }
+        } else if ("REC".equals(act)) {
+            final int want = "on".equals(intent.getStringExtra("r")) ? 1 : 0;
+            pendingRec = want;
+            String[] cur = lastArr;
+            if (cur != null) { String[] c2 = cur.clone(); if (c2.length > 10) c2[10] = want == 1 ? "1" : "0"; render(c2); }
+            shell.send(Root.BIN + " feat fpsrec " + (want == 1 ? "on" : "off") + " </dev/null >/dev/null 2>&1");
         }
         if (!running) {
             running = true;
@@ -103,12 +122,30 @@ public class StatusService extends Service {
 
     private void update(String[] a) {
         if (a.length < 10) return;
+        lastArr = a.clone();
+        long now = System.currentTimeMillis();
+        if (pendingMode != null) {
+            if (a[1].equals(pendingMode) || now > pendingUntil) pendingMode = null;
+            else a[1] = pendingMode;
+        }
+        if (pendingRec >= 0 && a.length > 10) {
+            int real = "0".equals(a[10]) ? 0 : 1;
+            if (real == pendingRec || now > pendingUntil + 4000) pendingRec = -1;
+            else a[10] = pendingRec == 1 ? "1" : "0";
+        }
+        render(a);
+    }
+
+    private void render(String[] a) {
+        if (a.length < 10) return;
         String mode = a[1];
         boolean game = "1".equals(a[2]);
         boolean thermalOff = "1".equals(a[3]);
         String pkg = a[4];
         int cpu = num(a, 5), gpu = num(a, 6), temp = num(a, 7), bat = num(a, 8);
         boolean chg = "1".equals(a[9]);
+        int rs = a.length > 10 ? num(a, 10) : 1;   // 0 = perekam FPS dimatikan, 1 = siaga, 2 = sedang merekam
+        int fps = a.length > 11 ? num(a, 11) : 0;
 
         String name;
         if ("perf".equals(mode)) name = "Performa";
@@ -119,16 +156,22 @@ public class StatusService extends Service {
         boolean auto = game && ("perf".equals(mode) || "plite".equals(mode));
 
         String title = "Mode " + name + (auto ? " (otomatis)" : "");
-        String text = "Thermal " + (thermalOff ? "dimatikan" : "normal") + "  \u00B7  " + temp + "\u00B0C  \u00B7  Baterai " + bat + "%" + (chg ? " (mengisi)" : "");
+        String text = "Thermal " + (thermalOff ? "dimatikan" : "normal") + "  \u00B7  " + temp + "\u00B0C  \u00B7  Baterai " + bat + "%" + (chg ? " (mengisi)" : "") + (rs == 2 ? "  \u00B7  Rekam FPS " + fps : "");
 
-        String key = title + "|" + text;
+        String key = title + "|" + text + "|" + rs;
         if (key.equals(lastKey)) return;
         lastKey = key;
 
         Notification.Builder b = base(title, text);
-        if (!"perf".equals(mode)) b.addAction(act("Performa", "perf", 1));
-        if (!"balance".equals(mode)) b.addAction(act("Seimbang", "balance", 2));
-        if (!"eco".equals(mode)) b.addAction(act("Eco", "eco", 3));
+        int cnt = 0;   // maksimal 3 tombol: 2 mode + 1 saklar Rekam FPS
+        if (!"perf".equals(mode) && cnt < 2) { b.addAction(act("Performa", "perf", 1)); cnt++; }
+        if (!"balance".equals(mode) && cnt < 2) { b.addAction(act("Seimbang", "balance", 2)); cnt++; }
+        if (!"eco".equals(mode) && cnt < 2) { b.addAction(act("Eco", "eco", 3)); cnt++; }
+        {
+            Intent ri = new Intent(this, StatusService.class).setAction("REC").putExtra("r", rs == 0 ? "on" : "off");
+            PendingIntent rp = PendingIntent.getService(this, 4, ri, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            b.addAction(new Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notif), rs == 0 ? "Rekam FPS: Nyala" : "Rekam FPS: Mati", rp).build());
+        }
         try {
             ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(ID, b.build());
         } catch (Throwable ignored) { }
@@ -159,6 +202,7 @@ public class StatusService extends Service {
     @Override
     public void onDestroy() {
         running = false;
+        shell.close();
         try { if (proc != null) proc.destroy(); } catch (Throwable ignored) { }
         super.onDestroy();
     }

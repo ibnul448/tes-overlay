@@ -5,3 +5,5 @@ ro.config.hw_quickpoweron=true
 logcat.live=disable
 dalvik.vm.dexopt-flags=v=a,o=y
 ro.sys.fw.bg_apps_limit=4
+# Frame pacing HAL perf vendor (bila HP mendukung; diabaikan jika tidak)
+vendor.perf.framepacing.enable=1
