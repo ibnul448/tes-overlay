@@ -140,6 +140,7 @@ tweak_auto(){ # mode
 # Mode EFEKTIF: saat profil game aktif (prof_on) mode yang terpasang = $DIR/emode (MODE di config tetap mode asli pengguna, dipulihkan saat keluar game).
 curmode(){ if [ -f $DIR/prof_on ]; then cat $DIR/emode 2>/dev/null; else getcfg MODE; fi; }
 set_mode(){
+  rm -f $DIR/pguard $DIR/pcrit   # ganti mode = batas suhu sementara dilepas (penjaga memasangnya lagi bila Performa terlalu panas)
   echo $1 > $DIR/emode
   cpu_mode $1; gpu_mode $1
   batsaver $1
@@ -193,12 +194,38 @@ perf_extra(){
 # min=max=cpuinfo_max_freq (clock mentok) + governor turbo tiap 2 detik SELAMA mode masih Performa,
 # tidak peduli apa yang menimpanya -- korbanin baterai demi clock beneran mentok sesuai permintaan.
 CPUW=$DIR/cpuw
+# PENJAGA SUHU MODE PERFORMA: Performa mengunci semua cluster di clock puncak + GPU mentok; bila ditambah Thermal dimatikan (mis. saat game) suhu bisa
+# lari sampai HP membeku/crash sampai kamu turun ke mode lain. Selama Performa aktif, suhu SoC (zona termal terpanas) & baterai dipantau tiap 3 dtk tanpa fork.
+# Lewat batas (bawaan 90 C SoC atau 45 C baterai) -> sementara turun ke clock "Performa Lite" (mode tetap tercatat Performa), balik penuh saat suhu turun
+# (histeresis 10 C / 3 C). Kritis (97 C / 48 C) -> Thermal dinyalakan lagi. Batas bisa diubah: PG_Z / PG_B di config; matikan dengan PERF_GUARD=off.
+TZD=/sys/class/thermal
+pg_tick(){
+  _zt=0; for _f in $TZD/thermal_zone*/temp; do _v=; read -r _v 2>/dev/null < $_f; case $_v in ''|*[!0-9]*) continue;; esac
+    [ "$_v" -gt 1000 ] && _v=$((_v/1000)); [ "$_v" -gt 130 ] && continue; [ "$_v" -gt "$_zt" ] && _zt=$_v; done
+  _bt=; read -r _bt 2>/dev/null < $BAT/temp; case $_bt in ''|*[!0-9]*) _bt=0;; esac; [ "$_bt" -gt 100 ] && _bt=$((_bt/10))
+  if [ ! -f $DIR/pguard ]; then
+    if [ "$_zt" -ge "$PG_Z" ] || [ "$_bt" -ge "$PG_B" ]; then
+      : > $DIR/pguard; cpu_mode plite; gpu_mode plite; glog "penjaga suhu: Performa dibatasi (SoC ${_zt}C, baterai ${_bt}C)"
+    fi
+  else
+    if [ "$_zt" -ge $((PG_Z+7)) ] || [ "$_bt" -ge $((PG_B+3)) ]; then
+      [ -f $DIR/pcrit ] || { : > $DIR/pcrit; gth_off; glog "penjaga suhu: kritis (SoC ${_zt}C, baterai ${_bt}C) -> Thermal dinyalakan lagi"; }
+    fi
+    if [ "$_zt" -le $((PG_Z-10)) ] && [ "$_bt" -le $((PG_B-3)) ]; then
+      rm -f $DIR/pguard $DIR/pcrit; cpu_mode perf; gpu_mode perf; glog "penjaga suhu: suhu turun (SoC ${_zt}C, baterai ${_bt}C), Performa penuh lagi"
+    fi
+  fi
+}
 cpu_wd(){
   # Tanpa fork di siklus normal (read bawaan shell): fork berkala dari pemantau ikut menyela core game dan terasa sebagai hentakan frame.
   echo $$ > $CPUW.pid; _tops=
+  PG_Z=$(getcfg PG_Z); PG_Z=${PG_Z:-90}; PG_B=$(getcfg PG_B); PG_B=${PG_B:-45}
   while :; do
     if [ -f $DIR/prof_on ]; then CV=; read -r CV 2>/dev/null < $DIR/emode; else cfgv MODE; fi   # mode efektif (profil game bisa memasang mode sementara)
     if [ "$CV" = perf ]; then
+      _pg=; cfgv PERF_GUARD; [ "$CV" = off ] && _pg=off
+      if [ "$_pg" != off ]; then pg_tick; [ -f $DIR/pguard ] && { sleep 3; continue; }; elif [ -f $DIR/pguard ]; then rm -f $DIR/pguard $DIR/pcrit; cpu_mode perf; gpu_mode perf; fi
+      CV=perf
       if [ -z "$_tops" ]; then   # daftar policy + clock puncak + governor tujuan dihitung sekali per sesi mode Performa
         for p in $CPU/policy*; do
           [ -d "$p" ] || continue
@@ -1552,7 +1579,7 @@ wl_apply(){ # on|off: WiFi tanpa scan latar & tanpa tidur (nilai asli disimpan l
     setcfg WLO_set 0
   fi
 }
-FEATS="framepace f2fsgc gamefps gamethermal nothermal doze datasaver wifilatency bootapply dnd fastcharge autocut bypass gamebypass preload gamednd gameprofile gameclean touchboost perfx ecox lessdbg fpsgooff gmslimit aggrdoze hzlock120 hzforce bkt smooth fpsrec"
+FEATS="framepace f2fsgc gamefps gamethermal nothermal doze datasaver wifilatency bootapply dnd fastcharge autocut bypass gamebypass preload gamednd gameprofile gameclean touchboost perfx ecox lessdbg fpsgooff gmslimit aggrdoze hzlock120 hzforce bkt smooth fpsrec threadpin"
 feat(){ # name on|off
   case $1 in
     nothermal) if [ "$2" = on ]; then thermal off; else thermal on; fi; return;;
@@ -1873,7 +1900,7 @@ game_fgp(){ # game dari daftar yang sedang di layar -> "paket pid" (daftar dibac
 game_fg(){ set -- $(game_fgp); echo $1; }
 glog(){ echo "$(date +%H:%M:%S) $*" >> $DIR/game.log; [ "$(stat -c %s $DIR/game.log 2>/dev/null || echo 0)" -gt 4096 ] && { tail -n 20 $DIR/game.log > $DIR/game.log.t; mv -f $DIR/game.log.t $DIR/game.log; }; }
 # ---------- CEK VERSI: bukti versi mana yang SEBENARNYA terpasang & jalan (modul, WebUI, aplikasi) ----------
-SCRIPT_VER=2.91.0
+SCRIPT_VER=2.93.0
 ver_check(){
   echo "skrip_berjalan=$SCRIPT_VER ($SELF)"
   for d in /data/adb/modules /data/adb/modules_update; do
@@ -2071,7 +2098,10 @@ game_wd(){
         [ "$(getcfg F_gamethermal)" = on ] && gth_on
         if [ "$(getcfg F_gamednd)" = on ]; then cmd notification set_dnd priority; dset=1; fi
         # Tindakan berat DITUNDA 8 dtk: saat game baru dibuka ia sedang memuat aset; ganti mode/Hz/kill/IO di detik pertama bisa membuatnya mati ('mental').
-        ( sleep 8; [ -f $DIR/ingame ] || exit 0; [ "$(game_fg)" = "$cur" ] || exit 0
+        ( sleep 8; [ -f $DIR/ingame ] || exit 0
+          _t=0; while [ "$(game_fg)" != "$cur" ]; do   # deteksi di depan bisa sesaat gagal (shade/dialog): coba lagi sampai 4x sebelum menyerah
+            _t=$((_t+1)); [ $_t -ge 4 ] && { glog "profil game dilewati: $cur tidak terbaca di depan"; exit 0; }
+            sleep 3; [ -f $DIR/ingame ] || exit 0; done
           [ -f $PXV2 ] && perf_x_game
           [ "$(getcfg F_gameprofile)" = on ] && gp_enter $cur
           fp_want && fp_on
@@ -2577,9 +2607,11 @@ statline(){
   read -r _b 2>/dev/null < $BAT/capacity; plugged && _ch=1 || _ch=0
   _rs=1; cfgv F_fpsrec; [ "$CV" = off ] && _rs=0; [ "$_rs" = 1 ] && [ -f $DIR/rec_on ] && _rs=2
   _rf=0; _rt=0; [ "$_rs" = 2 ] && { read -r _rf < $DIR/rec_fps; read -r _rt < $DIR/rec_on; }
-  echo "ST|$_m|$_i|$_t|$_p|$((_c/1000))|$((_g/1000000))|$_x|${_b:-0}|$_ch|$_rs|${_rf:-0}|${_rt:-0}"
+  echo "ST|$_m|$_i|$_t|$_p|$((_c/1000))|$((_g/1000000))|$_x|${_b:-0}|$_ch|$_rs|${_rf:-0}|${_rt:-0}|$([ -f $DIR/pguard ] && echo 1 || echo 0)"
 }
-statloop(){ while :; do statline; sleep 2; done; }
+# gw_heal: pemantau game (game_wd) mati mendadak -> hidupkan lagi bila masih ada fitur otomatis yang menyala (dicek tiap ~10 dtk dari statloop)
+gw_heal(){ [ -f $DIR/game.pid ] && kill -0 $(cat $DIR/game.pid) 2>/dev/null && return 0; [ -f $DIR/skip ] && return 0; glog "pemantau mati -> dihidupkan lagi"; game_sync; }
+statloop(){ _hn=0; while :; do statline; _hn=$((_hn+1)); [ $((_hn % 5)) = 0 ] && gw_heal >/dev/null 2>&1; sleep 2; done; }
 app_perm(){ # beri izin notifikasi + latar ke aplikasi Comatoze tanpa dialog (root)
   pm grant com.comatoze android.permission.POST_NOTIFICATIONS >/dev/null 2>&1
   for _o in RUN_IN_BACKGROUND RUN_ANY_IN_BACKGROUND START_FOREGROUND; do appops set com.comatoze $_o allow >/dev/null 2>&1; done
@@ -2867,7 +2899,7 @@ boot(){
   [ -f $DIR/guard.pid ] && kill $(cat $DIR/guard.pid) 2>/dev/null
   [ -f $RHZW.pid ] && kill $(cat $RHZW.pid) 2>/dev/null
   [ -f $CPUW.pid ] && kill $(cat $CPUW.pid) 2>/dev/null
-  rm -f $DIR/guard.pid $DIR/guard_hot $DIR/chgn $DIR/chgd $DIR/nonodes $DIR/chgsave $DIR/ingame $DIR/prof_on $DIR/gth_on $DIR/fp_on $DIR/fpvals $DIR/fpprops $DIR/fpsgo_ro $DIR/eco_ppm $DIR/fp.res $COOL.pid $COOL.end $COOL.cancel $RHZW.pid $CPUW.pid
+  rm -f $DIR/pguard $DIR/pcrit $DIR/guard.pid $DIR/guard_hot $DIR/chgn $DIR/chgd $DIR/nonodes $DIR/chgsave $DIR/ingame $DIR/prof_on $DIR/gth_on $DIR/fp_on $DIR/fpvals $DIR/fpprops $DIR/fpsgo_ro $DIR/eco_ppm $DIR/fp.res $COOL.pid $COOL.end $COOL.cancel $RHZW.pid $CPUW.pid
   chg_sync; game_sync; gfx_apply_all
   ios_boot; rend_boot
   [ -n "$(getcfg GED_LV)" ] && ged_set "$(getcfg GED_LV)" >/dev/null 2>&1

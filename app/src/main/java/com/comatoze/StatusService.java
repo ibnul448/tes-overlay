@@ -184,7 +184,8 @@ public class StatusService extends Service {
         else name = "Kustom";
         boolean auto = game && ("perf".equals(mode) || "plite".equals(mode));
 
-        String title = "Mode " + name + (auto ? " (otomatis)" : "");
+        boolean limited = a.length > 13 && "1".equals(a[13]);   // penjaga suhu sedang membatasi Performa
+        String title = "Mode " + name + (limited ? " (dibatasi suhu)" : auto ? " (otomatis)" : "");
         String text = "Thermal " + (thermalOff ? "dimatikan" : "normal") + "  \u00B7  " + temp + "\u00B0C  \u00B7  Baterai " + bat + "%" + (chg ? " (mengisi)" : "");
 
         String key = title + "|" + text + "|" + rs;
