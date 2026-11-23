@@ -1873,7 +1873,7 @@ game_fgp(){ # game dari daftar yang sedang di layar -> "paket pid" (daftar dibac
 game_fg(){ set -- $(game_fgp); echo $1; }
 glog(){ echo "$(date +%H:%M:%S) $*" >> $DIR/game.log; [ "$(stat -c %s $DIR/game.log 2>/dev/null || echo 0)" -gt 4096 ] && { tail -n 20 $DIR/game.log > $DIR/game.log.t; mv -f $DIR/game.log.t $DIR/game.log; }; }
 # ---------- CEK VERSI: bukti versi mana yang SEBENARNYA terpasang & jalan (modul, WebUI, aplikasi) ----------
-SCRIPT_VER=2.90.0
+SCRIPT_VER=2.91.0
 ver_check(){
   echo "skrip_berjalan=$SCRIPT_VER ($SELF)"
   for d in /data/adb/modules /data/adb/modules_update; do
@@ -2576,8 +2576,8 @@ statline(){
   _x=0; for _z in /sys/class/thermal/thermal_zone*/temp; do read -r _v 2>/dev/null < $_z || continue; case $_v in ''|*[!0-9]*) continue;; esac; [ "$_v" -gt 1000 ] && _v=$((_v/1000)); [ "$_v" -lt 120 ] && [ "$_v" -gt "$_x" ] && _x=$_v; done
   read -r _b 2>/dev/null < $BAT/capacity; plugged && _ch=1 || _ch=0
   _rs=1; cfgv F_fpsrec; [ "$CV" = off ] && _rs=0; [ "$_rs" = 1 ] && [ -f $DIR/rec_on ] && _rs=2
-  _rf=0; [ "$_rs" = 2 ] && read -r _rf 2>/dev/null < $DIR/rec_fps
-  echo "ST|$_m|$_i|$_t|$_p|$((_c/1000))|$((_g/1000000))|$_x|${_b:-0}|$_ch|$_rs|${_rf:-0}"
+  _rf=0; _rt=0; [ "$_rs" = 2 ] && { read -r _rf < $DIR/rec_fps; read -r _rt < $DIR/rec_on; }
+  echo "ST|$_m|$_i|$_t|$_p|$((_c/1000))|$((_g/1000000))|$_x|${_b:-0}|$_ch|$_rs|${_rf:-0}|${_rt:-0}"
 }
 statloop(){ while :; do statline; sleep 2; done; }
 app_perm(){ # beri izin notifikasi + latar ke aplikasi Comatoze tanpa dialog (root)
@@ -2659,11 +2659,12 @@ rec_run(){ pkg=$1; case $pkg in *[!A-Za-z0-9._]*|'') return;; esac
   done
   echo $$ > $DIR/rec.pid; echo "$pkg" > $DIR/rec_pkg
   d=$REC/$pkg; mkdir -p $d; rm -f $REC/*/*.tmp
-  ts=$(date +%s); f=$d/$ts.tmp; : > $f; : > $DIR/rec_on; echo 0 > $DIR/rec_fps
-  rec_quit=; trap 'rec_quit=1' TERM INT HUP
+  ts=$(date +%s); f=$d/$ts.tmp; : > $f; echo $ts > $DIR/rec_on; echo 0 > $DIR/rec_fps
+  rm -f $DIR/rec_stop; rec_quit=; trap 'rec_quit=1' TERM INT HUP
   last=0; lay=; zc=0; i=0; seeded=0; md=; tf=0; rec_up; t0=$RU; pu=$RU
   while :; do
     sleep 1; [ -n "$rec_quit" ] && break
+    [ -f $DIR/rec_stop ] && break
     cfgv F_fpsrec; [ "$CV" = off ] && break
     [ -f $DIR/ingame ] || break; ip=; read -r ip < $DIR/ingame; [ "$ip" = "$pkg" ] || break
     [ -z "$lay" ] && lay=$(rec_layer $pkg)
@@ -2687,11 +2688,12 @@ rec_run(){ pkg=$1; case $pkg in *[!A-Za-z0-9._]*|'') return;; esac
     echo "$(( (now-t0)/100 )),$fps10,$bt,$hz,$n,$tops" >> $f
     [ "$fps10" -ge 0 ] && echo $((fps10/10)) > $DIR/rec_fps
   done
-  rm -f $DIR/rec_on $DIR/rec_fps
+  rm -f $DIR/rec_on $DIR/rec_fps $DIR/rec_stop
   [ -z "$md" ] && md=$(curmode)
   rec_fin "$f" "$ts" "$md" "$tf"
   rm -f $DIR/rec.pid $DIR/rec_pkg; }
 rec(){ case $1 in
+  stop) [ -f $DIR/rec_on ] && : > $DIR/rec_stop; echo "OK|rekaman dihentikan";;
   apps) _o=; for _d in $REC/*/; do [ -d "$_d" ] || continue; _p=$(basename $_d); _c=$(ls $_d*.meta 2>/dev/null | wc -l); [ "${_c:-0}" -gt 0 ] || continue
       _l=$(ls -t $_d*.meta | head -n 1); _o="$_o$_p~$_c~$(basename $_l .meta);"; done; echo "RA|${_o%;}";;
   list) case $2 in *[!A-Za-z0-9._]*|'') echo "ERR|paket tidak valid"; return;; esac

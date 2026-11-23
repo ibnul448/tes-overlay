@@ -17,7 +17,12 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.graphics.drawable.Icon;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.style.ForegroundColorSpan;
 import android.widget.RemoteViews;
 
 import java.io.BufferedReader;
@@ -38,6 +43,22 @@ public class StatusService extends Service {
     private volatile String[] lastArr;
     private volatile String pendingMode;
     private volatile long pendingUntil;
+    private static final String CH_REC = "rekam";
+    private static final int ID_REC = 8;
+    private final Handler ui = new Handler(Looper.getMainLooper());
+    private boolean recShown = false;
+    private boolean blinkOn = true;
+    private long recStartMs;
+    private String recName = "";
+    private int recFps;
+    private final Runnable blink = new Runnable() {
+        @Override public void run() {
+            if (!recShown) return;
+            blinkOn = !blinkOn;
+            postRec();
+            ui.postDelayed(this, 1000);
+        }
+    };
     private volatile int pendingRec = -1;   // -1 tidak ada, 0/1 = status rekam yang diminta
 
     @Override public IBinder onBind(Intent i) { return null; }
@@ -53,6 +74,11 @@ public class StatusService extends Service {
             c.setSound(null, null);
             c.enableVibration(false);
             nm.createNotificationChannel(c);
+            NotificationChannel cr = new NotificationChannel(CH_REC, "Perekaman FPS", NotificationManager.IMPORTANCE_LOW);
+            cr.setShowBadge(false);
+            cr.setSound(null, null);
+            cr.enableVibration(false);
+            nm.createNotificationChannel(cr);
             try {
                 startForeground(ID, base("Comatoze", "Menghubungkan ke modul…").build());
             } catch (Throwable t) { stopSelf(); return START_NOT_STICKY; }
@@ -67,12 +93,12 @@ public class StatusService extends Service {
                 if (cur != null) { String[] c2 = cur.clone(); c2[1] = m; render(c2); }
                 shell.send(Root.BIN + " mode " + m + " </dev/null >/dev/null 2>&1");
             }
-        } else if ("REC".equals(act)) {
-            final int want = "on".equals(intent.getStringExtra("r")) ? 1 : 0;
-            pendingRec = want;
+        } else if ("REC".equals(act)) {   // Berhenti: akhiri sesi rekam ini saja (disimpan); rekaman berikutnya mulai lagi saat game dibuka
+            pendingRec = 1;
+            pendingUntil = System.currentTimeMillis() + 6000;
             String[] cur = lastArr;
-            if (cur != null) { String[] c2 = cur.clone(); if (c2.length > 10) c2[10] = want == 1 ? "1" : "0"; render(c2); }
-            shell.send(Root.BIN + " feat fpsrec " + (want == 1 ? "on" : "off") + " </dev/null >/dev/null 2>&1");
+            if (cur != null) { String[] c2 = cur.clone(); if (c2.length > 10) c2[10] = "1"; render(c2); }
+            shell.send(Root.BIN + " rec stop </dev/null >/dev/null 2>&1");
         }
         if (!running) {
             running = true;
@@ -129,9 +155,9 @@ public class StatusService extends Service {
             else a[1] = pendingMode;
         }
         if (pendingRec >= 0 && a.length > 10) {
-            int real = "0".equals(a[10]) ? 0 : 1;
-            if (real == pendingRec || now > pendingUntil + 4000) pendingRec = -1;
-            else a[10] = pendingRec == 1 ? "1" : "0";
+            int real = num(a, 10);
+            if (real == pendingRec || now > pendingUntil) pendingRec = -1;
+            else a[10] = String.valueOf(pendingRec);
         }
         render(a);
     }
@@ -146,6 +172,9 @@ public class StatusService extends Service {
         boolean chg = "1".equals(a[9]);
         int rs = a.length > 10 ? num(a, 10) : 1;   // 0 = perekam FPS dimatikan, 1 = siaga, 2 = sedang merekam
         int fps = a.length > 11 ? num(a, 11) : 0;
+        long recStart = 0;
+        try { recStart = a.length > 12 ? Long.parseLong(a[12].trim()) * 1000L : 0; } catch (Exception e) { recStart = 0; }
+        updateRec(rs == 2, recStart, pkg, fps);
 
         String name;
         if ("perf".equals(mode)) name = "Performa";
@@ -156,24 +185,63 @@ public class StatusService extends Service {
         boolean auto = game && ("perf".equals(mode) || "plite".equals(mode));
 
         String title = "Mode " + name + (auto ? " (otomatis)" : "");
-        String text = "Thermal " + (thermalOff ? "dimatikan" : "normal") + "  \u00B7  " + temp + "\u00B0C  \u00B7  Baterai " + bat + "%" + (chg ? " (mengisi)" : "") + (rs == 2 ? "  \u00B7  Rekam FPS " + fps : "");
+        String text = "Thermal " + (thermalOff ? "dimatikan" : "normal") + "  \u00B7  " + temp + "\u00B0C  \u00B7  Baterai " + bat + "%" + (chg ? " (mengisi)" : "");
 
         String key = title + "|" + text + "|" + rs;
         if (key.equals(lastKey)) return;
         lastKey = key;
 
         Notification.Builder b = base(title, text);
-        int cnt = 0;   // maksimal 3 tombol: 2 mode + 1 saklar Rekam FPS
-        if (!"perf".equals(mode) && cnt < 2) { b.addAction(act("Performa", "perf", 1)); cnt++; }
-        if (!"balance".equals(mode) && cnt < 2) { b.addAction(act("Seimbang", "balance", 2)); cnt++; }
-        if (!"eco".equals(mode) && cnt < 2) { b.addAction(act("Eco", "eco", 3)); cnt++; }
-        {
-            Intent ri = new Intent(this, StatusService.class).setAction("REC").putExtra("r", rs == 0 ? "on" : "off");
-            PendingIntent rp = PendingIntent.getService(this, 4, ri, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            b.addAction(new Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notif), rs == 0 ? "Rekam FPS: Nyala" : "Rekam FPS: Mati", rp).build());
-        }
+        if (!"perf".equals(mode)) b.addAction(act("Performa", "perf", 1));
+        if (!"balance".equals(mode)) b.addAction(act("Seimbang", "balance", 2));
+        if (!"eco".equals(mode)) b.addAction(act("Eco", "eco", 3));
         try {
             ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(ID, b.build());
+        } catch (Throwable ignored) { }
+    }
+
+    /** Notifikasi terpisah ala perekam layar: hanya ada saat FPS sedang direkam; ada penghitung waktu, titik merah berkedip, dan tombol Berhenti. */
+    private void updateRec(boolean on, long startMs, String pkg, int fps) {
+        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (!on) {
+            if (recShown) { recShown = false; ui.removeCallbacks(blink); try { nm.cancel(ID_REC); } catch (Throwable ignored) { } }
+            return;
+        }
+        recStartMs = startMs > 0 ? startMs : (recStartMs > 0 ? recStartMs : System.currentTimeMillis());
+        recName = appName(pkg);
+        recFps = fps;
+        if (!recShown) {
+            recShown = true;
+            blinkOn = true;
+            ui.removeCallbacks(blink);
+            ui.postDelayed(blink, 1000);
+        }
+        postRec();
+    }
+
+    private void postRec() {
+        try {
+            SpannableString title = new SpannableString("\u25CF  Merekam FPS");
+            title.setSpan(new ForegroundColorSpan(blinkOn ? Color.rgb(255, 59, 48) : Color.TRANSPARENT), 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            Intent open = new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            PendingIntent pi = PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            Intent si = new Intent(this, StatusService.class).setAction("REC").putExtra("r", "off");
+            PendingIntent sp = PendingIntent.getService(this, 4, si, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            Notification.Builder b = new Notification.Builder(this, CH_REC)
+                    .setSmallIcon(R.drawable.ic_notif)
+                    .setContentTitle(title)
+                    .setContentText(recName + (recFps > 0 ? "  \u00B7  " + recFps + " FPS" : ""))
+                    .setOngoing(true)
+                    .setOnlyAlertOnce(true)
+                    .setShowWhen(true)
+                    .setWhen(recStartMs)
+                    .setUsesChronometer(true)
+                    .setColor(Color.rgb(255, 59, 48))
+                    .setCategory(Notification.CATEGORY_SERVICE)
+                    .setVisibility(Notification.VISIBILITY_PUBLIC)
+                    .setContentIntent(pi)
+                    .addAction(new Notification.Action.Builder(Icon.createWithResource(this, R.drawable.ic_notif), "Berhenti", sp).build());
+            ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(ID_REC, b.build());
         } catch (Throwable ignored) { }
     }
 
@@ -203,6 +271,8 @@ public class StatusService extends Service {
     public void onDestroy() {
         running = false;
         shell.close();
+        ui.removeCallbacks(blink);
+        try { ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel(ID_REC); } catch (Throwable ignored) { }
         try { if (proc != null) proc.destroy(); } catch (Throwable ignored) { }
         super.onDestroy();
     }

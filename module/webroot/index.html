@@ -1089,6 +1089,7 @@ async function recLoadApps(){const r=await run('rec apps');const o=((r&&r.out)||
  prefetchLabels(REC.apps.map(x=>x.p));if(sub==='rec'&&REC.v==='apps')renderSub();}
 async function recLoadList(){const r=await run('rec list '+REC.pkg);const o=((r&&r.out)||'').trim();
  REC.list=(o.split('|')[1]||'').split(';').filter(Boolean).map(recParse);if(sub==='rec'&&REC.v==='list')renderSub();}
+function recGame(p){REC.v='apps';REC.apps=null;openSub('rec');recLoadApps();recApp(p);}
 function recOpen(){REC.v='apps';REC.apps=null;openSub('rec');recLoadApps();}
 function recApp(p){REC.pkg=p;REC.list=null;recGo('list');recLoadList();}
 async function recDet(id){REC.id=id;REC.det=null;recGo('det');const r=await run(`rec get ${REC.pkg} ${id}`);const o=((r&&r.out)||'').trim().split('|');
@@ -1144,13 +1145,14 @@ function recDraw(){const c=$('#rcv');if(!c||!REC.det||!REC.det.rows.length)retur
 async function gdiagRun(){toast('Memeriksa pemantau game…');const r=await run('gdiag');GDIAG=((r&&r.out)||'').trim();render();}
 function gwdLine(s){const w=s.gwd;if(!w)return '';
  const st=!w.alive?'Pemantau game MATI (nyalakan salah satu saklar game di bawah)':(w.n?`Pemantau aktif · ${w.ing?'sedang di dalam game':'menunggu game dibuka'} · ${w.n} game di daftar`:'Pemantau aktif, tetapi daftar game kosong: tambahkan game di bawah');
- return `<p class="mu" style="margin:10px 2px 0">${st}${w.last?'<br>Terakhir: '+esc(w.last):''}</p><button class="btn tonal" style="margin-top:8px" onclick="gdiagRun()">Cek pemantau game</button><button class="btn tonal" style="margin-top:8px" onclick="recOpen()">Rekaman FPS</button>${GDIAG?`<pre class="mu" style="white-space:pre-wrap;margin:10px 2px 0;font-size:12px">${esc(GDIAG)}</pre>`:''}`;}
+ return `<p class="mu" style="margin:10px 2px 0">${st}${w.last?'<br>Terakhir: '+esc(w.last):''}</p><button class="btn tonal" style="margin-top:8px" onclick="gdiagRun()">Cek pemantau game</button>${GDIAG?`<pre class="mu" style="white-space:pre-wrap;margin:10px 2px 0;font-size:12px">${esc(GDIAG)}</pre>`:''}`;}
 function gpCard(s){const g=s.gpcfg||{mode:'perf',hz:120};
  return `<div class="card"><div class="head">${ico('rocket','purple')}<div class="tx"><b>Profil Game</b><span>Mode dan Hz saat game</span></div></div>
   <div class="lbl" style="margin-top:14px">Mode</div>
   <div class="seg3 tn-purple" data-grp="mode">${MODES.map(([k,i,n])=>`<button class="chip ${g.mode===k?'on':''}" onclick="gpPick('mode','${k}',this)">${n}</button>`).join('')}</div>
   <div class="lbl" style="margin-top:16px">Refresh Rate</div>
   <div class="seg3 tn-blue" data-grp="hz">${RT(s).map(v=>`<button class="chip ${g.hz==v?'on':''}" onclick="gpPick('hz','${v}',this)">${v} Hz</button>`).join('')}</div>
+  <button class="btn tonal" style="margin-top:14px;width:100%" onclick="recOpen()">Rekaman FPS (per game)</button>
   ${gwdLine(s)}</div>`;}
 /* ---------- Profil per game: mode & Hz sendiri tiap game ('' = ikut Profil Game global) ---------- */
 let PG_OPEN=null;
@@ -1620,7 +1622,7 @@ function render(){
   coolWatch();memWatch();setBar();
 }
 /* ---------- UI v2.36: nav 4 tab, menu Tweaks dengan sub-halaman, daftar Aplikasi, dialog radio ---------- */
-const VER='2.90.0';
+const VER='2.91.0';
 IC.home=sv('<path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>');
 IC.grid=sv('<rect x="4" y="4" width="4" height="4" rx="1"/><rect x="10" y="4" width="4" height="4" rx="1"/><rect x="16" y="4" width="4" height="4" rx="1"/><rect x="4" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16" y="10" width="4" height="4" rx="1"/><rect x="4" y="16" width="4" height="4" rx="1"/><rect x="10" y="16" width="4" height="4" rx="1"/><rect x="16" y="16" width="4" height="4" rx="1"/>');
 IC.sliders=sv('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>');
@@ -1702,6 +1704,7 @@ function gsSpec(p,s){const c=(s.gprof||{})[p]||{mode:'',hz:''},sc=(s.gfxApp||{})
 function appSub(p,s){const q=esc(p),sp=(s.spoofApps||[]).find(x=>x.pkg===p),sec=gsSpec(p,s);
  return `<div class="gs-hero"><img class="gs-bg" src="ksu://icon/${q}" alt="" onerror="this.style.display='none'"><div class="gs-id">${appIcon(p)}<div class="tx"><b>${esc(labelOf(p))}</b><span>${q}</span></div></div></div>
  ${sec.map(x=>`<div class="gp-sec tn-${x.tn}"><span>${IC[x.ic]||''}</span>${x.t}</div><div class="gp-list">${x.rows.map(r=>`<button class="gp-row tn-${x.tn}" onclick="${r.page?`openSub('${r.page}:${q}')`:`gdOpen('${q}','${r.k}')`}"><span class="gp-ic">${IC[r.ic]||''}</span><div class="gp-tx"><b>${r.t}</b><small>${r.d}</small></div><span class="gp-v">${r.v}</span></button>`).join('')}${x.t==='Pengaturan Tambahan'?`<button class="gp-row tn-amber" onclick="spoofAppOpen()"><span class="gp-ic">${IC.phone||''}</span><div class="gp-tx"><b>Spoof Perangkat</b><small>${sp&&sp.on?esc(((sp.man?sp.man+' · ':'')+(chipName(sp)?'Chip '+chipName(sp):'Tiru model HP')).trim()):'Tiru model HP untuk membuka opsi FPS'}</small></div><span class="gp-v" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sp?(sp.on?esc(sp.mod||sp.key||'Aktif'):'Nonaktif'):'Belum'}</span></button>`:''}</div>`).join('')}
+ <button class="btn tonal" style="margin-top:18px;width:100%" onclick="recGame('${q}')">Rekaman FPS game ini</button>
  <button class="btn ghost" style="color:var(--dg);margin-top:18px" onclick="appDel('${q}')">${IC.trash} Hapus dari daftar game</button>`;}
 async function gfxSet(k,v){toast('Menerapkan…');const r=await run(`gfx_${k==='drv'?'driver':'angle'} ${v}`);await load();toast((r.out||'').trim().startsWith('OK')?'Diterapkan · UI dimuat ulang':'Gagal: '+((r.out||'').split('|')[1]||'tidak ada respon'));}
 /* ---- Grafis Unreal Engine ---- */
@@ -1825,6 +1828,7 @@ async function f2fsNow(){toast('GC F2FS berjalan di latar (±2 menit)…');await
 const utilSub=s=>`<div class="fnote"><b>Optimasi latar belakang &amp; baterai.</b> Fitur lanjutan untuk mengurangi standby drain. Keduanya mati secara bawaan dan bisa menunda notifikasi bila aktif.</div>
  <div class="msec g">Konsumsi Daya &amp; Standby</div><div class="card">${rowsById(['aggrdoze','gmslimit','doze','datasaver','f2fsgc'])}</div>${f2fsCard(s)}`;
 
+const rng=(a,b,st)=>{const o=[];for(let v=a;v<=b+1e-9;v+=st)o.push(Math.round(v*100)/100);return o;};
 /* ---------- IDLE RAM ---------- */
 function idleCard(s){const d=s.idle||{on:false,min:2048,int:5};
   const body=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px"><div style="flex:1;min-width:0"><b style="display:block;font-size:14px">Bersihkan saat idle</b><span style="font-size:12px;opacity:.65">Saat tidak ada game, bersihkan bila RAM bebas rendah</span></div>
